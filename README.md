@@ -48,6 +48,14 @@
 
 **危化判定**：直接用浏览器打开 `msds-un/msds-un-app.html`。
 
+## 日常同步到 GitHub
+
+平台维护者改完代码后，只需在 Mac 终端运行一条（令牌已存入钥匙串，不再需要密码）：
+
+```
+cd ~/Desktop/cstar-tools && git push
+```
+
 ## 线上部署
 
 服务器为腾讯云香港轻量（Ubuntu 24.04），nginx 反代 + Docker。详见 `aeo/deploy/` 下的上线手册。
