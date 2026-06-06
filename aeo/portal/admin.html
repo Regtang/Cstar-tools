@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>工具平台管理后台 · 喜事达</title>
+  <link rel="stylesheet" href="/cstar-ui.css" />
+  <style>
+    main { max-width: 1100px; margin: 22px auto; padding: 0 18px 40px; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tab { padding: 9px 16px; border-radius: 10px; cursor: pointer; font-weight: 700; background: #eef2f5; color: #5b6b7a; border: 0; font: inherit; }
+    .tab.on { background: var(--cs-teal); color: #fff; }
+    .sub { border: 1px solid var(--cs-line); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+    .sub h3 { margin: 0 0 6px; font-size: 16px; }
+    .meta { color: var(--cs-muted); font-size: 13px; margin-bottom: 10px; }
+    .meta b { color: var(--cs-ink); }
+    .login { max-width: 360px; margin: 60px auto; }
+    .hide { display: none; }
+    .vers { background: var(--cs-soft); border-radius: 8px; padding: 8px 10px; margin-top: 8px; font-size: 13px; }
+    .vers .row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+  </style>
+</head>
+<body class="cstar-ui">
+  <header class="cs-header">
+    <h1>工具平台管理后台</h1>
+    <p>审核同事提交、管理工具可见性与版本（仅管理员）</p>
+  </header>
+
+  <main>
+    <!-- 登录 -->
+    <section id="loginArea" class="cs-card login hide">
+      <h2>管理员登录</h2>
+      <div class="cs-card-body">
+        <label class="cs-label">用户名</label>
+        <input id="lu" class="cs-input" />
+        <label class="cs-label">密码</label>
+        <input id="lp" class="cs-input" type="password" onkeydown="if(event.key==='Enter')doLogin()" />
+        <div id="lerr" class="cs-error-text" style="margin-top:10px"></div>
+        <button class="cs-btn cs-btn-primary cs-btn-block" style="margin-top:14px" onclick="doLogin()">登录</button>
+      </div>
+    </section>
+
+    <!-- 控制台 -->
+    <div id="console" class="hide">
+      <div class="tabs">
+        <button class="tab on" id="tabSub" onclick="showTab('sub')">待审提交 <span id="subCount"></span></button>
+        <button class="tab" id="tabTool" onclick="showTab('tool')">工具管理</button>
+        <span style="margin-left:auto"></span>
+        <button class="cs-btn cs-btn-ghost" onclick="changePw()">改密码</button>
+        <button class="cs-btn cs-btn-ghost" onclick="logout()">退出</button>
+      </div>
+      <div id="subList"></div>
+      <div id="toolList" class="hide"></div>
+    </div>
+  </main>
+
+<script>
+const $ = id => document.getElementById(id);
+let TOKEN = '';
+try { TOKEN = localStorage.getItem('aeo_token') || ''; } catch (e) {}
+
+function H() { return TOKEN ? { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' }; }
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+async function boot() {
+  if (!TOKEN) return showLogin();
+  try {
+    const me = await fetch('/api/me', { headers: H() }).then(r => r.ok ? r.json() : null);
+    if (me && (me.isPlatformAdmin || me.isAdmin)) { showConsole(); }
+    else if (me) { showLogin('当前账号无平台管理权限，请用管理员账号登录'); }
+    else showLogin();
+  } catch (e) { showLogin(); }
+}
+function showLogin(msg) { $('loginArea').classList.remove('hide'); $('console').classList.add('hide'); if (msg) $('lerr').textContent = msg; }
+function showConsole() { $('loginArea').classList.add('hide'); $('console').classList.remove('hide'); loadSubs(); loadTools(); }
+
+async function doLogin() {
+  $('lerr').textContent = '';
+  const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: $('lu').value.trim(), password: $('lp').value }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { $('lerr').textContent = j.detail || '登录失败'; return; }
+  if (!(j.user && (j.user.isPlatformAdmin || j.user.isAdmin))) { $('lerr').textContent = '该账号无平台管理权限'; return; }
+  TOKEN = j.token; try { localStorage.setItem('aeo_token', TOKEN); } catch (e) {}
+  showConsole();
+}
+function logout() { TOKEN = ''; try { localStorage.removeItem('aeo_token'); } catch (e) {} showLogin(); }
+async function changePw() {
+  const oldp = prompt('请输入当前密码：'); if (oldp === null) return;
+  const np = prompt('请输入新密码（至少6位）：'); if (np === null) return;
+  const r = await fetch('/api/me/password', { method: 'POST', headers: H(), body: JSON.stringify({ old: oldp, new: np }) });
+  const j = await r.json().catch(() => ({}));
+  alert(r.ok ? '密码已修改' : ('修改失败：' + (j.detail || r.status)));
+}
+
+function showTab(t) {
+  $('tabSub').classList.toggle('on', t === 'sub'); $('tabTool').classList.toggle('on', t === 'tool');
+  $('subList').classList.toggle('hide', t !== 'sub'); $('toolList').classList.toggle('hide', t !== 'tool');
+}
+
+/* ---- 待审提交 ---- */
+async function loadSubs() {
+  const rows = await fetch('/api/admin/submissions', { headers: H() }).then(r => r.json()).catch(() => []);
+  const pending = rows.filter(s => s.status === '待审核');
+  $('subCount').textContent = pending.length ? '(' + pending.length + ')' : '';
+  if (!rows.length) { $('subList').innerHTML = '<p class="meta">暂无提交。</p>'; return; }
+  $('subList').innerHTML = rows.map(s => {
+    const kind = s.kind === 'update' ? ('更新现有工具 → ' + esc(s.target || '?')) : '新工具';
+    const sc = s.selfcheck ? '✓ 已自检' : '✗ 未自检';
+    const done = s.status !== '待审核';
+    const actions = done ? `<span class="cs-badge cs-badge-info">${esc(s.status)}</span>` :
+      `<button class="cs-btn cs-btn-soft" onclick="dl(${s.id},'${esc(s.filename)}')">下载</button>
+       <button class="cs-btn cs-btn-primary" onclick="approve(${s.id}, ${s.kind === 'update' ? 'true' : 'false'})">批准并发布</button>
+       <button class="cs-btn cs-btn-ghost" onclick="reject(${s.id})">驳回</button>`;
+    return `<div class="sub"><h3>${esc(s.name)} <span class="cs-badge ${s.kind === 'update' ? 'cs-badge-warn' : 'cs-badge-ok'}">${s.kind === 'update' ? '更新' : '新工具'}</span></h3>
+      <div class="meta">类型：${kind}　|　版本：<b>${esc(s.version || '-')}</b>　|　开发者：${esc(s.developer || '-')}　|　${sc}　|　${(s.size/1024).toFixed(0)}KB　|　${esc(s.created_at || '')}</div>
+      ${s.desc ? '<div class="meta">' + esc(s.desc) + '</div>' : ''}
+      <div class="cs-actions">${actions}</div></div>`;
+  }).join('');
+}
+async function dl(id, fname) {
+  const r = await fetch('/api/admin/submissions/' + id + '/download', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
+  if (!r.ok) { alert('下载失败'); return; }
+  const b = await r.blob(); const a = document.createElement('a');
+  a.href = URL.createObjectURL(b); a.download = fname || 'package.zip'; a.click(); URL.revokeObjectURL(a.href);
+}
+async function approve(id, isUpdate) {
+  let body = {};
+  if (!isUpdate) {
+    const slug = prompt('设置工具英文标识 slug（决定访问地址 /tools/<slug>/，留空自动生成）：', '');
+    if (slug === null) return;
+    const vis = prompt('可见性：external(对外) / internal(仅内部) / both(通用)', 'both');
+    if (vis === null) return;
+    const cat = prompt('分类（报关/物流/合规/财务/通用）', '通用') || '通用';
+    body = { slug: slug.trim(), visibility: (vis || 'both').trim(), category: cat.trim() };
+  } else {
+    if (!confirm('确认批准并发布这个更新版本？将覆盖现有工具的当前版本（旧版保留可回滚）。')) return;
+  }
+  const r = await fetch('/api/admin/submissions/' + id + '/approve', { method: 'POST', headers: H(), body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { alert('发布失败：' + (j.detail || r.status)); return; }
+  alert('已发布：' + j.slug + ' @ ' + j.version + '\n访问 ' + j.url);
+  loadSubs(); loadTools();
+}
+async function reject(id) {
+  const reason = prompt('驳回原因（会记录）：', '');
+  if (reason === null) return;
+  const r = await fetch('/api/admin/submissions/' + id + '/reject', { method: 'POST', headers: H(), body: JSON.stringify({ reason }) });
+  if (!r.ok) { alert('操作失败'); return; }
+  loadSubs();
+}
+
+/* ---- 工具管理 ---- */
+async function loadTools() {
+  const rows = await fetch('/api/admin/tools', { headers: H() }).then(r => r.json()).catch(() => []);
+  if (!rows.length) { $('toolList').innerHTML = '<p class="meta">暂无工具。</p>'; return; }
+  $('toolList').innerHTML = rows.map(t => `
+    <div class="sub" id="tool-${t.id}">
+      <h3>${esc(t.name)} <span class="cs-badge cs-badge-info">${esc(t.slug)}</span></h3>
+      <div class="meta">分类：${esc(t.category)}　|　入口：${esc(t.entry_kind)} ${esc(t.entry_path || '')}　|　负责人：${esc(t.owner_dept || '-')}</div>
+      <div class="cs-actions" style="align-items:center">
+        可见性
+        <select class="cs-select" style="width:auto" onchange="updTool(${t.id},'visibility',this.value)">
+          ${['external','internal','both'].map(v => `<option value="${v}" ${t.visibility === v ? 'selected' : ''}>${v === 'external' ? '对外' : v === 'internal' ? '仅内部' : '通用'}</option>`).join('')}
+        </select>
+        状态
+        <select class="cs-select" style="width:auto" onchange="updTool(${t.id},'status',this.value)">
+          ${['online','hidden','deprecated'].map(v => `<option value="${v}" ${t.status === v ? 'selected' : ''}>${v === 'online' ? '上线' : v === 'hidden' ? '隐藏' : '已退役'}</option>`).join('')}
+        </select>
+        <button class="cs-btn cs-btn-soft" onclick="toggleVers(${t.id})">版本历史/回滚</button>
+      </div>
+      <div id="vers-${t.id}" class="vers hide"></div>
+    </div>`).join('');
+}
+async function updTool(id, field, value) {
+  const r = await fetch('/api/admin/tools/' + id, { method: 'PUT', headers: H(), body: JSON.stringify({ [field]: value }) });
+  if (!r.ok) alert('更新失败');
+}
+async function toggleVers(id) {
+  const box = $('vers-' + id);
+  if (!box.classList.contains('hide')) { box.classList.add('hide'); return; }
+  const rows = await fetch('/api/admin/tools/' + id + '/versions', { headers: H() }).then(r => r.json()).catch(() => []);
+  box.innerHTML = rows.length ? rows.map(v => `<div class="row"><span>${esc(v.version)} ${v.isCurrent ? '<span class="cs-badge cs-badge-ok">当前</span>' : '<span class="cs-badge cs-badge-info">' + esc(v.state) + '</span>'} <span style="color:var(--cs-muted)">${esc(v.created_at || '')} · ${esc(v.approved_by || '')}</span></span>${v.isCurrent ? '' : `<button class="cs-btn cs-btn-ghost" onclick="rollback(${id},${v.id})">回滚到此版本</button>`}</div>`).join('') : '<div class="meta">该工具无托管版本（可能是 link/embed 旧工具）。</div>';
+  box.classList.remove('hide');
+}
+async function rollback(tid, vid) {
+  if (!confirm('确认回滚到该版本？')) return;
+  const r = await fetch('/api/admin/tools/' + tid + '/rollback', { method: 'POST', headers: H(), body: JSON.stringify({ version_id: vid }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { alert('回滚失败：' + (j.detail || r.status)); return; }
+  alert('已回滚到 ' + j.version); toggleVers(tid); toggleVers(tid);
+}
+
+boot();
+</script>
+</body>
+</html>

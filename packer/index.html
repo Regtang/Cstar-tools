@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <script>
+      /* 访问控制：需登录喜事达 AEO 账号后方可使用（同域共享登录态） */
+      (function(){try{
+        var t=localStorage.getItem('aeo_token');
+        if(!t){location.replace('/aeo/');return;}
+        fetch('/api/me',{headers:{Authorization:'Bearer '+t}}).then(function(r){
+          if(r.status===401){localStorage.removeItem('aeo_token');location.replace('/aeo/');}
+        }).catch(function(){});
+      }catch(e){}})();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>喜事达（Cstar）装箱软件</title>
+    <meta
+      name="description"
+      content="离线可用的集装箱装箱计划工具，支持货物导入、自动装箱、可视化、报告和项目文件分享。"
+    />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./styles.css?v=20" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">C</div>
+          <div>
+            <h1>喜事达 Cstar</h1>
+            <p>装箱软件</p>
+            <span class="version-badge">版本 1.4.0</span>
+          </div>
+        </div>
+
+        <nav class="nav-list" aria-label="主导航">
+          <button class="nav-item active" data-view="workspace">
+            <span>▦</span>
+            工作台
+          </button>
+          <button class="nav-item" data-view="cargo">
+            <span>≡</span>
+            货物清单
+          </button>
+          <button class="nav-item" data-view="report">
+            <span>▤</span>
+            装箱报告
+          </button>
+          <button class="nav-item" data-view="guide">
+            <span>?</span>
+            帮助
+          </button>
+        </nav>
+
+        <div class="status-card">
+          <span class="status-dot"></span>
+          <div>
+            <strong id="sidebarStatus">待计算</strong>
+            <p id="sidebarDetail">录入货物后生成方案</p>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Cstar 装箱软件</p>
+            <div class="title-line">
+              <h2>喜事达（Cstar）装箱软件</h2>
+              <span class="version-badge top-version">版本 1.4.0</span>
+            </div>
+          </div>
+          <div class="actions">
+            <select id="langSelect" class="lang-select" aria-label="Language"></select>
+            <button class="ghost" id="saveProjectBtn">保存项目</button>
+            <label class="file-button" for="projectInput">打开项目</label>
+            <input id="projectInput" type="file" accept=".json,application/json" />
+            <button class="ghost" id="exportProjectBtn">导出项目</button>
+            <label class="file-button" for="csvInput">导入货物</label>
+            <input
+              id="csvInput"
+              type="file"
+              accept=".csv,.xlsx,.docx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            />
+            <button class="ghost" id="resetSampleBtn">恢复样例</button>
+            <button class="primary" id="packBtn">自动装箱</button>
+          </div>
+        </header>
+
+        <section class="view active" id="workspaceView">
+          <section class="project-strip panel">
+            <label class="field">
+              <span>任务名称</span>
+              <input id="projectName" placeholder="例如：上海仓 5 月出口装柜" />
+            </label>
+            <label class="field">
+              <span>客户 / 订单</span>
+              <input id="projectCustomer" placeholder="客户名称或订单号" />
+            </label>
+            <label class="field">
+              <span>操作员</span>
+              <input id="projectOperator" placeholder="制单人" />
+            </label>
+            <label class="field">
+              <span>装箱日期</span>
+              <input id="projectDate" type="date" />
+            </label>
+          </section>
+
+          <div class="workspace-grid">
+            <section class="panel config-panel">
+              <div class="panel-title">
+                <h3>箱型与策略</h3>
+                <span id="containerBadge">40HQ</span>
+              </div>
+
+              <label class="field">
+                <span>集装箱类型</span>
+                <select id="containerSelect"></select>
+              </label>
+
+              <label class="field">
+                <span>最大箱数</span>
+                <input id="maxContainers" type="number" min="1" max="20" value="1" />
+              </label>
+
+              <div class="container-specs" id="containerSpecs"></div>
+
+              <div class="strategy-block">
+                <h4>约束规则</h4>
+                <label><input type="checkbox" id="heavyFirst" checked /> 重货优先放置</label>
+                <label><input type="checkbox" id="respectStack" checked /> 遵守不可堆叠</label>
+                <label><input type="checkbox" id="balanceWeight" checked /> 估算左右重量均衡</label>
+              </div>
+
+              <div class="summary-strip">
+                <div>
+                  <span>空间利用</span>
+                  <strong id="volumeUse">0%</strong>
+                </div>
+                <div>
+                  <span>重量利用</span>
+                  <strong id="weightUse">0%</strong>
+                </div>
+                <div>
+                  <span>已装件数</span>
+                  <strong id="packedCount">0</strong>
+                </div>
+                <div>
+                  <span>使用箱数</span>
+                  <strong id="usedContainerCount">0</strong>
+                </div>
+              </div>
+
+              <div class="validation-box" id="validationBox"></div>
+            </section>
+
+            <section class="panel visual-panel">
+              <div class="panel-title">
+                <h3>装载视图</h3>
+                <div class="visual-tools">
+                  <select id="activeContainerSelect" aria-label="查看箱号"></select>
+                  <div class="segmented" role="group" aria-label="视图切换">
+                    <button class="active" data-render="view3d">3D</button>
+                    <button data-render="iso">等距</button>
+                    <button data-render="top">俯视</button>
+                    <button data-render="heat">热力</button>
+                    <button data-render="side">侧视</button>
+                  </div>
+                </div>
+              </div>
+              <canvas id="packingCanvas" width="1120" height="620"></canvas>
+              <p class="view3d-hint" id="view3dHint">拖动旋转 · 滚轮缩放 · 右键/双指平移 · 双击复位</p>
+              <div class="layer-tools">
+                <label class="field">
+                  <span>分层显示高度</span>
+                  <input id="layerRange" type="range" min="10" max="100" step="5" value="100" />
+                </label>
+                <strong id="layerLabel">显示全部</strong>
+              </div>
+              <div class="playback-tools">
+                <label class="field">
+                  <span>装载步骤回放</span>
+                  <input id="loadingStepRange" type="range" min="0" max="0" step="1" value="0" />
+                </label>
+                <strong id="loadingStepLabel">显示全部步骤</strong>
+                <label class="toggle-line"><input id="showHeatmap" type="checkbox" checked /> 显示承重热区</label>
+                <label class="field floor-limit-field">
+                  <span>承重上限 千克/平方米</span>
+                  <input id="floorLoadLimit" type="number" min="100" step="100" value="2500" />
+                </label>
+              </div>
+              <div class="move-tools">
+                <select id="boxSelect" aria-label="选择货物"></select>
+                <div class="nudge-grid" aria-label="移动货物">
+                  <button class="ghost compact" data-move="y:-100">←</button>
+                  <button class="ghost compact" data-move="z:100">上</button>
+                  <button class="ghost compact" data-move="y:100">→</button>
+                  <button class="ghost compact" data-move="x:-100">前</button>
+                  <button class="ghost compact" data-move="z:-100">下</button>
+                  <button class="ghost compact" data-move="x:100">后</button>
+                </div>
+                <button class="ghost compact" id="resetMovesBtn">重置移动</button>
+              </div>
+              <div class="legend" id="legend"></div>
+            </section>
+
+            <section class="panel queue-panel">
+              <div class="panel-title">
+                <h3>结果队列</h3>
+                <span id="unpackedBadge">未装 0</span>
+              </div>
+              <div class="metric-list" id="metricList"></div>
+              <div class="insight-list" id="insightList"></div>
+              <div class="heatmap-list" id="heatmapList"></div>
+              <div class="sequence-list" id="sequenceList"></div>
+              <div class="unpacked-list" id="unpackedList"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="cargoView">
+          <section class="panel table-panel">
+            <div class="panel-title">
+              <h3>货物清单</h3>
+              <div class="actions">
+                <button class="ghost compact" id="downloadTemplateBtn">下载模板</button>
+                <button class="ghost compact" id="addCargoBtn">新增货物</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>名称</th>
+                    <th>长 毫米</th>
+                    <th>宽 毫米</th>
+                    <th>高 毫米</th>
+                    <th>重量 千克</th>
+                    <th>数量</th>
+                    <th>分组/目的地</th>
+                    <th>可旋转</th>
+                    <th>可倾斜</th>
+                    <th>可堆叠</th>
+                    <th>最大层数</th>
+                    <th>优先级</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="cargoTable"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+
+        <section class="view" id="reportView">
+          <section class="panel report-panel">
+            <div class="panel-title">
+              <h3>装箱报告</h3>
+              <div class="actions">
+                <button class="ghost compact" id="copyReportBtn">复制报告</button>
+                <button class="ghost compact" id="downloadReportBtn">下载表格</button>
+                <button class="ghost compact" id="printReportBtn">打印存档</button>
+              </div>
+            </div>
+            <div class="report-layout">
+              <div id="reportSummary" class="report-summary"></div>
+              <pre id="reportText"></pre>
+            </div>
+          </section>
+        </section>
+
+        <section class="view" id="guideView">
+          <section class="panel guide-panel">
+            <div class="panel-title">
+              <h3>使用说明</h3>
+              <div class="actions">
+                <a class="guide-link" href="./templates/Cstar货物导入模板.xlsx" download>下载专业模板</a>
+                <a class="guide-link" href="./docs/喜事达Cstar装箱软件用户手册.docx" download>下载用户手册</a>
+              </div>
+            </div>
+            <div class="guide-grid">
+              <article>
+                <h4>0. 产品定位</h4>
+                <p>喜事达（Cstar）装箱软件面向业务、仓库和管理复核人员，提供离线装箱计划、数据导入、多箱分装、箱门校验、分层查看、装载顺序和报告导出。</p>
+              </article>
+              <article>
+                <h4>1. 标准作业流程</h4>
+                <ol>
+                  <li>填写任务名称、客户、操作员和装箱日期。</li>
+                  <li>优先使用专业模板录入货物，避免字段名和单位填错。</li>
+                  <li>选择箱型、最大箱数和约束规则，点击自动装箱。</li>
+                  <li>按箱号和分层高度检查视图、未装货物、重心、利用率和智能建议。</li>
+                  <li>在装载视图下选择具体货物，用方向按钮进行 100 毫米微调。</li>
+                  <li>导出装箱表格、复制报告，或打印存档。</li>
+                </ol>
+              </article>
+              <article>
+                <h4>2. 导入文件规范</h4>
+                <ol>
+                  <li>工作簿：读取第一个工作表，第一行必须是字段名。</li>
+                  <li>文字文档：读取文档中的货物表格，第一行必须是字段名。</li>
+                  <li>逗号表：第一行字段名，后续行是货物数据。</li>
+                  <li>推荐使用专业模板中的中文字段：名称、长、宽、高、重量、数量、分组、可旋转、可倾斜、可堆叠、优先级。</li>
+                </ol>
+              </article>
+              <article>
+                <h4>3. 模板填写要求</h4>
+                <p>尺寸单位为毫米，重量单位为千克。数量必须为正整数。可旋转、可倾斜、可堆叠使用下拉选择。优先级使用高、中、低。专业模板内置下拉、数据校验、字段字典、箱型参考和示例数据。</p>
+              </article>
+              <article>
+                <h4>4. 多箱与箱门校验</h4>
+                <p>最大箱数控制可使用的集装箱数量。软件会按箱号生成分装方案，并校验货物是否能通过箱门。若提示无法通过箱门，需要调整包装方向、拆分货物或更换运输方案。</p>
+              </article>
+              <article>
+                <h4>5. 对标成熟软件新增能力</h4>
+                <p>参考成熟装箱软件常见能力，当前版本增加分组/目的地、可倾斜限制、最大堆叠层数、装载步骤回放、箱底承重热区、重量分布风险提示、专业模板和正式用户手册。</p>
+              </article>
+              <article>
+                <h4>6. 分层与移动</h4>
+                <p>小包装较多时，拖动分层显示高度，只查看指定高度以下的货物。选择具体货物后，可使用方向按钮按 100 毫米微调。系统会阻止越界和碰撞。</p>
+              </article>
+              <article>
+                <h4>7. 分享与交接</h4>
+                <p>点击导出项目得到项目文件，适合同事继续编辑同一个任务。发给同事时建议同时发送软件文件夹、项目文件、专业模板和用户手册。</p>
+              </article>
+              <article>
+                <h4>8. 现场复核</h4>
+                <p>当前算法适合快速生成仓库作业参考方案。正式发运前仍需由现场人员复核承重、绑扎、禁配、法规和箱况。</p>
+              </article>
+              <article>
+                <h4>9. 常见问题</h4>
+                <p>导入后没有货物时，先检查第一行字段名。货物无法装入时，检查尺寸、重量、箱门、不可堆叠和最大箱数。同事看到旧版时，重新解压最新版或刷新浏览器缓存。</p>
+              </article>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <template id="cargoRowTemplate">
+      <tr>
+        <td><input data-field="name" /></td>
+        <td><input data-field="length" type="number" min="1" /></td>
+        <td><input data-field="width" type="number" min="1" /></td>
+        <td><input data-field="height" type="number" min="1" /></td>
+        <td><input data-field="weight" type="number" min="0" step="0.1" /></td>
+        <td><input data-field="quantity" type="number" min="1" /></td>
+        <td><input data-field="group" /></td>
+        <td><input data-field="rotatable" type="checkbox" /></td>
+        <td><input data-field="tiltable" type="checkbox" /></td>
+        <td><input data-field="stackable" type="checkbox" /></td>
+        <td><input data-field="maxStackLayers" type="number" min="1" max="20" /></td>
+        <td>
+          <select data-field="priority">
+            <option value="3">高</option>
+            <option value="2">中</option>
+            <option value="1">低</option>
+          </select>
+        </td>
+        <td><button class="icon-button" data-action="delete" title="删除">×</button></td>
+      </tr>
+    </template>
+
+    <script src="./i18n.js?v=20"></script>
+    <script src="./app.js?v=20"></script>
+
+    <!-- 喜事达：云端方案 + 退出登录（自包含，复用 serializeProject/applyProject） -->
+    <style>
+      .cloud-modal-bg{position:fixed;inset:0;background:rgba(20,30,45,.55);display:none;align-items:center;justify-content:center;z-index:9999}
+      .cloud-modal-bg.show{display:flex}
+      .cloud-modal{background:#fff;border-radius:14px;max-width:560px;width:92%;max-height:80vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.28);font-family:inherit}
+      .cloud-head{display:flex;align-items:center;padding:16px 20px;border-bottom:1px solid #eef1f5;position:sticky;top:0;background:#fff}
+      .cloud-head b{font-size:16px;color:#1f2a37}
+      .cloud-head span{margin-left:auto;cursor:pointer;color:#8a99ab;font-size:22px;line-height:1}
+      .cloud-item{display:flex;align-items:center;gap:10px;padding:13px 20px;border-bottom:1px solid #f1f4f7}
+      .cloud-item b{color:#1f2a37}
+      .cloud-item button{border:1px solid #d7dee6;background:#fff;border-radius:7px;padding:6px 12px;font-size:13px;cursor:pointer;color:#1f2a37}
+      .cloud-item button.cloud-load{border-color:#007892;color:#007892;font-weight:600}
+      .cloud-logout{margin-top:14px;width:100%;border:1px solid #e3b7bd;background:#fff;color:#e54c5e;border-radius:9px;padding:9px;font-size:13px;font-weight:600;cursor:pointer}
+      .cloud-logout:hover{background:#fdeef0}
+    </style>
+    <script>
+    (function(){
+      function tok(){return localStorage.getItem('aeo_token');}
+      function E(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+      async function papi(path,method,body){
+        var opt={method:method||'GET',headers:{Authorization:'Bearer '+tok()}};
+        if(body!==undefined){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body);}
+        var r=await fetch('/api'+path,opt);
+        if(r.status===401){localStorage.removeItem('aeo_token');location.replace('/aeo/');throw new Error('未登录');}
+        var d=await r.json().catch(function(){return {};});
+        if(!r.ok)throw new Error(d.detail||('请求失败 '+r.status));
+        return d;
+      }
+      var bg=document.createElement('div');bg.className='cloud-modal-bg';
+      bg.innerHTML='<div class="cloud-modal"><div class="cloud-head"><b>我的云端方案</b><span id="cloudX">×</span></div><div id="cloudBody"></div></div>';
+      document.body.appendChild(bg);
+      bg.addEventListener('click',function(e){if(e.target===bg)bg.classList.remove('show');});
+      document.getElementById('cloudX').onclick=function(){bg.classList.remove('show');};
+      var bodyEl=document.getElementById('cloudBody');
+      async function saveCloud(){
+        try{
+          var data=serializeProject();
+          var def=(data&&data.project&&data.project.name)||'装箱方案';
+          var name=prompt('给这个云端方案起个名字：',def);
+          if(name===null)return;
+          await papi('/packer/projects','POST',{name:name||def,data:data});
+          alert('已保存到云端，可在「☁ 我的方案」里查看');
+        }catch(e){alert('保存失败：'+e.message);}
+      }
+      async function openCloud(){
+        bodyEl.innerHTML='<div style="padding:26px;text-align:center;color:#8a99ab">加载中…</div>';
+        bg.classList.add('show');
+        try{
+          var list=await papi('/packer/projects');
+          if(!list.length){bodyEl.innerHTML='<div style="padding:30px;text-align:center;color:#8a99ab">还没有云端方案。<br>点工具栏「☁ 云端保存」保存当前方案。</div>';return;}
+          var html='';
+          list.forEach(function(p){
+            html+='<div class="cloud-item"><div style="flex:1;min-width:0"><b>'+E(p.name)+'</b><div style="font-size:12px;color:#8a99ab">'+E(p.updated_at)+'</div></div>'+
+              '<button class="cloud-load" data-id="'+p.id+'">载入</button>'+
+              '<button class="cloud-del" data-id="'+p.id+'">删除</button></div>';
+          });
+          bodyEl.innerHTML=html;
+          bodyEl.querySelectorAll('.cloud-load').forEach(function(b){b.onclick=function(){loadCloud(b.getAttribute('data-id'));};});
+          bodyEl.querySelectorAll('.cloud-del').forEach(function(b){b.onclick=function(){delCloud(b.getAttribute('data-id'));};});
+        }catch(e){bodyEl.innerHTML='<div style="padding:24px;color:#c0392b">加载失败：'+E(e.message)+'</div>';}
+      }
+      async function loadCloud(id){
+        try{var p=await papi('/packer/projects/'+id);applyProject(p.data,true);bg.classList.remove('show');}
+        catch(e){alert('载入失败：'+e.message);}
+      }
+      async function delCloud(id){
+        if(!confirm('删除这个云端方案？'))return;
+        try{await papi('/packer/projects/'+id,'DELETE');openCloud();}catch(e){alert(e.message);}
+      }
+      function mk(text){var b=document.createElement('button');b.type='button';b.className='ghost';b.textContent=text;return b;}
+      var exp=document.getElementById('exportProjectBtn');
+      if(exp){
+        var bSave=mk('☁ 云端保存');bSave.onclick=saveCloud;
+        var bList=mk('☁ 我的方案');bList.onclick=openCloud;
+        exp.insertAdjacentElement('afterend',bList);
+        exp.insertAdjacentElement('afterend',bSave);
+      }
+      var sb=document.querySelector('.sidebar');
+      if(sb){
+        var lo=document.createElement('button');lo.type='button';lo.className='cloud-logout';lo.textContent='退出登录';
+        lo.onclick=function(){localStorage.removeItem('aeo_token');location.replace('/aeo/');};
+        sb.appendChild(lo);
+      }
+    })();
+    </script>
+  </body>
+</html>

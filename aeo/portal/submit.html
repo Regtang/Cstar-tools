@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>提交工具 · 喜事达工具平台</title>
+  <link rel="stylesheet" href="/cstar-ui.css" />
+  <script>
+    document.documentElement.classList.toggle("embed-mode",
+      new URLSearchParams(location.search).get("embed") === "1");
+  </script>
+  <style>
+    main { max-width: 720px; margin: 22px auto; padding: 0 18px 36px; }
+    .drop { border: 2px dashed #cfd6e0; border-radius: var(--cs-radius); padding: 26px; text-align: center;
+      color: var(--cs-muted); cursor: pointer; transition: .15s; background: #fafcfd; }
+    .drop:hover, .drop.over { border-color: var(--cs-teal); background: #f1f8fa; color: var(--cs-teal-dark); }
+    .drop b { color: var(--cs-ink); }
+    .pick { color: var(--cs-teal); font-weight: 700; }
+    .filename { margin-top: 10px; font-size: 14px; color: var(--cs-ink); }
+    .ok-box { text-align: center; padding: 24px; }
+    .ok-box .tick { width: 60px; height: 60px; border-radius: 50%; background: #e7f6e9; color: var(--cs-ok);
+      display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 14px; }
+    .check label { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; color: var(--cs-ink); cursor: pointer; }
+    .check input { width: auto; margin-top: 3px; }
+  </style>
+</head>
+<body class="cstar-ui">
+
+  <header class="cs-header">
+    <h1>提交你的工具</h1>
+    <p>把做好的工具压缩包（.zip）上传到平台待审核区。维护者按《前端统一标准》审核测试后部署上线。</p>
+  </header>
+
+  <main>
+    <section class="cs-card">
+      <h2>工具提交</h2>
+      <div class="cs-card-body" id="formArea">
+
+        <div class="cs-note cs-note-info" style="margin-bottom:16px">
+          上传只进<b>待审核暂存区</b>，不会立即公开。请先按《前端统一标准》自检：引入 cstar-ui.css、配色统一、支持 ?embed=1、具备示例数据/校验/导出打印/响应式+本地保存。
+        </div>
+
+        <label class="cs-label">提交类型 *</label>
+        <div style="display:flex;gap:22px;margin-bottom:4px">
+          <label style="display:flex;gap:7px;align-items:center;cursor:pointer;font-size:14px"><input type="radio" name="kind" value="new" checked onclick="toggleKind()" style="width:auto"> 新工具</label>
+          <label style="display:flex;gap:7px;align-items:center;cursor:pointer;font-size:14px"><input type="radio" name="kind" value="update" onclick="toggleKind()" style="width:auto"> 更新现有工具</label>
+        </div>
+        <div id="targetRow" style="display:none">
+          <label class="cs-label">要更新的工具 *</label>
+          <select id="target" class="cs-select" onchange="syncName()">
+            <option value="">— 请选择现有工具 —</option>
+            <option>AEO 认证管理平台</option>
+            <option>Cstar 装箱软件</option>
+            <option>危化判定（MSDS/UN）</option>
+            <option>出口海关研判助手</option>
+          </select>
+        </div>
+
+        <label class="cs-label">工具名称 *</label>
+        <input id="name" class="cs-input" placeholder="例如：出口退税计算器" maxlength="60" />
+
+        <div class="cs-row">
+          <div>
+            <label class="cs-label">版本号</label>
+            <input id="version" class="cs-input" placeholder="例如：v1.0.0" maxlength="20" />
+          </div>
+          <div>
+            <label class="cs-label">开发者 / 部门</label>
+            <input id="developer" class="cs-input" placeholder="例如：关务部 / 张三" maxlength="40" />
+          </div>
+        </div>
+
+        <label class="cs-label">一句话说明</label>
+        <input id="desc" class="cs-input" placeholder="这个工具做什么、给谁用" maxlength="150" />
+
+        <label class="cs-label">工具压缩包（.zip，≤ 20MB）*</label>
+        <div class="drop" id="drop">
+          点此选择，或把 .zip 文件拖到这里　<span class="pick">选择文件</span>
+          <div class="filename" id="filename"></div>
+        </div>
+        <input id="file" type="file" accept=".zip,application/zip" style="display:none" />
+
+        <div class="check" style="margin-top:16px">
+          <label><input type="checkbox" id="selfcheck" /> 我已按《前端统一标准》完成前端统一与功能自检（示例数据 / 校验 / 导出打印 / 响应式 + 本地保存）。</label>
+        </div>
+
+        <div id="err" class="cs-error-text" style="margin-top:12px"></div>
+
+        <button class="cs-btn cs-btn-primary cs-btn-block" style="margin-top:16px" id="submitBtn" onclick="submitTool()">提交到待审核区</button>
+      </div>
+    </section>
+  </main>
+
+<script>
+let chosen = null;
+const fileInput = document.getElementById('file');
+const drop = document.getElementById('drop');
+
+drop.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => setFile(fileInput.files[0]));
+['dragover', 'dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => { if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
+
+function setFile(f) {
+  if (!f) return;
+  if (!f.name.toLowerCase().endsWith('.zip')) { showErr('只支持 .zip 压缩包'); return; }
+  if (f.size > 20 * 1024 * 1024) { showErr('文件超过 20MB 上限'); return; }
+  chosen = f; showErr('');
+  document.getElementById('filename').innerHTML = '已选择：<b>' + esc(f.name) + '</b>（' + (f.size / 1024 / 1024).toFixed(2) + ' MB）';
+}
+function showErr(m) { document.getElementById('err').textContent = m || ''; }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+function curKind() { return document.querySelector('input[name="kind"]:checked').value; }
+function toggleKind() {
+  const upd = curKind() === 'update';
+  document.getElementById('targetRow').style.display = upd ? '' : 'none';
+  document.getElementById('name').placeholder = upd ? '默认与所选工具同名，可不改' : '例如：出口退税计算器';
+  syncName();
+}
+function syncName() {
+  // 更新模式：工具名称自动跟随所选目标工具（用户仍可改）
+  if (curKind() !== 'update') return;
+  const t = document.getElementById('target').value;
+  const nameEl = document.getElementById('name');
+  if (t && (!nameEl.value.trim() || nameEl.dataset.auto === '1')) { nameEl.value = t; nameEl.dataset.auto = '1'; }
+}
+
+async function submitTool() {
+  const kind = curKind();
+  const target = document.getElementById('target').value;
+  if (kind === 'update' && !target) { showErr('请选择要更新的现有工具'); return; }
+  const name = document.getElementById('name').value.trim();
+  if (!name) { showErr('请填写工具名称'); document.getElementById('name').classList.add('cs-field-error'); return; }
+  document.getElementById('name').classList.remove('cs-field-error');
+  if (!chosen) { showErr('请选择要上传的 .zip 压缩包'); return; }
+  if (!document.getElementById('selfcheck').checked) { showErr('请先确认已完成前端统一与功能自检'); return; }
+  showErr('');
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.textContent = '上传中…';
+
+  const fd = new FormData();
+  fd.append('kind', kind);
+  fd.append('target', kind === 'update' ? target : '');
+  fd.append('name', name);
+  fd.append('version', document.getElementById('version').value.trim());
+  fd.append('developer', document.getElementById('developer').value.trim());
+  fd.append('desc', document.getElementById('desc').value.trim());
+  fd.append('selfcheck', '1');
+  fd.append('file', chosen);
+
+  try {
+    const r = await fetch('/api/tools/submit', { method: 'POST', body: fd });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.detail || ('提交失败（' + r.status + '）'));
+    document.getElementById('formArea').innerHTML =
+      '<div class="ok-box"><div class="tick">✓</div>' +
+      '<h3 style="margin:0 0 8px">提交成功</h3>' +
+      '<p style="color:var(--cs-muted)">' + esc(j.message || '已进入待审核区') + '</p>' +
+      '<p style="color:var(--cs-muted);font-size:13px">提交编号 #' + (j.id || '-') + '</p>' +
+      '<button class="cs-btn cs-btn-soft" style="margin-top:10px" onclick="location.reload()">再提交一个</button></div>';
+  } catch (e) {
+    showErr(e.message || '提交失败，请稍后重试');
+    btn.disabled = false; btn.textContent = '提交到待审核区';
+  }
+}
+
+/* 深链：?kind=update&target=工具名 → 预选"更新现有工具" */
+(function initFromUrl() {
+  const q = new URLSearchParams(location.search);
+  if (q.get('kind') === 'update' || q.get('update') === '1') {
+    const r = document.querySelector('input[name="kind"][value="update"]');
+    if (r) r.checked = true;
+    const t = q.get('target');
+    if (t) { const sel = document.getElementById('target'); [...sel.options].forEach(o => { if (o.value === t) sel.value = t; }); }
+    toggleKind();
+  }
+})();
+</script>
+</body>
+</html>

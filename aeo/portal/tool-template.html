@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>工具名称 · 喜事达工具平台</title>
+
+  <!-- 1) 统一样式（必须） -->
+  <link rel="stylesheet" href="/cstar-ui.css" />
+  <!-- 2) 标准功能库（数据存储/台账/校验/签名/导出 CSV·Excel·Word·PDF/嵌入模式，引入即用） -->
+  <script src="/cstar-tool.js"></script>
+
+  <style>
+    main { max-width: 1180px; margin: 22px auto; padding: 0 18px 36px; }
+    @media print { .no-print { display:none !important; } }
+  </style>
+</head>
+<!-- body 加 class="cstar-ui" 才会套用统一字体与背景 -->
+<body class="cstar-ui">
+
+  <header class="cs-header">
+    <h1>工具名称</h1>
+    <p>一句话说明这个工具做什么、给谁用。（本模板已内置数据存储与各种导出，复制改造即可）</p>
+  </header>
+
+  <main class="cs-grid-2">
+    <section class="cs-card no-print">
+      <h2>输入信息</h2>
+      <div class="cs-card-body">
+        <label class="cs-label">名称 *</label>
+        <input id="f_name" class="cs-input" placeholder="必填示例" />
+        <div class="cs-row">
+          <div><label class="cs-label">数量 *</label><input id="f_qty" class="cs-input" type="number" min="0" placeholder="例如 100" /></div>
+          <div><label class="cs-label">类型</label><select id="f_type" class="cs-select"><option value="a">类型 A</option><option value="b">类型 B</option></select></div>
+        </div>
+        <label class="cs-label">备注</label>
+        <textarea id="f_note" class="cs-textarea" placeholder="选填"></textarea>
+
+        <button class="cs-btn cs-btn-primary cs-btn-block" style="margin-top:16px" onclick="run()">生成结果</button>
+        <div class="cs-actions">
+          <button class="cs-btn cs-btn-soft" onclick="fillDemo()">填入示例</button>
+          <button class="cs-btn cs-btn-ghost" onclick="saveRec()">存入台账</button>
+          <button class="cs-btn cs-btn-ghost" onclick="clearForm()">清空</button>
+        </div>
+        <div class="cs-actions">
+          <button class="cs-btn cs-btn-ghost" onclick="exPDF()">导出PDF</button>
+          <button class="cs-btn cs-btn-ghost" onclick="exWord()">导出Word</button>
+          <button class="cs-btn cs-btn-ghost" onclick="exExcel()">台账Excel</button>
+          <button class="cs-btn cs-btn-ghost" onclick="recs.exportCSV('台账.csv',COLS)">台账CSV</button>
+          <button class="cs-btn cs-btn-ghost" onclick="window.print()">打印</button>
+        </div>
+
+        <div style="font-weight:800;color:var(--cs-teal-dark);margin:16px 0 6px">历史台账</div>
+        <input id="q" class="cs-input no-print" placeholder="搜名称" oninput="renderHist()" style="margin-bottom:8px" />
+        <div id="hist"></div>
+      </div>
+    </section>
+
+    <section class="cs-card">
+      <h2>结果</h2>
+      <div class="cs-card-body" id="result"><p style="color:var(--cs-muted)">请在左侧填写信息，然后点击“生成结果”。</p></div>
+    </section>
+  </main>
+
+<script>
+/* ===== 标准功能用法示例（全部来自 cstar-tool.js） ===== */
+/* 必备：声明 工具名 / 版本号 / 作者姓名（页脚署名 + 打印单据带上） */
+Cstar.stamp({ tool:"工具名称", version:"v1.0.0", author:"你的姓名 / 部门" });
+
+const FIELDS = ["f_name","f_qty","f_type","f_note"];
+const COLS = [["name","名称"],["qty","数量"],["type","类型"],["note","备注"],["no","单号"]];
+const recs = Cstar.records("tpl_records");          // 历史台账（localStorage）
+let current = null;
+
+/* 数据存储：表单自动暂存 + 加载恢复（一行搞定） */
+Cstar.store.bindForm("tpl_form", FIELDS);
+
+function run() {
+  // 校验
+  const v = Cstar.validate([
+    { id:"f_name", required:true, msg:"名称为必填" },
+    { id:"f_qty", required:true, pattern:/^\d+$/, msg:"数量需为非负整数" }
+  ]);
+  if (!v.ok) { document.getElementById("result").innerHTML = '<p style="color:var(--cs-danger)">'+v.firstError+'</p>'; return; }
+  const d = { name:Cstar.$("f_name").value.trim(), qty:Cstar.$("f_qty").value.trim(), type:Cstar.$("f_type").value, note:Cstar.$("f_note").value.trim() };
+  d.no = Cstar.serial("TPL", d.name);                // 自动编号
+  current = d;
+  document.getElementById("result").innerHTML =
+    '<table class="cs-table">' + COLS.map(c=>`<tr><th style="width:90px">${c[1]}</th><td>${Cstar.esc(d[c[0]])||"-"}</td></tr>`).join("") + "</table>";
+}
+function fillDemo(){ Cstar.$("f_name").value="演示项目"; Cstar.$("f_qty").value="100"; Cstar.$("f_type").value="b"; Cstar.$("f_note").value="这是一条示例数据"; Cstar.store.bindForm("tpl_form",FIELDS).save(); run(); }
+function clearForm(){ FIELDS.forEach(id=>{const e=Cstar.$(id);if(e)e.value=id==="f_type"?"a":"";}); Cstar.store.remove("tpl_form"); document.getElementById("result").innerHTML='<p style="color:var(--cs-muted)">已清空。</p>'; current=null; }
+
+/* 台账：存 / 列 / 搜 / 删 */
+function saveRec(){ run(); if(!current) return; recs.add(current); renderHist(); alert("已存入台账："+current.no); }
+function renderHist(){
+  const list = recs.search({ text:Cstar.$("q").value, fields:["name","no"] });
+  const all = recs.all();
+  document.getElementById("hist").innerHTML = list.length ? list.map(x=>{const i=all.indexOf(x);
+    return `<div style="display:flex;justify-content:space-between;align-items:center;border:1px solid var(--cs-line);border-radius:8px;padding:6px 9px;margin-bottom:6px">
+      <span><b>${Cstar.esc(x.name)}</b> ×${Cstar.esc(x.qty)} <span style="color:var(--cs-muted);font-size:12px">${Cstar.esc(x.no)}</span></span>
+      <button class="cs-btn cs-btn-ghost no-print" onclick="recs.remove(${i});renderHist()">删</button></div>`;}).join("")
+    : '<p style="color:var(--cs-muted);font-size:13px">暂无记录。</p>';
+}
+
+/* 导出：PDF / Word（结果区） + Excel / CSV（台账） */
+function exPDF(){ run(); if(current) Cstar.exportPDF("result", (current.no||"结果")+".pdf"); }
+function exWord(){ run(); if(current) Cstar.exportWord("result", (current.no||"结果")+".doc"); }
+function exExcel(){ recs.exportExcel("台账.xls", COLS); }
+
+renderHist(); run();
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+name,length,width,height,weight,quantity,rotatable,stackable,priority
+家电纸箱 A,1200,800,900,95,18,true,true,3
+托盘货 B,1100,1000,1200,380,10,true,false,3
+长条设备 C,2400,600,700,210,8,true,true,2
+配件箱 D,600,500,450,35,40,true,true,1

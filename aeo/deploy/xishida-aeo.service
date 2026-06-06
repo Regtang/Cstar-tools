@@ -1,0 +1,34 @@
+# 喜事达AEO —— systemd 服务单元（纯 Linux，不用 Docker 时）
+# 安装：
+#   sudo cp deploy/xishida-aeo.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now xishida-aeo
+# 查看日志： journalctl -u xishida-aeo -f
+
+[Unit]
+Description=Xishida AEO Certification Management Platform
+After=network.target
+
+[Service]
+Type=simple
+# 运行账号（建议专用低权限用户）
+User=aeo
+Group=aeo
+
+# 应用目录（把项目放在这里）
+WorkingDirectory=/opt/xishida-aeo/backend
+
+# 环境变量（生产务必修改密钥与密码）
+Environment=AEO_DATA_DIR=/var/lib/xishida-aeo
+Environment=AEO_SECRET_KEY=please-change-this-to-a-long-random-string
+Environment=AEO_ADMIN_PASSWORD=ChangeMe@2026
+# 如需跨域： Environment=AEO_CORS=https://aeo.your-company.com
+
+# 启动命令（用项目虚拟环境里的 uvicorn）
+ExecStart=/opt/xishida-aeo/.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --workers 4
+
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

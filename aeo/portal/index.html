@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>喜事达工具平台 · Cstar Tools</title>
+<style>
+  :root{
+    --teal:#007892; --teal-d:#005f73; --teal-l:#0a9bbd; --red:#e54c5e; --navy:#1f2a3d;
+    --ink:#1f2a37; --muted:#5b6b7a; --line:#e6ebf1; --bg:#ffffff; --soft:#f5f8fa;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",Segoe UI,Roboto,sans-serif;
+    color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased}
+  a{text-decoration:none;color:inherit}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 24px}
+
+  /* NAV */
+  .nav{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .nav .wrap{display:flex;align-items:center;height:66px;gap:24px}
+  .brand{display:flex;align-items:baseline;gap:10px}
+  .cstar{font-family:Arial,Helvetica,sans-serif;font-weight:900;font-size:24px;letter-spacing:1.5px;color:var(--teal)}
+  .cstar i{font-style:normal;color:var(--red)}
+  .cstar-light{color:#fff}
+  .brand-sub{font-size:14px;color:var(--muted);font-weight:600}
+  .nav .links{display:flex;gap:26px;margin-left:auto;font-size:14px;color:var(--muted)}
+  .nav .links a:hover{color:var(--teal)}
+  .nav .cta{background:var(--teal);color:#fff;padding:9px 18px;border-radius:8px;font-size:14px;font-weight:600}
+  .nav .cta:hover{background:var(--teal-d)}
+  .nav .tel{color:var(--teal);font-weight:800;font-size:15px;margin-left:22px;white-space:nowrap;letter-spacing:.3px}
+  .nav .tel:hover{color:var(--red)}
+  @media(max-width:760px){.nav .links{display:none}.nav .tel{margin-left:auto;font-size:14px}}
+
+  /* HERO */
+  .hero{position:relative;overflow:hidden;color:#fff;
+    background:linear-gradient(120deg,#005f73 0%,#007892 45%,#0a9bbd 100%)}
+  .hero .deco{position:absolute;inset:0;opacity:.18;pointer-events:none}
+  .hero .wrap{position:relative;padding:92px 24px 104px}
+  .eyebrow{display:inline-block;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:#bfeaf3;
+    border:1px solid rgba(255,255,255,.35);padding:5px 14px;border-radius:20px;margin-bottom:22px}
+  .hero h1{font-size:50px;line-height:1.12;font-weight:800;letter-spacing:1px;max-width:760px}
+  .hero p.lead{font-size:18px;color:#e3f4f8;max-width:600px;margin:22px 0 34px}
+  .btns{display:flex;gap:14px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:14px 26px;border-radius:10px;font-size:15px;font-weight:600;transition:.15s}
+  .btn-red{background:var(--red);color:#fff}
+  .btn-red:hover{filter:brightness(1.07);transform:translateY(-2px)}
+  .btn-ghost{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.45)}
+  .btn-ghost:hover{background:rgba(255,255,255,.2)}
+  @media(max-width:680px){.hero h1{font-size:34px}.hero .wrap{padding:64px 24px 72px}}
+
+  /* STATS */
+  .stats{background:var(--navy);color:#fff}
+  .stats .wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:40px 24px}
+  .stat{text-align:center;padding:8px}
+  .stat b{display:block;font-size:38px;font-weight:800;color:#fff;line-height:1}
+  .stat b em{font-style:normal;color:var(--teal-l)}
+  .stat span{display:block;color:#9fb3c8;font-size:13px;margin-top:10px}
+  @media(max-width:680px){.stats .wrap{grid-template-columns:repeat(2,1fr);gap:24px 8px}.stat b{font-size:30px}}
+
+  /* SECTION */
+  section.tools{padding:84px 0 30px}
+  .sec-head{text-align:center;max-width:640px;margin:0 auto 50px}
+  .sec-head .ko{color:var(--red);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase}
+  .sec-head h2{font-size:34px;font-weight:800;margin:12px 0;color:var(--ink)}
+  .sec-head p{color:var(--muted);font-size:15px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:24px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:30px;display:flex;flex-direction:column;
+    transition:.18s;position:relative;overflow:hidden}
+  .card::before{content:"";position:absolute;left:0;top:0;height:4px;width:100%;background:var(--bar,linear-gradient(90deg,var(--teal),var(--teal-l)));transform:scaleX(0);transform-origin:left;transition:.25s}
+  .card:hover{border-color:transparent;box-shadow:0 18px 44px rgba(15,40,70,.13);transform:translateY(-5px)}
+  .card:hover::before{transform:scaleX(1)}
+  .card .ic{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;margin-bottom:20px}
+  .card h3{font-size:19px;font-weight:800;margin-bottom:6px;display:flex;align-items:center;gap:9px}
+  .tag{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px}
+  .t-live{background:#e3f7ec;color:#1a9b54}
+  .t-dev{background:#eef1f5;color:#8a99ab}
+  .t-int{background:#e6eef0;color:#005f73}
+  .card p{color:var(--muted);font-size:14px;line-height:1.75;flex:1}
+  .card .go{margin-top:22px;font-weight:700;font-size:14px;color:var(--teal);display:inline-flex;align-items:center;gap:7px}
+  .card.disabled{opacity:.7}
+  .card.disabled .go{color:var(--muted)}
+
+  /* CTA band */
+  .ctaband{margin:80px 0 0;background:linear-gradient(120deg,#005f73,#007892);color:#fff}
+  .ctaband .wrap{padding:56px 24px;display:flex;align-items:center;gap:30px;flex-wrap:wrap;justify-content:space-between}
+  .ctaband h3{font-size:25px;font-weight:800;max-width:620px}
+  .ctaband p{color:#cfeef4;margin-top:8px;font-size:14px}
+
+  /* FOOTER */
+  footer{background:var(--navy);color:#9fb3c8;font-size:13px}
+  footer .wrap{padding:40px 24px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center}
+  footer .fb{display:flex;align-items:center;gap:10px;color:#fff;font-weight:700}
+  footer .fb .mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--teal),var(--red));display:flex;align-items:center;justify-content:center;font-size:11px}
+  footer a:hover{color:#fff}
+
+  /* TOOL MODAL (embedded apps) */
+  .tmodal{position:fixed;inset:0;z-index:9999;display:none;padding:24px;background:rgba(8,22,34,.72)}
+  .tmodal.is-open{display:grid;place-items:center}
+  .tpanel{width:min(1400px,100%);height:min(880px,calc(100vh - 48px));display:grid;grid-template-rows:auto 1fr;
+    overflow:hidden;border-radius:14px;background:#fff;box-shadow:0 28px 80px rgba(0,0,0,.32)}
+  .thead{min-height:56px;display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:10px 14px 10px 20px;border-bottom:1px solid var(--line);color:var(--ink);
+    background:linear-gradient(120deg,#005f73,#007892);}
+  .thead strong{color:#fff;font-size:16px;font-weight:800}
+  .thead button{width:40px;height:40px;border:1px solid rgba(255,255,255,.5);border-radius:8px;background:rgba(255,255,255,.12);
+    color:#fff;font-size:24px;line-height:1;cursor:pointer}
+  .thead button:hover{background:rgba(255,255,255,.25)}
+  .tpanel iframe{width:100%;height:100%;border:0;background:#fff}
+  @media(max-width:680px){.tmodal{padding:10px}.tpanel{height:calc(100vh - 20px)}}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="nav"><div class="wrap">
+  <a class="brand" href="/"><span class="cstar">CST<i>A</i>R</span><span class="brand-sub">工具平台</span></a>
+  <div class="links">
+    <a href="#tools">工具</a>
+    <a href="#stats">关于</a>
+    <a href="https://www.cstar.com" target="_blank" rel="noopener">喜事达官网</a>
+  </div>
+  <a class="tel" href="tel:4006281818">☎ 400-628-1818</a>
+  <a class="cta" href="/aeo/">进入 AEO 平台</a>
+</div></div>
+
+<!-- HERO -->
+<div class="hero">
+  <svg class="deco" viewBox="0 0 1200 500" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <g fill="none" stroke="#ffffff" stroke-width="1.4" stroke-dasharray="2 7" stroke-linecap="round">
+      <path d="M-50 380 C 250 260, 500 460, 780 300 S 1150 180, 1300 260"/>
+      <path d="M-50 200 C 300 120, 560 280, 860 160 S 1150 60, 1300 120"/>
+    </g>
+    <g fill="#ffffff">
+      <circle cx="250" cy="300" r="4"/><circle cx="780" cy="300" r="4"/><circle cx="560" cy="222" r="4"/>
+      <circle cx="860" cy="160" r="4"/><circle cx="300" cy="148" r="4"/>
+    </g>
+  </svg>
+  <div class="wrap">
+    <span class="eyebrow">Cstar Tools Platform</span>
+    <h1>喜事达工具平台<br>进出口供应链数字工具集</h1>
+    <p class="lead">一站式访问海关 AEO 合规管理、智能装箱等在线工具。专业、安全、持续进化——让繁琐的关务与物流工作更高效。</p>
+    <div class="btns">
+      <a class="btn btn-red" href="/aeo/">进入 AEO 认证平台 →</a>
+      <a class="btn btn-ghost" href="/packer/">打开 Cstar 装箱软件</a>
+    </div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats" id="stats"><div class="wrap">
+  <div class="stat"><b>27<em>年</em></b><span>深耕进出口供应链 · since 1999</span></div>
+  <div class="stat"><b>13<em>家</em></b><span>旗下子公司</span></div>
+  <div class="stat"><b>230<em>+</em></b><span>专业顾问团队</span></div>
+  <div class="stat"><b>全球</b><span>多国货代服务网络</span></div>
+</div></div>
+
+<!-- TOOLS -->
+<section class="tools" id="tools"><div class="wrap">
+  <div class="sec-head">
+    <div class="ko">Our Tools</div>
+    <h2>平台工具</h2>
+    <p>点击任意工具即可进入。后续更多进出口、报关、物流、合规相关工具将陆续上线。</p>
+  </div>
+  <div class="grid" id="grid"></div>
+
+  <!-- 开发者：上传工具 -->
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-top:30px;background:var(--soft);border:1px solid var(--line);border-radius:18px;padding:28px 30px">
+    <div style="min-width:260px;flex:1">
+      <div style="color:var(--teal);font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase">For Developers</div>
+      <h3 style="font-size:22px;font-weight:800;margin:8px 0 6px;color:var(--ink)">同事开发了工具？上传到平台</h3>
+      <p style="color:var(--muted);font-size:14px;margin:0;max-width:640px">把做好的工具压缩包（.zip）提交到待审核区，平台维护者按《前端统一标准》审核测试后部署上线。上传不会立即公开。新工具与现有工具的<b>更新版本</b>都从这里提交。</p>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <button class="btn btn-red" style="border:0;cursor:pointer" onclick="openTool('/submit.html?embed=1','提交工具')">⬆ 上传新工具</button>
+      <button class="btn btn-ghost" style="border:1px solid var(--teal);color:var(--teal);background:#fff;cursor:pointer" onclick="openTool('/submit.html?embed=1&kind=update','提交工具更新')">🔄 提交工具更新</button>
+    </div>
+    <div id="pendingBadge" style="flex-basis:100%;margin-top:4px"></div>
+  </div>
+</div></section>
+
+<!-- CTA BAND -->
+<div class="ctaband"><div class="wrap">
+  <div>
+    <h3>需要更多数字工具，或想把现有系统接入平台？</h3>
+    <p>我们可以为你的业务定制并上线更多工具 · <a href="https://www.cstar.com" target="_blank" rel="noopener" style="color:#fff;text-decoration:underline">喜事达官网</a></p>
+  </div>
+  <a class="btn btn-red" href="tel:4006281818">☎ 400 628 1818</a>
+</div></div>
+
+<!-- TOOL MODAL -->
+<div class="tmodal" id="tmodal" aria-hidden="true">
+  <div class="tpanel">
+    <div class="thead"><strong id="tmodalTitle">工具</strong>
+      <button type="button" onclick="closeTool()" aria-label="关闭">×</button></div>
+    <iframe id="tmodalFrame" title="工具" src="about:blank"></iframe>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer><div class="wrap">
+  <div class="fb"><span class="cstar cstar-light">CST<i>A</i>R</span> 工具平台</div>
+  <div>客服热线 <a href="tel:4006281818" style="color:#fff;font-weight:700">400-628-1818</a></div>
+  <div>© <span id="yr"></span> 喜事达（Cstar） · 进出口物流供应链服务 · 全站 HTTPS 加密　·　<a href="/admin.html" style="color:#9fb3c8;text-decoration:underline">⚙ 平台管理登录</a></div>
+</div></footer>
+
+<script>
+/* 工具清单：从注册表接口 /api/catalog 渲染。员工登录后(同源 localStorage 有 aeo_token)自动显示内部工具。 */
+const PLACEHOLDER={dev:true,name:'更多工具开发中',icon:'+',
+  bar:'linear-gradient(90deg,#8a99ab,#b8c2cf)',color:'linear-gradient(135deg,#6b7a99,#9fb0cc)',
+  summary:'敬请期待——更多进出口、报关、物流、合规相关的数字工具正在规划与开发中，将陆续上线到本平台。'};
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function cardHtml(t){
+  if(t.dev){
+    return `<div class="card disabled" style="--bar:${t.bar}"><div class="ic" style="background:${t.color}">${t.icon}</div>`+
+      `<h3>${esc(t.name)} <span class="tag t-dev">开发中</span></h3><p>${esc(t.summary)}</p><span class="go">敬请期待</span></div>`;
+  }
+  const intTag = t.visibility==='internal' ? ' <span class="tag t-int">内部</span>' : '';
+  const tag='<span class="tag t-live">● 已上线</span>'+intTag;
+  const isEmbed = /[?&]embed=1/.test(t.entryPath||'');
+  const go=`<span class="go">${isEmbed?'打开工具 →':'进入工具 →'}</span>`;
+  const inner=`<div class="ic" style="background:${t.color}">${esc(t.icon)}</div>`+
+    `<h3>${esc(t.name)} ${tag}</h3><p>${esc(t.summary)}</p>${go}`;
+  if(isEmbed){
+    const href=esc((t.entryPath||'').replace('?embed=1',''));
+    return `<a class="card" style="--bar:${t.bar}" href="${href}" data-embed="${esc(t.entryPath)}" data-name="${esc(t.name)}">${inner}</a>`;
+  }
+  return `<a class="card" style="--bar:${t.bar}" href="${esc(t.entryPath)}">${inner}</a>`;
+}
+function renderCatalog(tools){
+  document.getElementById('grid').innerHTML = tools.map(cardHtml).join('') + cardHtml(PLACEHOLDER);
+}
+(function loadCatalog(){
+  let headers={};
+  try{const tok=localStorage.getItem('aeo_token'); if(tok) headers={'Authorization':'Bearer '+tok};}catch(e){}
+  fetch('/api/catalog',{headers,cache:'no-store'})
+    .then(r=>r.json())
+    .then(d=>renderCatalog(d.tools||[]))
+    .catch(()=>{document.getElementById('grid').innerHTML='<p style="color:var(--muted);text-align:center">工具清单加载失败，请刷新重试。</p>';});
+})();
+/* 内嵌工具用事件委托打开弹窗（避免内联 onclick 注入） */
+document.getElementById('grid').addEventListener('click',e=>{
+  const a=e.target.closest('a.card[data-embed]'); if(!a) return;
+  e.preventDefault(); openTool(a.getAttribute('data-embed'), a.getAttribute('data-name'));
+});
+document.getElementById('yr').textContent=new Date().getFullYear();
+
+/* 管理员登录后，在首页显示待审核工具数量（仅管理员可见） */
+(function checkPending(){
+  let tok=''; try{tok=localStorage.getItem('aeo_token')||'';}catch(e){}
+  if(!tok) return;
+  fetch('/api/admin/pending-count',{headers:{'Authorization':'Bearer '+tok},cache:'no-store'})
+    .then(r=>r.ok?r.json():null).then(d=>{
+      const el=document.getElementById('pendingBadge'); if(!el||!d) return;
+      if(d.pending>0) el.innerHTML='<a href="/admin.html" style="display:inline-block;background:var(--red);color:#fff;padding:9px 16px;border-radius:8px;font-weight:700;font-size:14px">🔔 '+d.pending+' 个工具待审核 · 去审核 →</a>';
+      else el.innerHTML='<span style="color:var(--muted);font-size:13px">✓ 暂无待审核工具</span>';
+    }).catch(()=>{});
+})();
+
+/* 内嵌工具弹窗 */
+function openTool(src,title){
+  document.getElementById('tmodalTitle').textContent=title||'工具';
+  document.getElementById('tmodalFrame').src=src;
+  document.getElementById('tmodal').classList.add('is-open');
+  document.getElementById('tmodal').setAttribute('aria-hidden','false');
+  document.body.style.overflow='hidden';
+}
+function closeTool(){
+  document.getElementById('tmodal').classList.remove('is-open');
+  document.getElementById('tmodal').setAttribute('aria-hidden','true');
+  document.getElementById('tmodalFrame').src='about:blank';
+  document.body.style.overflow='';
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTool();});
+document.getElementById('tmodal').addEventListener('click',e=>{if(e.target.id==='tmodal')closeTool();});
+</script>
+</body>
+</html>

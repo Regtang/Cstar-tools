@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>喜事达AEO认证管理平台</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- 登录 -->
+<div class="login-wrap" id="loginView">
+  <div class="login-card">
+    <div class="logo">喜事达</div>
+    <h2 id="liTitle">喜事达工具平台 · 登录</h2>
+    <p id="liDesc">登录后使用 AEO 合规平台与装箱软件等工具</p>
+    <div id="liUserRow">
+      <label id="liUserLabel">用户名</label>
+      <input id="liUser" autocomplete="username" placeholder="请输入用户名">
+    </div>
+    <div id="liNameRow" style="display:none">
+      <label>称呼 / 公司名（选填）</label>
+      <input id="liName" placeholder="便于识别，选填">
+    </div>
+    <div id="liEmailRow" style="display:none">
+      <label>邮箱（用于找回密码）</label>
+      <input id="liEmail" type="email" autocomplete="email" placeholder="name@example.com">
+    </div>
+    <div id="liPassRow">
+      <label id="liPassLabel">密码</label>
+      <input id="liPass" type="password" autocomplete="current-password" placeholder="请输入密码（至少6位）">
+    </div>
+    <button class="btn" id="liBtn">登 录</button>
+    <div class="login-err" id="liErr"></div>
+    <div id="liToggleRow" style="text-align:center;margin-top:16px;font-size:13px;color:var(--muted)">
+      <span id="liToggleText">还没有账号？</span>
+      <a id="liToggle" style="color:var(--brand2);cursor:pointer;font-weight:600">注册外部账号</a>
+    </div>
+    <div id="liForgotRow" style="text-align:center;margin-top:8px;font-size:13px">
+      <a id="liForgot" style="color:var(--muted);cursor:pointer">忘记密码？</a>
+    </div>
+    <div class="login-hint" id="liHint">
+      <b>外部客户</b>可自助注册，注册后即可使用装箱软件等工具。<br>
+      内部员工账号由管理员分配（演示管理员 <b>admin / admin123</b>）。
+    </div>
+  </div>
+</div>
+
+<!-- 主应用 -->
+<div class="app hidden" id="appView">
+  <aside class="side">
+    <div class="brand">
+      <div class="logo">喜事达</div>
+      <div><b>喜事达AEO<br>认证管理平台</b><span>海关高级认证</span></div>
+    </div>
+    <div class="nav" id="nav"></div>
+  </aside>
+  <div class="main">
+    <div class="top">
+      <div><h1 id="vTitle">认证驾驶舱</h1><div class="crumb" id="vCrumb">首页 / 认证总览</div></div>
+      <div class="right">
+        <span class="pill">认证综合达标度：<b id="pillOverall">—</b></span>
+        <div class="who" onclick="go('settings')">
+          <div class="avatar" id="uAvatar">—</div>
+          <div><span id="uName">—</span><small id="uRole">—</small></div>
+        </div>
+        <button class="btn ghost sm" onclick="logout()">退出</button>
+      </div>
+    </div>
+    <div class="content" id="content"></div>
+    <div class="footer">喜事达AEO认证管理平台 v1.0 · 依据《海关高级认证企业标准》（海关总署公告2022年第106号）与《海关注册登记备案企业信用管理办法》（海关总署令第251号）</div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalBg"><div class="modal">
+  <div class="mh"><b id="mTitle">详情</b><span class="x" onclick="closeModal()">×</span></div>
+  <div class="mb" id="mBody"></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script src="app.js?v=4"></script>
+</body>
+</html>

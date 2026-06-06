@@ -1,0 +1,148 @@
+/* ============================================================
+   Cstar UI — 喜事达工具平台 统一前端样式标准 v1.0
+   用法：在工具 HTML 的 <head> 引入即可自动统一配色/字体/组件：
+     <link rel="stylesheet" href="/cstar-ui.css">
+   组件类名统一加 cs- 前缀，避免与你已有样式冲突。
+   线上地址：https://bot.regs.com/cstar-ui.css
+   ============================================================ */
+
+:root {
+  /* —— 品牌主色 —— */
+  --cs-teal:        #007892;   /* 主色（按钮、链接、强调） */
+  --cs-teal-dark:   #005f73;
+  --cs-teal-light:  #0a9bbd;
+  --cs-red:         #e54c5e;   /* 强调/警示按钮、点缀 */
+  --cs-red-dark:    #c72d53;
+  --cs-navy:        #252f45;   /* 顶栏 / 页脚 / 深色块 */
+
+  /* —— 中性色 —— */
+  --cs-ink:    #1f2a37;        /* 正文 */
+  --cs-muted:  #5b6b7a;        /* 次要文字 */
+  --cs-line:   #e6ebf1;        /* 边框/分割线 */
+  --cs-bg:     #ffffff;        /* 卡片背景 */
+  --cs-soft:   #f5f8fa;        /* 页面背景/浅块 */
+
+  /* —— 语义色 —— */
+  --cs-ok:     #168821;
+  --cs-warn:   #f29900;
+  --cs-danger: #e31d1c;
+
+  /* —— 形状 / 阴影 / 字体 —— */
+  --cs-radius:    14px;
+  --cs-radius-sm: 10px;
+  --cs-shadow:    0 16px 40px rgba(37,47,69,.12);
+  --cs-shadow-sm: 0 8px 24px rgba(15,30,80,.06);
+  --cs-font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+}
+
+/* ---------- 基础（引入即生效） ---------- */
+.cstar-ui, body.cstar-ui {
+  margin: 0;
+  font-family: var(--cs-font);
+  color: var(--cs-ink);
+  background: var(--cs-soft);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.cstar-ui * { box-sizing: border-box; }
+.cstar-ui a { color: var(--cs-teal); text-decoration: none; }
+.cstar-ui a:hover { color: var(--cs-teal-dark); }
+
+/* ---------- 布局 ---------- */
+.cs-wrap { max-width: 1180px; margin: 0 auto; padding: 0 18px; }
+.cs-grid-2 { display: grid; grid-template-columns: 420px 1fr; gap: 18px; }
+.cs-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* ---------- 顶部页头（工具标题条） ---------- */
+.cs-header {
+  background: linear-gradient(135deg, var(--cs-teal-dark), var(--cs-teal));
+  color: #fff; padding: 26px 32px;
+}
+.cs-header h1 { margin: 0 0 6px; font-size: 26px; font-weight: 800; letter-spacing: .5px; }
+.cs-header p  { margin: 0; opacity: .92; font-size: 14px; }
+
+/* ---------- 卡片 ---------- */
+.cs-card {
+  background: var(--cs-bg); border: 1px solid var(--cs-line);
+  border-radius: var(--cs-radius); box-shadow: var(--cs-shadow-sm); overflow: hidden;
+}
+.cs-card > h2 {
+  margin: 0; padding: 16px 20px; border-bottom: 1px solid var(--cs-line);
+  font-size: 17px; font-weight: 800;
+}
+.cs-card-body { padding: 18px 20px; }
+
+/* ---------- 表单 ---------- */
+.cs-label { display: block; font-size: 13px; color: var(--cs-muted); margin: 12px 0 6px; font-weight: 600; }
+.cs-input, .cs-select, .cs-textarea {
+  width: 100%; padding: 10px 12px; font-size: 14px; font-family: inherit;
+  border: 1px solid #cfd6e0; border-radius: var(--cs-radius-sm);
+  background: #fff; color: var(--cs-ink); outline: none; transition: .15s;
+}
+.cs-textarea { min-height: 72px; resize: vertical; }
+.cs-input:focus, .cs-select:focus, .cs-textarea:focus {
+  border-color: var(--cs-teal); box-shadow: 0 0 0 3px rgba(0,120,146,.14);
+}
+
+/* ---------- 按钮 ---------- */
+.cs-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  border: 0; border-radius: var(--cs-radius-sm); padding: 11px 18px;
+  font: inherit; font-weight: 700; cursor: pointer; transition: .15s; white-space: nowrap;
+}
+.cs-btn-primary { background: var(--cs-teal); color: #fff; }
+.cs-btn-primary:hover { background: var(--cs-teal-dark); }
+.cs-btn-accent { background: var(--cs-red); color: #fff; }
+.cs-btn-accent:hover { background: var(--cs-red-dark); }
+.cs-btn-soft { background: #e6f3f6; color: var(--cs-teal-dark); }
+.cs-btn-soft:hover { background: #d6ebef; }
+.cs-btn-ghost { background: #f2f4f8; color: #334; }
+.cs-btn-ghost:hover { background: #e7ebf1; }
+.cs-btn-block { width: 100%; }
+.cs-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+
+/* ---------- 徽章 ---------- */
+.cs-badge { display: inline-flex; align-items: center; padding: 4px 11px; border-radius: 99px; font-size: 12px; font-weight: 700; }
+.cs-badge-ok     { background: #e7f6e9; color: var(--cs-ok); }
+.cs-badge-warn   { background: #fff3d6; color: #9a6100; }
+.cs-badge-danger { background: #fde8e6; color: var(--cs-danger); }
+.cs-badge-info   { background: #e6f3f6; color: var(--cs-teal-dark); }
+
+/* ---------- 提示条 ---------- */
+.cs-note { padding: 12px 14px; border-radius: var(--cs-radius-sm); font-size: 14px; }
+.cs-note-info   { background: #eef7f9; color: var(--cs-teal-dark); border: 1px solid #d6ebef; }
+.cs-note-warn   { background: #fff7e6; color: #9a6100; border: 1px solid #ffe2a8; }
+.cs-note-danger { background: #fdecef; color: var(--cs-red-dark); border: 1px solid #f8c9d2; }
+
+/* ---------- 表格 ---------- */
+.cs-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.cs-table th, .cs-table td { padding: 10px 12px; border-bottom: 1px solid var(--cs-line); text-align: left; }
+.cs-table th { background: var(--cs-soft); font-weight: 700; color: var(--cs-muted); }
+.cs-table tr:hover td { background: #fafcfd; }
+
+/* ---------- 错误提示（表单校验） ---------- */
+.cs-field-error { border-color: var(--cs-danger) !important; box-shadow: 0 0 0 3px rgba(227,29,28,.12) !important; }
+.cs-error-text { color: var(--cs-danger); font-size: 12px; margin-top: 5px; }
+
+/* ---------- 页脚 ---------- */
+.cs-footer { color: var(--cs-muted); font-size: 12px; padding: 18px; max-width: 1180px; margin: 0 auto; }
+
+/* ---------- 嵌入模式（首页弹窗用 ?embed=1 打开时隐藏自带页头） ---------- */
+html.embed-mode .cs-header { display: none; }
+html.embed-mode body.cstar-ui { background: #fff; }
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 900px) {
+  .cs-grid-2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .cs-row { grid-template-columns: 1fr; }
+  .cs-header { padding: 20px; }
+}
+
+/* ---------- 打印 ---------- */
+@media print {
+  .cs-no-print, .cs-actions, .cs-header { display: none !important; }
+  body.cstar-ui { background: #fff; }
+  .cs-card { box-shadow: none; border: 1px solid #ccc; }
+}

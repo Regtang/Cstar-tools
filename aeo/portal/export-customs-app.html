@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>出口海关研判助手</title>
+  <script>
+    // 嵌入模式（首页弹窗用 ?embed=1 打开时隐藏自带页头，避免双标题）
+    document.documentElement.classList.toggle("embed-mode",
+      new URLSearchParams(location.search).get("embed") === "1");
+  </script>
+  <style>
+    :root { --bg:#f5f8fa; --card:#fff; --primary:#007892; --primary-d:#005f73; --text:#1f2a37; --muted:#5b6b7a; --danger:#e31d1c; --warn:#f29900; --ok:#168821; --line:#e6ebf1; }
+    * { box-sizing: border-box; }
+    html.embed-mode header { display:none; }
+    html.embed-mode body { background:#fff; }
+    html.embed-mode main { margin-top:14px; }
+    body { margin:0; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",Arial,sans-serif; background:var(--bg); color:var(--text); }
+    header { background:linear-gradient(135deg,#005f73,#007892); color:white; padding:28px 36px; }
+    header h1 { margin:0 0 8px; font-size:28px; }
+    header p { margin:0; opacity:.92; }
+    main { max-width:1180px; margin:24px auto; padding:0 18px 40px; display:grid; grid-template-columns: 420px 1fr; gap:18px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 8px 24px rgba(15,30,80,.06); }
+    .card h2 { margin:0; padding:18px 20px; border-bottom:1px solid var(--line); font-size:18px; }
+    .form { padding:18px 20px; }
+    label { display:block; font-size:13px; color:var(--muted); margin:12px 0 6px; }
+    input, textarea, select { width:100%; padding:10px 12px; border:1px solid #cfd5e6; border-radius:10px; font-size:14px; outline:none; background:#fff; }
+    textarea { min-height:70px; resize:vertical; }
+    input:focus, textarea:focus, select:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(0,120,146,.14); }
+    .primary:hover { background:var(--primary-d); }
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    button { border:0; border-radius:10px; padding:11px 14px; cursor:pointer; font-weight:700; }
+    .primary { background:var(--primary); color:white; width:100%; margin-top:16px; }
+    .secondary { background:#e6f3f6; color:#005f73; }
+    .ghost { background:#f2f4f8; color:#334; }
+    .actions { display:flex; gap:10px; margin-top:12px; }
+    .result { padding:18px 20px; }
+    .scorebox { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-bottom:14px; }
+    .metric { border:1px solid var(--line); border-radius:14px; padding:14px; background:#fbfcff; }
+    .metric b { display:block; font-size:24px; margin-top:6px; }
+    .badge { display:inline-flex; align-items:center; padding:5px 10px; border-radius:99px; font-size:13px; font-weight:700; }
+    .badge.high { background:#fde8e6; color:var(--danger); }
+    .badge.mid { background:#fff3d6; color:#9a6100; }
+    .badge.low { background:#e7f6e9; color:var(--ok); }
+    .risk { border:1px solid var(--line); border-left:5px solid #0a9bbd; border-radius:12px; padding:14px; margin:12px 0; background:#fff; }
+    .risk.high { border-left-color:var(--danger); }
+    .risk.mid { border-left-color:var(--warn); }
+    .risk.low { border-left-color:var(--ok); }
+    .risk h3 { margin:0 0 8px; font-size:16px; display:flex; justify-content:space-between; gap:10px; }
+    .risk p { margin:6px 0; line-height:1.55; }
+    .muted { color:var(--muted); }
+    .chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+    .chip { background:#eef6f8; border:1px solid #d9eaef; padding:6px 9px; border-radius:999px; font-size:13px; }
+    .report { white-space:pre-wrap; background:#0f172a; color:#e2e8f0; border-radius:12px; padding:14px; max-height:360px; overflow:auto; font-size:13px; line-height:1.6; }
+    footer { max-width:1180px; margin:0 auto 28px; padding:0 18px; color:var(--muted); font-size:12px; }
+    @media (max-width: 900px) { main { grid-template-columns:1fr; } .scorebox { grid-template-columns:1fr; } }
+    @media (max-width: 560px) { .row { grid-template-columns:1fr; } header { padding:20px; } }
+    @media print { header, footer, .no-print, main > section:first-child { display:none !important; } main { grid-template-columns:1fr; } body { background:#fff; } .card { box-shadow:none; border:1px solid #ccc; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>出口海关研判助手</h1>
+    <p>出口申报前智能识别海关风险、解释原因、推荐解决方案，并生成客户研判报告。</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>新建出口研判</h2>
+      <div class="form">
+        <label>客户名称</label><input id="customer" placeholder="例如：深圳某某科技有限公司" />
+        <div class="row">
+          <div><label>商品中文名称 *</label><input id="nameCn" placeholder="例如：无人机配件" /></div>
+          <div><label>商品英文名称</label><input id="nameEn" placeholder="例如：Drone Parts" /></div>
+        </div>
+        <div class="row">
+          <div><label>HS Code</label><input id="hs" placeholder="例如：8807900090" /></div>
+          <div><label>出口国家/地区 *</label><input id="country" placeholder="例如：德国" /></div>
+        </div>
+        <label>材质</label><input id="material" placeholder="例如：铝合金、不锈钢、塑料、化学品成分" />
+        <label>用途/最终用途 *</label><textarea id="usage" placeholder="说明商品用于什么场景，是否民用、工业用、实验室用等"></textarea>
+        <label>规格型号/技术参数</label><textarea id="spec" placeholder="例如：功率、电压、精度、频率、芯片型号、化学成分、CAS号等"></textarea>
+        <div class="row">
+          <div><label>品牌</label><input id="brand" placeholder="无品牌可填：无" /></div>
+          <div><label>是否有品牌授权</label><select id="auth"><option value="unknown">未知/未上传</option><option value="yes">有</option><option value="no">无</option></select></div>
+        </div>
+        <div class="row">
+          <div><label>申报单价</label><input id="price" type="number" min="0" placeholder="例如：3.5" /></div>
+          <div><label>币种</label><select id="currency"><option>USD</option><option>CNY</option><option>EUR</option><option>JPY</option></select></div>
+        </div>
+        <div class="row">
+          <div><label>数量</label><input id="qty" type="number" min="0" placeholder="例如：1000" /></div>
+          <div><label>单位</label><input id="unit" placeholder="件 / 千克 / 台" /></div>
+        </div>
+        <div class="row">
+          <div><label>毛重 KG</label><input id="gross" type="number" min="0" step="0.01" /></div>
+          <div><label>净重 KG</label><input id="net" type="number" min="0" step="0.01" /></div>
+        </div>
+        <label>已上传/已准备单证</label>
+        <div class="chips">
+          <label class="chip"><input type="checkbox" class="doc" value="发票"> 发票</label>
+          <label class="chip"><input type="checkbox" class="doc" value="箱单"> 箱单</label>
+          <label class="chip"><input type="checkbox" class="doc" value="合同"> 合同</label>
+          <label class="chip"><input type="checkbox" class="doc" value="产品说明书"> 产品说明书</label>
+          <label class="chip"><input type="checkbox" class="doc" value="检测报告"> 检测报告</label>
+          <label class="chip"><input type="checkbox" class="doc" value="许可证"> 许可证</label>
+        </div>
+        <button class="primary" onclick="runCheck()">开始智能研判</button>
+        <div class="actions">
+          <button class="secondary" onclick="fillDemo()">填入示例</button>
+          <button class="ghost" onclick="clearForm()">清空</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>研判结果</h2>
+      <div class="result" id="result">
+        <p class="muted">请在左侧填写商品信息，然后点击“开始智能研判”。</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    提示：本工具为出口合规前置研判助手，适合内部初筛与客户资料预审；正式申报前仍应结合最新监管条件、商品实际属性、海关归类规则和专业报关/合规意见复核。
+  </footer>
+
+<script>
+const sensitiveCountries = ['俄罗斯','伊朗','朝鲜','叙利亚','古巴','白俄罗斯','苏丹','南苏丹','克里米亚'];
+const vagueWords = ['配件','零件','产品','样品','货物','附件','组件','材料','工具'];
+const sensitiveGoods = ['无人机','芯片','集成电路','激光','传感器','雷达','通信','加密','化工','试剂','粉末','金属粉','钛合金','碳纤维','实验室','机床','数控','电池','锂电','服务器','GPU','光模块'];
+const licenseGoods = ['化工','试剂','危险品','农药','电池','锂电','医疗器械','口罩','濒危','木材','两用','军民','无人机','芯片','加密'];
+
+function v(id){ return document.getElementById(id).value.trim(); }
+function docs(){ return [...document.querySelectorAll('.doc:checked')].map(x=>x.value); }
+function addRisk(list, level, title, reason, solution, materials=[]){ list.push({level,title,reason,solution,materials}); }
+function levelWeight(level){ return level==='high'?30:level==='mid'?15:5; }
+function levelLabel(level){ return level==='high'?'高风险':level==='mid'?'中风险':'低风险'; }
+function badgeClass(level){ return level==='high'?'high':level==='mid'?'mid':'low'; }
+
+function runCheck(){
+  const data = {
+    customer:v('customer'), nameCn:v('nameCn'), nameEn:v('nameEn'), hs:v('hs'), country:v('country'), material:v('material'),
+    usage:v('usage'), spec:v('spec'), brand:v('brand'), auth:v('auth'), price:Number(v('price')||0), currency:v('currency'),
+    qty:Number(v('qty')||0), unit:v('unit'), gross:Number(v('gross')||0), net:Number(v('net')||0), docs:docs()
+  };
+  const text = [data.nameCn,data.nameEn,data.material,data.usage,data.spec,data.brand].join(' ').toLowerCase();
+  const risks=[];
+
+  if(!data.nameCn || !data.country || !data.usage){
+    addRisk(risks,'high','关键信息缺失','商品名称、出口国家或用途信息不完整，系统无法准确判断监管条件、归类逻辑和出口限制。','补充商品中文名称、最终用途、出口国家、材质、规格型号和图片后再申报。',['产品说明书','用途说明','商品图片']);
+  }
+  if(!data.hs || !/^\d{8,10}$/.test(data.hs)){
+    addRisk(risks,'high','HS Code 缺失或格式异常','HS Code 是判断监管条件、税则归类和出口证件要求的核心字段，缺失或格式异常会导致申报风险上升。','重新确认 8-10 位 HS Code，并结合商品材质、用途、工作原理进行归类复核。',['归类说明','产品说明书','材质说明']);
+  }
+  if(vagueWords.some(w=>data.nameCn.includes(w)) && data.nameCn.length<=8){
+    addRisk(risks,'mid','申报品名过于笼统','当前品名较模糊，不能体现商品材质、用途、功能或具体属性，容易被海关要求补充说明。','建议采用“材质 + 用途 + 具体商品名称”的申报表达。',['产品说明书','用途说明','材质说明']);
+  }
+  if(sensitiveGoods.some(w=>text.includes(w.toLowerCase()))){
+    addRisk(risks,'high','敏感商品或两用物项风险','商品描述中出现电子、通信、无人机、芯片、激光、化工、实验室设备等敏感关键词，可能被海关关注最终用途和许可证要求。','补充技术参数、最终用途说明、最终用户声明，并确认是否涉及两用物项或特殊出口许可。',['技术参数表','最终用途说明','最终用户声明','许可证/不涉及说明']);
+  }
+  if(licenseGoods.some(w=>text.includes(w.toLowerCase()))){
+    addRisk(risks,'mid','可能涉及监管证件','商品可能涉及商检、危险品、两用物项、医疗器械或其他出口监管要求。','按 HS Code 查询最新监管条件，并在申报前准备对应许可证、检测报告或情况说明。',['许可证','检测报告','监管条件确认记录']);
+  }
+  if(data.brand && !['无','none','no'].includes(data.brand.toLowerCase()) && data.auth !== 'yes'){
+    addRisk(risks,'high','品牌知识产权风险','商品填写了品牌信息，但未确认品牌授权，若商品或包装带有商标，可能触发海关知识产权保护风险。','补充品牌授权书、采购合同、品牌方出口许可或 OEM/ODM 关系证明。',['品牌授权书','采购合同','OEM/ODM证明']);
+  }
+  if(sensitiveCountries.some(c=>data.country.includes(c))){
+    addRisk(risks,'high','目的国合规风险','出口目的国属于较高敏感地区，可能涉及制裁、禁运、最终用户审查或额外许可证要求。','进行目的国、最终用户、最终用途和交易方筛查，必要时暂停申报并转人工合规复核。',['最终用户声明','交易方筛查记录','合规审批记录']);
+  }
+  if(data.price>0 && data.price<0.5 && data.qty>100){
+    addRisk(risks,'mid','申报价格偏低风险','申报单价较低且数量较大，可能被质疑低报价格或价格不合理。','准备价格说明、合同、付款凭证、成本构成或历史成交依据。',['价格说明','合同','付款凭证']);
+  }
+  if(data.gross>0 && data.net>0 && data.net>data.gross){
+    addRisk(risks,'high','重量逻辑异常','净重不能大于毛重，该类数据错误会影响报关单证一致性。','核对箱单、实际重量和报关草单，统一毛重、净重数据。',['箱单','称重记录']);
+  }
+  if(data.qty>0 && !data.unit){
+    addRisk(risks,'mid','成交单位缺失','数量字段已有填写，但未填写单位，可能影响申报规范性。','补充成交单位，并确认与 HS Code 法定单位、第二单位是否一致。',['发票','箱单']);
+  }
+  ['发票','箱单','合同'].forEach(d=>{ if(!data.docs.includes(d)) addRisk(risks,'mid',`${d}缺失`,`未勾选已准备${d}，基础贸易单证不完整。`,`补充${d}并确保品名、数量、金额、币种、重量、收发货人一致。`,[d]); });
+  if(!data.docs.includes('产品说明书')) addRisk(risks,'low','产品说明资料不足','未准备产品说明书，遇到查验或归类质疑时解释能力较弱。','建议准备产品说明书、图片、用途说明和技术参数。',['产品说明书','商品图片']);
+
+  const score = Math.min(100, risks.reduce((s,r)=>s+levelWeight(r.level),0));
+  const finalLevel = score>=60 || risks.some(r=>r.level==='high') ? 'high' : score>=25 ? 'mid' : 'low';
+  render(data, risks, score, finalLevel);
+}
+
+function render(data, risks, score, finalLevel){
+  const missingMaterials = [...new Set(risks.flatMap(r=>r.materials))];
+  const decision = finalLevel==='high'?'建议暂停申报，转人工合规复核':finalLevel==='mid'?'建议补充资料并优化申报后再出口':'可进入正常申报流程';
+  const riskHtml = risks.length ? risks.map(r=>`<div class="risk ${badgeClass(r.level)}"><h3>${r.title}<span class="badge ${badgeClass(r.level)}">${levelLabel(r.level)}</span></h3><p><b>原因：</b>${r.reason}</p><p><b>解决方案：</b>${r.solution}</p><div class="chips">${r.materials.map(m=>`<span class="chip">${m}</span>`).join('')}</div></div>`).join('') : '<div class="risk low"><h3>未发现明显风险 <span class="badge low">低风险</span></h3><p>当前信息未触发主要风险规则。</p></div>';
+  const report = makeReport(data, risks, score, finalLevel, missingMaterials, decision);
+  document.getElementById('result').innerHTML = `
+    <div class="scorebox">
+      <div class="metric"><span class="muted">综合风险等级</span><b><span class="badge ${badgeClass(finalLevel)}">${levelLabel(finalLevel)}</span></b></div>
+      <div class="metric"><span class="muted">风险分</span><b>${score}/100</b></div>
+      <div class="metric"><span class="muted">最终建议</span><b style="font-size:15px">${decision}</b></div>
+    </div>
+    <h3>风险明细</h3>${riskHtml}
+    <h3>建议补充材料</h3><div class="chips">${missingMaterials.length?missingMaterials.map(m=>`<span class="chip">${m}</span>`).join(''):'<span class="chip">暂无</span>'}</div>
+    <h3>研判报告</h3><div class="report" id="reportText">${escapeHtml(report)}</div>
+    <div class="actions no-print"><button class="secondary" onclick="downloadReport()">下载 TXT 报告</button><button class="ghost" onclick="copyReport()">复制报告</button><button class="ghost" onclick="window.print()">打印</button></div>`;
+  window.currentReport = report;
+}
+
+function makeReport(data, risks, score, finalLevel, materials, decision){
+  return `《出口海关研判报告》\n\n一、基本信息\n客户名称：${data.customer||'未填写'}\n商品中文名称：${data.nameCn||'未填写'}\n商品英文名称：${data.nameEn||'未填写'}\nHS Code：${data.hs||'未填写'}\n出口国家/地区：${data.country||'未填写'}\n材质：${data.material||'未填写'}\n用途：${data.usage||'未填写'}\n规格型号/技术参数：${data.spec||'未填写'}\n品牌：${data.brand||'未填写'}\n申报价格：${data.price||'未填写'} ${data.currency||''}\n数量：${data.qty||'未填写'} ${data.unit||''}\n毛重/净重：${data.gross||'未填写'} / ${data.net||'未填写'} KG\n\n二、综合研判\n风险等级：${levelLabel(finalLevel)}\n风险分：${score}/100\n最终建议：${decision}\n\n三、风险明细\n${risks.length?risks.map((r,i)=>`${i+1}. ${r.title}\n风险等级：${levelLabel(r.level)}\n原因：${r.reason}\n解决方案：${r.solution}\n建议材料：${r.materials.join('、')||'无'}`).join('\n\n'):'未发现明显风险。'}\n\n四、建议补充材料\n${materials.length?materials.map(x=>'・'+x).join('\n'):'暂无'}\n\n五、申报建议\n正式申报前，请结合最新海关监管条件、商品实际属性、许可证要求和专业报关意见进行复核。本报告适合作为客户资料预审和内部合规初筛依据。`; }
+function downloadReport(){ const blob = new Blob([window.currentReport||''], {type:'text/plain;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='出口海关研判报告.txt'; a.click(); URL.revokeObjectURL(a.href); }
+function copyReport(){ navigator.clipboard.writeText(window.currentReport||''); alert('报告已复制'); }
+function escapeHtml(s){ return s.replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function fillDemo(){
+  const demo = {customer:'深圳某某科技有限公司', nameCn:'无人机配件', nameEn:'Drone Parts', hs:'8807900090', country:'德国', material:'铝合金、电子元器件', usage:'用于民用无人机维修替换，非军用', spec:'含传感器模块，型号 DP-300', brand:'SKYMAX', price:'0.3', qty:'1000', unit:'件', gross:'80', net:'75'};
+  Object.entries(demo).forEach(([k,val])=>document.getElementById(k).value=val); document.getElementById('auth').value='unknown'; document.querySelectorAll('.doc').forEach(x=>x.checked=['发票','箱单'].includes(x.value));
+}
+function clearForm(){ document.querySelectorAll('input,textarea').forEach(x=>{ if(x.type==='checkbox') x.checked=false; else x.value=''; }); document.getElementById('auth').value='unknown'; document.getElementById('currency').value='USD'; document.getElementById('result').innerHTML='<p class="muted">请在左侧填写商品信息，然后点击“开始智能研判”。</p>'; try{localStorage.removeItem(STORE_KEY);}catch(e){} }
+
+/* 本地保存：输入自动暂存 / 加载时恢复（含勾选的单证） */
+const STORE_KEY='export_customs_assistant';
+function autosave(){
+  try{
+    const o={fields:{},docs:[]};
+    document.querySelectorAll('main input,main textarea,main select').forEach(x=>{
+      if(x.classList.contains('doc')){ if(x.checked) o.docs.push(x.value); }
+      else if(x.id){ o.fields[x.id]=x.value; }
+    });
+    localStorage.setItem(STORE_KEY, JSON.stringify(o));
+  }catch(e){}
+}
+function restore(){
+  try{
+    const o=JSON.parse(localStorage.getItem(STORE_KEY)||'null'); if(!o) return;
+    Object.entries(o.fields||{}).forEach(([id,v])=>{ const el=document.getElementById(id); if(el) el.value=v; });
+    document.querySelectorAll('.doc').forEach(x=>{ x.checked=(o.docs||[]).includes(x.value); });
+  }catch(e){}
+}
+document.querySelectorAll('main input,main textarea,main select').forEach(x=>{
+  x.addEventListener('input', autosave); x.addEventListener('change', autosave);
+});
+restore();
+</script>
+</body>
+</html>

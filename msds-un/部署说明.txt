@@ -1,0 +1,23 @@
+bot.regs.com 上传说明
+
+目标：
+把 MSDS/UN 进出口监管判定工具放到 bot.regs.com 中。
+
+当前版本：
+v1.1.0
+
+文件：
+1. msds-un-app.html
+   上传到 bot.regs.com 网站根目录。
+   上传后访问地址应为：
+   https://bot.regs.com/msds-un-app.html
+
+2. homepage-msds-un-snippet.html
+   把里面的代码复制到 bot.regs.com 首页红框位置。
+   这段代码会在首页显示“MSDS/UN 进出口监管判定工具”入口。
+   点击“打开工具”后，会弹窗嵌入：
+   /msds-un-app.html?embed=1
+
+注意：
+如果网站不是静态站点，而是 Vue、React、Next、Nuxt、WordPress 或其他后台系统，
+请把 msds-un-app.html 放到可公开访问的静态资源目录，并把 iframe 的 src 改成实际公开路径。

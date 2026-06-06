@@ -1,0 +1,16 @@
+{
+  "name": "喜事达（Cstar）装箱软件",
+  "short_name": "Cstar装箱",
+  "description": "离线可用的集装箱装箱计划工具，支持货物导入、自动装箱、可视化、报告和项目分享。",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f5f5f5",
+  "theme_color": "#252F45",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+services:
+  aeo:
+    build: .
+    container_name: xishida-aeo
+    ports:
+      - "8000:8000"
+    environment:
+      # 生产环境务必修改以下两项（参见 .env.example）
+      - AEO_SECRET_KEY=${AEO_SECRET_KEY:-please-change-this-secret}
+      - AEO_ADMIN_PASSWORD=${AEO_ADMIN_PASSWORD:-admin123}
+      - AEO_DATA_DIR=/data
+      # 前后端分离时设置允许的来源，如 https://aeo.yourcompany.com
+      - AEO_CORS=${AEO_CORS:-}
+      # 站点公网地址（用于重置密码邮件里的链接）
+      - AEO_PUBLIC_URL=${AEO_PUBLIC_URL:-https://bot.regs.com}
+      # 邮件 SMTP（.env 中密码若含 $ 需写成 $$ 转义）
+      - AEO_SMTP_HOST=${AEO_SMTP_HOST:-}
+      - AEO_SMTP_PORT=${AEO_SMTP_PORT:-587}
+      - AEO_SMTP_USER=${AEO_SMTP_USER:-}
+      - AEO_SMTP_PASS=${AEO_SMTP_PASS:-}
+      - AEO_SMTP_FROM=${AEO_SMTP_FROM:-}
+      # 新工具提交即时通知收件邮箱（多个用逗号？此处填一个即可）
+      - AEO_NOTIFY_EMAIL=${AEO_NOTIFY_EMAIL:-}
+    volumes:
+      - aeo-data:/data
+    restart: unless-stopped
+
+volumes:
+  aeo-data:

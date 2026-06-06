@@ -1,0 +1,3090 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>危化判定</title>
+  <script>
+    document.documentElement.classList.toggle("embed-mode", new URLSearchParams(window.location.search).get("embed") === "1");
+  </script>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --ink: #1c2430;
+      --muted: #667085;
+      --line: #d8dee7;
+      --panel: #ffffff;
+      --teal: #087f7b;
+      --teal-soft: #e7f6f4;
+      --amber: #b66800;
+      --amber-soft: #fff1d8;
+      --red: #b42318;
+      --red-soft: #fee4e2;
+      --green: #067647;
+      --green-soft: #dcfae6;
+      --blue: #175cd3;
+      --blue-soft: #eaf1ff;
+      --violet: #6941c6;
+      --violet-soft: #f2edff;
+      --shadow: 0 8px 24px rgba(28, 36, 48, 0.08);
+      --radius: 8px;
+      font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 64px;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--line);
+      background: #ffffff;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .mark {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      color: #ffffff;
+      background: linear-gradient(135deg, #087f7b, #1d9a72);
+      font-weight: 800;
+      letter-spacing: 0;
+      flex: 0 0 auto;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .btn {
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px 12px;
+      color: var(--ink);
+      background: #ffffff;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      border-color: #a8b2c0;
+      background: #fafbfc;
+    }
+
+    .btn.primary {
+      border-color: var(--teal);
+      background: var(--teal);
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    .btn.danger {
+      color: var(--red);
+      border-color: #f5b3ad;
+    }
+
+    .icon {
+      width: 16px;
+      height: 16px;
+      display: inline-block;
+      line-height: 16px;
+      text-align: center;
+      font-weight: 800;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(420px, 0.95fr) minmax(480px, 1.05fr);
+      gap: 16px;
+      padding: 16px;
+      align-items: start;
+    }
+
+    .column {
+      display: grid;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    html.embed-mode body {
+      background: #ffffff;
+    }
+
+    html.embed-mode .app {
+      min-height: auto;
+    }
+
+    html.embed-mode .topbar {
+      position: static;
+      min-height: 54px;
+      padding: 10px 14px;
+    }
+
+    html.embed-mode .mark {
+      width: 32px;
+      height: 32px;
+      font-size: 12px;
+    }
+
+    html.embed-mode h1 {
+      font-size: 16px;
+    }
+
+    html.embed-mode .subtitle {
+      display: none;
+    }
+
+    html.embed-mode .workspace {
+      padding: 10px;
+      gap: 12px;
+    }
+
+    html.embed-mode .section {
+      box-shadow: none;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 46px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+
+    .section-body {
+      padding: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    label,
+    .label {
+      color: #344054;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid #cbd3df;
+      border-radius: 6px;
+      padding: 9px 10px;
+      color: var(--ink);
+      background: #ffffff;
+      outline: none;
+      min-height: 38px;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 78px;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(8, 127, 123, 0.12);
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid #cbd3df;
+      border-radius: 8px;
+      background: #f2f4f7;
+    }
+
+    .segment {
+      min-height: 34px;
+      border: 0;
+      border-radius: 6px;
+      padding: 6px 8px;
+      color: #344054;
+      background: transparent;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .segment.active {
+      color: #ffffff;
+      background: var(--teal);
+      font-weight: 700;
+    }
+
+    .checks {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .check {
+      display: grid;
+      grid-template-columns: 18px 1fr;
+      align-items: start;
+      gap: 8px;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #ffffff;
+      min-height: 42px;
+    }
+
+    .check input {
+      min-height: 18px;
+      height: 18px;
+      padding: 0;
+      margin: 1px 0 0;
+      accent-color: var(--teal);
+    }
+
+    .check span {
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .components {
+      display: grid;
+      gap: 8px;
+    }
+
+    .component {
+      display: grid;
+      grid-template-columns: minmax(100px, 1.2fr) minmax(92px, 1fr) 76px 96px 36px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .component input,
+    .component select {
+      min-height: 36px;
+      padding: 8px;
+    }
+
+    .component .remove {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border-radius: 6px;
+      border: 1px solid #f0b8b3;
+      color: var(--red);
+      background: #fffafa;
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .component-head {
+      display: grid;
+      grid-template-columns: minmax(100px, 1.2fr) minmax(92px, 1fr) 76px 96px 36px;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .result-hero {
+      display: grid;
+      gap: 12px;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .badge.green {
+      color: var(--green);
+      background: var(--green-soft);
+      border-color: #91d9ac;
+    }
+
+    .badge.amber {
+      color: var(--amber);
+      background: var(--amber-soft);
+      border-color: #f5ce8a;
+    }
+
+    .badge.red {
+      color: var(--red);
+      background: var(--red-soft);
+      border-color: #f5b3ad;
+    }
+
+    .badge.blue {
+      color: var(--blue);
+      background: var(--blue-soft);
+      border-color: #a9c4ff;
+    }
+
+    .badge.teal {
+      color: var(--teal);
+      background: var(--teal-soft);
+      border-color: #98d6d2;
+    }
+
+    .badge.violet {
+      color: var(--violet);
+      background: var(--violet-soft);
+      border-color: #d8c9ff;
+    }
+
+    .summary {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .summary-title {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .summary-text {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 14px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .mini {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 12px;
+      min-height: 86px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .mini strong {
+      font-size: 13px;
+    }
+
+    .mini span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+    }
+
+    .item {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      gap: 8px;
+      align-items: start;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      line-height: 1.45;
+      font-size: 13px;
+    }
+
+    .dot {
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 800;
+      background: var(--teal);
+    }
+
+    .dot.warn {
+      background: var(--amber);
+    }
+
+    .dot.risk {
+      background: var(--red);
+    }
+
+    .dot.info {
+      background: var(--blue);
+    }
+
+    .empty {
+      color: var(--muted);
+      border: 1px dashed #bcc6d4;
+      border-radius: 8px;
+      padding: 14px;
+      background: #ffffff;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      margin: 8px 0 0;
+    }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      padding: 0 2px 10px;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 1100px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .topbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .actions {
+        justify-content: stretch;
+      }
+
+      .actions .btn {
+        flex: 1 1 auto;
+      }
+
+      .workspace {
+        padding: 10px;
+      }
+
+      .grid,
+      .grid.three,
+      .split,
+      .cards,
+      .checks {
+        grid-template-columns: 1fr;
+      }
+
+      .segmented {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .component,
+      .component-head {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .component .remove,
+      .component-head span:last-child {
+        grid-column: span 2;
+        width: 100%;
+      }
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+
+      .topbar,
+      .input-column .actions-inline,
+      .section.input-only {
+        display: none !important;
+      }
+
+      .workspace {
+        display: block;
+        padding: 0;
+      }
+
+      .section {
+        box-shadow: none;
+        break-inside: avoid;
+        margin-bottom: 10px;
+      }
+    }
+
+    /* Cstar visual refresh */
+    :root {
+      --bg: #f3f8fa;
+      --ink: #172536;
+      --muted: #617386;
+      --line: #dce6ee;
+      --panel: #ffffff;
+      --teal: #07889a;
+      --teal-2: #05a7a8;
+      --teal-soft: #e8f8f8;
+      --navy: #152536;
+      --navy-2: #20344a;
+      --accent: #e9475e;
+      --amber: #b76a00;
+      --amber-soft: #fff2dd;
+      --red: #b42318;
+      --red-soft: #fee7e7;
+      --green: #067647;
+      --green-soft: #e1f8eb;
+      --blue: #175cd3;
+      --blue-soft: #eaf2ff;
+      --violet: #6941c6;
+      --violet-soft: #f2edff;
+      --shadow: 0 14px 34px rgba(21, 37, 54, 0.08);
+      --shadow-soft: 0 8px 20px rgba(21, 37, 54, 0.05);
+      --radius: 8px;
+    }
+
+    body {
+      background:
+        linear-gradient(180deg, #f7fbfd 0%, #eef6f8 360px, #f6f8fb 100%);
+    }
+
+    .app {
+      grid-template-rows: auto auto 1fr;
+    }
+
+    .topbar {
+      min-height: 76px;
+      padding: 12px 36px;
+      border-bottom: 1px solid #e7eef4;
+      box-shadow: 0 8px 28px rgba(21, 37, 54, 0.06);
+    }
+
+    .brand {
+      gap: 14px;
+    }
+
+    .brand-lockup {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .cstar-logo {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 1px;
+      color: var(--teal);
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 900;
+      letter-spacing: 2px;
+      white-space: nowrap;
+    }
+
+    .cstar-logo span:nth-child(4) {
+      color: var(--accent);
+    }
+
+    .brand-divider {
+      width: 1px;
+      height: 34px;
+      background: #d8e3ec;
+      flex: 0 0 auto;
+    }
+
+    .mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--teal), var(--teal-2));
+      box-shadow: 0 10px 20px rgba(5, 167, 168, 0.22);
+      font-size: 13px;
+    }
+
+    h1 {
+      color: #18293b;
+      font-size: 19px;
+      font-weight: 900;
+    }
+
+    .subtitle {
+      color: #6e8091;
+      font-size: 13px;
+    }
+
+    .topbar .actions {
+      gap: 9px;
+    }
+
+    .btn {
+      min-height: 38px;
+      border-color: #d6e2eb;
+      border-radius: 8px;
+      padding: 8px 13px;
+      color: #20344a;
+      background: #ffffff;
+      box-shadow: 0 1px 0 rgba(21, 37, 54, 0.03);
+      transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+    }
+
+    .btn:hover {
+      border-color: #a9cbd3;
+      background: #f8fcfd;
+      box-shadow: 0 8px 18px rgba(21, 37, 54, 0.08);
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn.primary {
+      border-color: var(--teal);
+      background: linear-gradient(135deg, var(--teal), var(--teal-2));
+      box-shadow: 0 10px 22px rgba(5, 167, 168, 0.22);
+    }
+
+    .btn.danger {
+      color: var(--accent);
+      border-color: #f5bdc6;
+    }
+
+    .icon {
+      color: currentColor;
+      opacity: 0.9;
+    }
+
+    .hero-panel {
+      position: relative;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 78% 20%, rgba(255, 255, 255, 0.18) 0 2px, transparent 3px),
+        linear-gradient(118deg, #087487 0%, #0993a3 54%, #12aaa8 100%);
+      color: #ffffff;
+    }
+
+    .hero-panel::before,
+    .hero-panel::after {
+      content: "";
+      position: absolute;
+      width: 820px;
+      height: 220px;
+      border: 2px dashed rgba(255, 255, 255, 0.18);
+      border-color: rgba(255, 255, 255, 0.18) transparent transparent transparent;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .hero-panel::before {
+      right: -140px;
+      top: 74px;
+      transform: rotate(-6deg);
+    }
+
+    .hero-panel::after {
+      left: -220px;
+      bottom: -18px;
+      transform: rotate(5deg);
+    }
+
+    .hero-inner {
+      position: relative;
+      z-index: 1;
+      width: min(1480px, calc(100% - 48px));
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.72fr);
+      gap: 30px;
+      align-items: center;
+      padding: 34px 0 32px;
+    }
+
+    .hero-copy {
+      display: grid;
+      gap: 14px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      width: max-content;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 16px;
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      border-radius: 999px;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 2px;
+    }
+
+    .hero-copy h2 {
+      margin: 0;
+      color: #ffffff;
+      font-size: clamp(30px, 3.3vw, 48px);
+      line-height: 1.18;
+      letter-spacing: 0;
+      font-weight: 900;
+    }
+
+    .hero-copy p {
+      max-width: 820px;
+      margin: 0;
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 17px;
+      line-height: 1.75;
+    }
+
+    .hero-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric {
+      min-height: 108px;
+      padding: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(10px);
+      display: grid;
+      align-content: center;
+      gap: 8px;
+    }
+
+    .metric strong {
+      color: #ffffff;
+      font-size: 28px;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .metric span {
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .workflow-strip {
+      width: min(1480px, calc(100% - 48px));
+      margin: -18px auto 0;
+      position: relative;
+      z-index: 3;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0;
+      border: 1px solid #dde9ef;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #ffffff;
+      box-shadow: var(--shadow);
+    }
+
+    .workflow-step {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      align-items: center;
+      min-height: 70px;
+      padding: 14px 18px;
+      border-right: 1px solid #e4edf3;
+    }
+
+    .workflow-step:last-child {
+      border-right: 0;
+    }
+
+    .workflow-step b {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--teal-soft);
+      color: var(--teal);
+      font-size: 13px;
+    }
+
+    .workflow-step span {
+      color: #20344a;
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+
+    .workspace {
+      width: min(1480px, calc(100% - 48px));
+      margin: 18px auto 0;
+      grid-template-columns: minmax(500px, 0.95fr) minmax(520px, 1.05fr);
+      gap: 18px;
+      padding: 0 0 28px;
+    }
+
+    .column {
+      gap: 16px;
+    }
+
+    .section {
+      border-color: #e0e9f0;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .section-head {
+      min-height: 52px;
+      padding: 12px 16px;
+      border-bottom-color: #e4edf3;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfdfe 100%);
+    }
+
+    .section-head h2 {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      color: #1d3044;
+      font-size: 16px;
+      font-weight: 900;
+    }
+
+    .section-head h2::before {
+      content: "";
+      width: 4px;
+      height: 16px;
+      border-radius: 999px;
+      background: var(--teal);
+    }
+
+    .section-body {
+      padding: 16px;
+    }
+
+    label,
+    .label {
+      color: #2d4258;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    input,
+    select,
+    textarea {
+      border-color: #d3e0e9;
+      border-radius: 8px;
+      padding: 10px 11px;
+      color: #18293b;
+      background: #fbfdfe;
+      min-height: 40px;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: #9aa8b7;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--teal-2);
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(5, 167, 168, 0.13);
+    }
+
+    textarea {
+      min-height: 96px;
+      line-height: 1.55;
+    }
+
+    .segmented {
+      border-color: #d3e0e9;
+      border-radius: 8px;
+      background: #eef5f7;
+    }
+
+    .segment {
+      border-radius: 7px;
+      color: #43576b;
+      font-weight: 700;
+    }
+
+    .segment.active {
+      background: linear-gradient(135deg, var(--teal), var(--teal-2));
+      box-shadow: 0 7px 14px rgba(5, 167, 168, 0.18);
+    }
+
+    .check {
+      border-color: #dfe9f0;
+      border-radius: 8px;
+      background: #fbfdfe;
+      transition: border-color 0.16s ease, background 0.16s ease;
+    }
+
+    .check:hover {
+      border-color: #b9d8df;
+      background: #ffffff;
+    }
+
+    .check span {
+      color: #2d4258;
+    }
+
+    .component-head {
+      color: #738496;
+    }
+
+    .component input,
+    .component select,
+    .component .remove {
+      border-radius: 8px;
+    }
+
+    .summary {
+      border: 0;
+      background:
+        linear-gradient(135deg, rgba(7, 136, 154, 0.95), rgba(5, 167, 168, 0.94)),
+        #07889a;
+      color: #ffffff;
+      box-shadow: 0 16px 30px rgba(5, 167, 168, 0.2);
+      padding: 18px;
+    }
+
+    .summary-title {
+      color: #ffffff;
+      font-size: 24px;
+      font-weight: 900;
+    }
+
+    .summary-text {
+      color: rgba(255, 255, 255, 0.86);
+    }
+
+    .summary .badge {
+      border-color: rgba(255, 255, 255, 0.34);
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+    }
+
+    .mini {
+      border-color: #e0e9f0;
+      background: #fbfdfe;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+
+    .mini strong {
+      color: #1d3044;
+      font-weight: 900;
+    }
+
+    .item {
+      border-color: #e0e9f0;
+      border-radius: 8px;
+      background: #fbfdfe;
+      font-size: 13px;
+    }
+
+    .dot {
+      background: var(--teal);
+    }
+
+    .empty {
+      border-color: #c8d7e1;
+      background: #fbfdfe;
+    }
+
+    .footer-note {
+      padding: 2px 2px 18px;
+      color: #748598;
+    }
+
+    html.embed-mode .hero-panel,
+    html.embed-mode .workflow-strip,
+    html.embed-mode .cstar-logo,
+    html.embed-mode .brand-divider {
+      display: none;
+    }
+
+    html.embed-mode body {
+      background: #ffffff;
+    }
+
+    html.embed-mode .topbar {
+      min-height: 58px;
+      padding: 10px 14px;
+      box-shadow: none;
+    }
+
+    html.embed-mode .workspace {
+      width: 100%;
+      margin: 0;
+      padding: 10px;
+      gap: 12px;
+    }
+
+    html.embed-mode .section {
+      box-shadow: none;
+    }
+
+    @media (max-width: 1180px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-inner {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-metrics {
+        max-width: 760px;
+      }
+    }
+
+    @media (max-width: 880px) {
+      .topbar {
+        align-items: stretch;
+        flex-direction: column;
+        padding: 14px;
+      }
+
+      .brand {
+        justify-content: space-between;
+      }
+
+      .brand-lockup {
+        align-items: flex-start;
+      }
+
+      .brand-divider {
+        display: none;
+      }
+
+      .topbar .actions {
+        justify-content: stretch;
+      }
+
+      .topbar .actions .btn {
+        flex: 1 1 auto;
+      }
+
+      .hero-inner,
+      .workflow-strip,
+      .workspace {
+        width: min(100% - 24px, 760px);
+      }
+
+      .workflow-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .workflow-step:nth-child(2) {
+        border-right: 0;
+      }
+
+      .workflow-step:nth-child(-n+2) {
+        border-bottom: 1px solid #e4edf3;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .cstar-logo {
+        font-size: 24px;
+      }
+
+      .hero-inner {
+        padding: 28px 0 30px;
+      }
+
+      .hero-copy h2 {
+        font-size: 30px;
+      }
+
+      .hero-copy p {
+        font-size: 15px;
+      }
+
+      .hero-metrics,
+      .workflow-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .metric {
+        min-height: 82px;
+      }
+
+      .workflow-step {
+        border-right: 0;
+        border-bottom: 1px solid #e4edf3;
+      }
+
+      .workflow-step:last-child {
+        border-bottom: 0;
+      }
+
+      .grid,
+      .grid.three,
+      .split,
+      .cards,
+      .checks {
+        grid-template-columns: 1fr;
+      }
+
+      .component,
+      .component-head {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media print {
+      .hero-panel,
+      .workflow-strip {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-lockup">
+          <div class="cstar-logo" aria-label="CSTAR">
+            <span>C</span><span>S</span><span>T</span><span>A</span><span>R</span>
+          </div>
+          <div class="brand-divider" aria-hidden="true"></div>
+          <div class="mark">UN</div>
+        </div>
+        <div>
+          <h1>危化判定</h1>
+          <div class="subtitle">喜事达供应链合规工具 · SDS、UN 号、CAS 与监管清单联合初筛 · v1.1.0</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="demoBtn" type="button"><span class="icon">◎</span>演示数据</button>
+        <button class="btn" id="saveBtn" type="button"><span class="icon">▣</span>保存</button>
+        <button class="btn" id="exportBtn" type="button"><span class="icon">J</span>JSON</button>
+        <button class="btn" id="csvBtn" type="button"><span class="icon">C</span>CSV</button>
+        <button class="btn" id="wordBtn" type="button"><span class="icon">W</span>Word</button>
+        <button class="btn" id="excelBtn" type="button"><span class="icon">X</span>Excel</button>
+        <button class="btn" id="pdfBtn" type="button"><span class="icon">P</span>PDF</button>
+        <button class="btn" id="jpgBtn" type="button"><span class="icon">I</span>JPG</button>
+        <button class="btn" id="printBtn" type="button"><span class="icon">□</span>打印</button>
+        <button class="btn danger" id="resetBtn" type="button"><span class="icon">×</span>清空</button>
+      </div>
+    </header>
+
+    <section class="hero-panel">
+      <div class="hero-inner">
+        <div class="hero-copy">
+          <div class="eyebrow">CSTAR SUPPLY CHAIN COMPLIANCE</div>
+          <h2>危化判定</h2>
+          <p>面向清关代理、货代订舱、仓储运输和企业合规团队，按 SDS、UN 号、CAS 成分、危化品目录和特殊监管清单，快速形成证件路径、缺资料清单和岗位任务。</p>
+        </div>
+        <div class="hero-metrics" aria-label="工具能力">
+          <div class="metric">
+            <strong>SDS</strong>
+            <span>读取关键章节并抽取运输分类</span>
+          </div>
+          <div class="metric">
+            <strong>UN</strong>
+            <span>校验危险货物类别与包装信息</span>
+          </div>
+          <div class="metric">
+            <strong>CAS</strong>
+            <span>结合目录和清单输出监管路径</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="workflow-strip" aria-label="使用流程">
+      <div class="workflow-step"><b>1</b><span>录入商品与业务方向</span></div>
+      <div class="workflow-step"><b>2</b><span>粘贴 SDS / 运输信息</span></div>
+      <div class="workflow-step"><b>3</b><span>核对目录与特殊监管</span></div>
+      <div class="workflow-step"><b>4</b><span>生成证件路径与任务</span></div>
+    </div>
+
+    <main class="workspace">
+      <div class="column input-column">
+        <section class="section">
+          <div class="section-head">
+            <h2>商品信息</h2>
+          </div>
+          <div class="section-body">
+            <div class="grid">
+              <div class="field">
+                <label for="cnName">商品中文名</label>
+                <input id="cnName" placeholder="例：清洗剂、丙酮、锂电池" />
+              </div>
+              <div class="field">
+                <label for="enName">商品英文名</label>
+                <input id="enName" placeholder="Product name" />
+              </div>
+              <div class="field">
+                <label for="model">型号/规格</label>
+                <input id="model" placeholder="浓度、包装、规格" />
+              </div>
+              <div class="field">
+                <label for="hsCode">HS 编码</label>
+                <input id="hsCode" inputmode="numeric" placeholder="10位海关编码" />
+              </div>
+            </div>
+
+            <div class="field" style="margin-top: 12px;">
+              <span class="label">商品形态</span>
+              <div class="segmented" id="productType">
+                <button class="segment active" type="button" data-value="substance">单一物质</button>
+                <button class="segment" type="button" data-value="mixture">混合物</button>
+                <button class="segment" type="button" data-value="article">物品</button>
+                <button class="segment" type="button" data-value="release">释放型物品</button>
+              </div>
+            </div>
+
+            <div class="grid three" style="margin-top: 12px;">
+              <div class="field">
+                <label for="direction">业务方向</label>
+                <select id="direction">
+                  <option value="both">进口 + 出口</option>
+                  <option value="import">进口</option>
+                  <option value="export">出口</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="transportMode">运输方式</label>
+                <select id="transportMode">
+                  <option value="sea">海运</option>
+                  <option value="air">空运</option>
+                  <option value="road">公路</option>
+                  <option value="rail">铁路</option>
+                  <option value="multi">多式联运</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="packaging">包装形式</label>
+                <select id="packaging">
+                  <option value="packaged">包装件</option>
+                  <option value="bulk">散装</option>
+                  <option value="exempt">限量/例外/豁免</option>
+                  <option value="unknown">待确认</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid three" style="margin-top: 12px;">
+              <div class="field">
+                <label for="supplier">供应商/生产商</label>
+                <input id="supplier" placeholder="用于SDS来源和责任追溯" />
+              </div>
+              <div class="field">
+                <label for="site">仓库/部门</label>
+                <input id="site" placeholder="例：上海仓、采购一部" />
+              </div>
+              <div class="field">
+                <label for="owner">责任人</label>
+                <input id="owner" placeholder="业务或合规负责人" />
+              </div>
+              <div class="field">
+                <label for="quantity">数量/吨位</label>
+                <input id="quantity" placeholder="例：500kg；2柜" />
+              </div>
+              <div class="field">
+                <label for="reviewYears">SDS复核阈值</label>
+                <select id="reviewYears">
+                  <option value="3">3年</option>
+                  <option value="5">5年</option>
+                  <option value="1">1年</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="caseStatus">结论状态</label>
+                <select id="caseStatus">
+                  <option value="draft">草稿</option>
+                  <option value="review">待复核</option>
+                  <option value="approved">已批准</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>SDS 与运输信息</h2>
+          </div>
+          <div class="section-body">
+            <div class="grid">
+              <div class="field">
+                <label for="msdsFile">MSDS/SDS文件</label>
+                <input id="msdsFile" type="file" accept=".pdf,.txt,.text,.sds,.csv" />
+              </div>
+              <div class="field">
+                <span class="label">MSDS解析</span>
+                <div class="actions" style="justify-content: flex-start;">
+                  <button class="btn" id="readMsdsBtn" type="button"><span class="icon">U</span>读取文件</button>
+                  <button class="btn" id="parseMsdsBtn" type="button"><span class="icon">A</span>自动识别</button>
+                </div>
+              </div>
+            </div>
+            <div class="field" style="margin-top: 12px;">
+              <label for="msdsText">MSDS/SDS文本</label>
+              <textarea id="msdsText" placeholder="可粘贴SDS第1、2、3、14、15部分，或读取文字版PDF后自动填入"></textarea>
+              <p class="note" id="msdsParseStatus">文字版PDF可尝试自动抽取；扫描件需要先OCR或复制文字。</p>
+            </div>
+
+            <div class="grid three">
+              <div class="field">
+                <label for="sdsDate">SDS 日期</label>
+                <input id="sdsDate" type="date" />
+              </div>
+              <div class="field">
+                <label for="unNumber">UN 号</label>
+                <input id="unNumber" placeholder="例：UN1993" />
+              </div>
+              <div class="field">
+                <label for="dgClass">危险货物类别</label>
+                <input id="dgClass" placeholder="例：3、8、9" />
+              </div>
+              <div class="field">
+                <label for="psn">正确运输名称</label>
+                <input id="psn" placeholder="Proper Shipping Name" />
+              </div>
+              <div class="field">
+                <label for="packingGroup">包装类别</label>
+                <select id="packingGroup">
+                  <option value="">未填写</option>
+                  <option value="I">I</option>
+                  <option value="II">II</option>
+                  <option value="III">III</option>
+                  <option value="N/A">不适用</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="flashPoint">闪点/关键理化数据</label>
+                <input id="flashPoint" placeholder="例：23°C；pH 13" />
+              </div>
+            </div>
+
+            <div class="checks" style="margin-top: 12px;">
+              <label class="check"><input id="transportRegulated" type="checkbox" /><span>SDS 第14部分显示按危险货物运输</span></label>
+              <label class="check"><input id="marinePollutant" type="checkbox" /><span>海洋污染物/环境危害运输标记</span></label>
+              <label class="check"><input id="needsStabilizer" type="checkbox" /><span>需添加抑制剂或稳定剂</span></label>
+              <label class="check"><input id="transportUnknown" type="checkbox" /><span>第14部分缺失或与理化数据冲突</span></label>
+              <label class="check"><input id="sdsVerified" type="checkbox" /><span>SDS来源已验证，供应商/生产商可追溯</span></label>
+              <label class="check"><input id="labelAvailable" type="checkbox" /><span>危险公示标签或运输标签样本已取得</span></label>
+            </div>
+
+            <div class="field" style="margin-top: 12px;">
+              <label for="transportText">SDS第14部分/运输文本</label>
+              <textarea id="transportText" placeholder="可粘贴 UN1993, FLAMMABLE LIQUID, N.O.S., Class 3, PG II 等运输信息"></textarea>
+            </div>
+            <div class="actions actions-inline" style="justify-content: flex-start; margin-top: 8px;">
+              <button class="btn" id="parseTransportBtn" type="button"><span class="icon">P</span>解析运输信息</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>成分与危化品目录</h2>
+            <button class="btn" id="addComponentBtn" type="button"><span class="icon">＋</span>成分</button>
+          </div>
+          <div class="section-body">
+            <div class="component-head">
+              <span>组分/CAS</span>
+              <span>名称</span>
+              <span>含量%</span>
+              <span>目录状态</span>
+              <span></span>
+            </div>
+            <div class="components" id="components"></div>
+            <div class="checks" style="margin-top: 12px;">
+              <label class="check"><input id="catalogSpecificEntry" type="checkbox" /><span>命中目录列明的溶液、浓度或特定品名条目</span></label>
+              <label class="check"><input id="hazardousByReport" type="checkbox" /><span>危险特性鉴定结论属于危险化学品</span></label>
+              <label class="check"><input id="catalogUnknown" type="checkbox" /><span>CAS/成分不完整，目录命中待确认</span></label>
+              <label class="check"><input id="dieselRule" type="checkbox" /><span>柴油且闭杯闪点未能证明均大于60°C</span></label>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>特殊监管清单</h2>
+          </div>
+          <div class="section-body">
+            <div class="checks">
+              <label class="check"><input id="newChemical" type="checkbox" /><span>未列入中国现有化学物质名录或新用途管理</span></label>
+              <label class="check"><input id="precursor" type="checkbox" /><span>易制毒化学品</span></label>
+              <label class="check"><input id="explosivePrecursor" type="checkbox" /><span>易制爆危险化学品</span></label>
+              <label class="check"><input id="controlledChemical" type="checkbox" /><span>监控化学品/CWC相关</span></label>
+              <label class="check"><input id="toxicRestricted" type="checkbox" /><span>严格限制的有毒化学品</span></label>
+              <label class="check"><input id="ods" type="checkbox" /><span>消耗臭氧层物质 ODS</span></label>
+              <label class="check"><input id="controlledHfc" type="checkbox" /><span>受控HFC/制冷剂许可证目录</span></label>
+              <label class="check"><input id="dualUse" type="checkbox" /><span>两用物项或相关技术</span></label>
+              <label class="check"><input id="sectorRegulated" type="checkbox" /><span>农药/食品/药品/化妆品等行业监管</span></label>
+            </div>
+            <div class="field" style="margin-top: 12px;">
+              <label for="notes">补充说明</label>
+              <textarea id="notes" placeholder="目的国要求、口岸要求、客户用途、检测机构结论等"></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>案例库</h2>
+            <button class="btn" id="saveCaseBtn" type="button"><span class="icon">S</span>入库</button>
+          </div>
+          <div class="section-body">
+            <div class="grid">
+              <div class="field">
+                <label for="casePicker">本地案例</label>
+                <select id="casePicker"></select>
+              </div>
+              <div class="field">
+                <span class="label">案例操作</span>
+                <div class="actions" style="justify-content: flex-start;">
+                  <button class="btn" id="loadCaseBtn" type="button"><span class="icon">L</span>加载</button>
+                  <button class="btn" id="deleteCaseBtn" type="button"><span class="icon">D</span>删除</button>
+                  <button class="btn" id="exportCasesBtn" type="button"><span class="icon">B</span>批量CSV</button>
+                </div>
+              </div>
+            </div>
+            <p class="note" id="caseStoreNote">案例只保存在当前浏览器本地。</p>
+          </div>
+        </section>
+
+        <div class="actions actions-inline">
+          <button class="btn primary" id="assessBtn" type="button"><span class="icon">✓</span>生成判定</button>
+        </div>
+      </div>
+
+      <div class="column">
+        <section class="section">
+          <div class="section-head">
+            <h2>判定结论</h2>
+          </div>
+          <div class="section-body result-hero">
+            <div class="summary">
+              <div class="badges" id="badges"></div>
+              <h2 class="summary-title" id="summaryTitle">等待录入</h2>
+              <p class="summary-text" id="summaryText">输入商品、成分和 SDS/UN 信息后生成结论。</p>
+            </div>
+            <div class="cards" id="scoreCards"></div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>判定依据</h2>
+          </div>
+          <div class="section-body">
+            <ul class="list" id="evidenceList"></ul>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>监管矩阵</h2>
+          </div>
+          <div class="section-body">
+            <ul class="list" id="regulatoryMatrix"></ul>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>进口证件与资料</h2>
+          </div>
+          <div class="section-body">
+            <ul class="list" id="importDocs"></ul>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>出口证件与资料</h2>
+          </div>
+          <div class="section-body">
+            <ul class="list" id="exportDocs"></ul>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>缺资料与风险提示</h2>
+          </div>
+          <div class="section-body">
+            <ul class="list" id="missingList"></ul>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>岗位任务</h2>
+          </div>
+          <div class="section-body">
+            <ul class="list" id="roleTasks"></ul>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>办理路径</h2>
+          </div>
+          <div class="section-body">
+            <ul class="list" id="workflowList"></ul>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2>审计摘要</h2>
+          </div>
+          <div class="section-body">
+            <ul class="list" id="auditList"></ul>
+          </div>
+        </section>
+
+        <div class="footer-note">
+          本工具用于合规初筛。正式申报前应按最新版法定名录、海关监管条件、目的国要求、运输规则和口岸口径复核。
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "msds-un-assessor-v1";
+    const CASE_STORE_KEY = "msds-un-assessor-cases-v1";
+
+    const $ = (id) => document.getElementById(id);
+
+    const fields = [
+      "cnName", "enName", "model", "hsCode", "direction", "transportMode", "packaging",
+      "supplier", "site", "owner", "quantity", "reviewYears", "caseStatus",
+      "sdsDate", "unNumber", "dgClass", "psn", "packingGroup", "flashPoint", "msdsText", "transportText", "notes"
+    ];
+
+    const checks = [
+      "transportRegulated", "marinePollutant", "needsStabilizer", "transportUnknown",
+      "sdsVerified", "labelAvailable",
+      "catalogSpecificEntry", "hazardousByReport", "catalogUnknown", "dieselRule",
+      "newChemical", "precursor", "explosivePrecursor", "controlledChemical",
+      "toxicRestricted", "ods", "controlledHfc", "dualUse", "sectorRegulated"
+    ];
+
+    const unNotices = {
+      UN1359: {
+        level: "risk",
+        title: "UN1359 疑似停用/异常UN号",
+        message: "UN1359在公开UN号清单中标注为不再使用，历史名称涉及空且未清洗袋类。不能仅凭该UN号作为当前运输分类依据，需回到最新版SDS第14部分或危险特性/运输条件鉴定确认。"
+      }
+    };
+
+    function getProductType() {
+      return document.querySelector("#productType .segment.active")?.dataset.value || "substance";
+    }
+
+    function setProductType(value) {
+      document.querySelectorAll("#productType .segment").forEach((button) => {
+        button.classList.toggle("active", button.dataset.value === value);
+      });
+    }
+
+    function componentRow(data = {}) {
+      const row = document.createElement("div");
+      row.className = "component";
+      row.innerHTML = `
+        <input class="component-cas" placeholder="CAS/组分" value="${escapeHtml(data.cas || "")}" />
+        <input class="component-name" placeholder="名称" value="${escapeHtml(data.name || "")}" />
+        <input class="component-percent" type="number" min="0" max="100" step="0.1" placeholder="%" value="${escapeHtml(data.percent || "")}" />
+        <select class="component-catalog">
+          <option value="unknown">待确认</option>
+          <option value="listed">目录内</option>
+          <option value="not_listed">非目录</option>
+        </select>
+        <button class="remove" type="button" title="删除成分">×</button>
+      `;
+      row.querySelector(".component-catalog").value = data.catalog || "unknown";
+      row.querySelector(".remove").addEventListener("click", () => {
+        row.remove();
+        assess();
+      });
+      row.querySelectorAll("input, select").forEach((el) => el.addEventListener("input", assess));
+      return row;
+    }
+
+    function addComponent(data) {
+      $("components").appendChild(componentRow(data));
+    }
+
+    function getComponents() {
+      return [...document.querySelectorAll(".component")].map((row) => ({
+        cas: row.querySelector(".component-cas").value.trim(),
+        name: row.querySelector(".component-name").value.trim(),
+        percent: Number(row.querySelector(".component-percent").value || 0),
+        percentRaw: row.querySelector(".component-percent").value.trim(),
+        catalog: row.querySelector(".component-catalog").value
+      }));
+    }
+
+    function collect() {
+      const data = {
+        productType: getProductType(),
+        components: getComponents()
+      };
+      fields.forEach((id) => data[id] = $(id).value.trim());
+      checks.forEach((id) => data[id] = $(id).checked);
+      return data;
+    }
+
+    function fill(data) {
+      fields.forEach((id) => {
+        if ($(id)) $(id).value = data[id] || "";
+      });
+      checks.forEach((id) => {
+        if ($(id)) $(id).checked = Boolean(data[id]);
+      });
+      setProductType(data.productType || "substance");
+      $("components").innerHTML = "";
+      (data.components || [{}]).forEach(addComponent);
+      if (!data.components || data.components.length === 0) addComponent();
+      assess();
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      })[char]);
+    }
+
+    function addItem(list, text, type = "ok") {
+      const li = document.createElement("li");
+      li.className = "item";
+      const dotClass = type === "warn" ? "warn" : type === "risk" ? "risk" : type === "info" ? "info" : "";
+      const symbol = type === "warn" ? "!" : type === "risk" ? "x" : type === "info" ? "i" : "v";
+      li.innerHTML = `<span class="dot ${dotClass}">${symbol}</span><span>${escapeHtml(text)}</span>`;
+      list.appendChild(li);
+    }
+
+    function setEmpty(list, text) {
+      const div = document.createElement("div");
+      div.className = "empty";
+      div.textContent = text;
+      list.appendChild(div);
+    }
+
+    function badge(text, color) {
+      const el = document.createElement("span");
+      el.className = `badge ${color}`;
+      el.textContent = text;
+      return el;
+    }
+
+    function card(title, value) {
+      const el = document.createElement("div");
+      el.className = "mini";
+      el.innerHTML = `<strong>${escapeHtml(title)}</strong><span>${escapeHtml(value)}</span>`;
+      return el;
+    }
+
+    function classify(data) {
+      const productType = data.productType;
+      const components = data.components;
+      const listedComponents = components.filter((c) => c.catalog === "listed");
+      const listedSum = listedComponents.reduce((sum, c) => sum + (Number(c.percent) || 0), 0);
+      const controlledHfc = isControlledHfc(data);
+      const hasUnknownCatalog = data.catalogUnknown || components.some((c) => c.catalog === "unknown");
+      const hasComponentMissing = components.some((c) => !c.cas && !c.name);
+      const hasPercentMissing = productType === "mixture" && components.some((c) => c.catalog === "listed" && !c.percentRaw);
+
+      const isChemical = productType === "substance" || productType === "mixture" || productType === "release";
+      const isArticle = productType === "article";
+
+      const normalizedUn = normalizeUn(data.unNumber);
+      const unNotice = normalizedUn ? unNotices[normalizedUn] : null;
+      const hasUn = Boolean(normalizedUn) && !unNotice;
+      const hasTransportClass = Boolean(data.dgClass || data.packingGroup || data.psn);
+      const isDangerousGoods = data.transportRegulated || hasUn || hasTransportClass;
+      const dangerousGoodsPending = (!isDangerousGoods && data.transportUnknown) || Boolean(unNotice);
+
+      let isHazChem = false;
+      let hazPending = false;
+      const hazReasons = [];
+
+      if (isChemical && productType === "substance" && listedComponents.length > 0) {
+        isHazChem = true;
+        hazReasons.push("单一物质 CAS/组分命中《危险化学品目录》");
+      }
+      if (isChemical && data.catalogSpecificEntry) {
+        isHazChem = true;
+        hazReasons.push("命中目录列明的溶液、浓度或特定品名条目");
+      }
+      if (isChemical && productType === "mixture" && listedSum >= 70) {
+        isHazChem = true;
+        hazReasons.push(`混合物目录内主要成分合计 ${listedSum.toFixed(1)}%，达到70%口径`);
+      }
+      if (isChemical && data.hazardousByReport) {
+        isHazChem = true;
+        hazReasons.push("危险特性鉴定分类结论属于危险化学品");
+      }
+      if (isChemical && data.dieselRule) {
+        isHazChem = true;
+        hazReasons.push("柴油闭杯闪点未能证明每批次均大于60°C");
+      }
+      if (isChemical && !isHazChem && hasUnknownCatalog) {
+        hazPending = true;
+      }
+
+      let category = "一般商品";
+      if (isChemical && !isDangerousGoods && !isHazChem && !hazPending && !dangerousGoodsPending) category = "一般化学品";
+      if (isDangerousGoods && !isHazChem) category = isChemical ? "危险品但非危险化学品" : "危险货物物品";
+      if (!isDangerousGoods && isHazChem) category = "危险化学品但非危险品";
+      if (isDangerousGoods && isHazChem) category = "危险品 + 危险化学品";
+      if (hazPending || dangerousGoodsPending) category = `${category}（待复核）`;
+
+      return {
+        isChemical,
+        isArticle,
+        isDangerousGoods,
+        dangerousGoodsPending,
+        isHazChem,
+        hazPending,
+        hazReasons,
+        listedSum,
+        hasUnknownCatalog,
+        hasComponentMissing,
+        hasPercentMissing,
+        normalizedUn,
+        unNotice,
+        controlledHfc,
+        category
+      };
+    }
+
+    function buildDocs(data, result) {
+      const importDocs = [];
+      const exportDocs = [];
+      const workflow = [];
+      const missing = [];
+      const evidence = [];
+
+      const wantsImport = data.direction === "both" || data.direction === "import";
+      const wantsExport = data.direction === "both" || data.direction === "export";
+
+      if (!data.cnName) missing.push(["商品中文名未填写", "warn"]);
+      if (!data.hsCode) missing.push(["HS编码未填写，无法核对监管条件和许可证目录", "warn"]);
+      if (!data.sdsDate) missing.push(["SDS日期未填写，需确认是否为最新版", "warn"]);
+      if (result.unNotice) missing.push([result.unNotice.message, result.unNotice.level]);
+      const sdsAge = getSdsAge(data);
+      if (sdsAge && sdsAge.years > Number(data.reviewYears || 3)) {
+        missing.push([`SDS已超过内部复核阈值 ${data.reviewYears || 3} 年，建议向供应商索取新版或确认无修订`, "warn"]);
+      }
+      if (!data.supplier && !data.sdsVerified) missing.push(["供应商/生产商或SDS来源未验证，审计追溯链条不完整", "warn"]);
+      if ((result.isDangerousGoods || result.isHazChem) && !data.labelAvailable) missing.push(["标签样本未取得，危险公示标签、运输标签或外包装标识需补齐", "warn"]);
+      if (result.isChemical && result.hasComponentMissing) missing.push(["成分/CAS信息不完整，危险化学品目录和特殊清单无法闭环", "risk"]);
+      if (result.hasPercentMissing) missing.push(["目录内成分缺少含量，混合物70%口径无法计算", "risk"]);
+      if (data.transportUnknown) missing.push(["SDS第14部分缺失或冲突，建议补充危险特性分类鉴别/运输条件鉴定", "risk"]);
+      if (data.packaging === "unknown") missing.push(["包装形式待确认，危包证和运输豁免无法判断", "warn"]);
+
+      evidence.push(result.isChemical ? "商品形态属于化学品或释放型物品" : "商品形态按物品处理，不直接按化学品判定");
+      if (result.unNotice) evidence.push(result.unNotice.title);
+      if (result.isDangerousGoods) evidence.push("UN号、运输类别或SDS第14部分显示按危险货物运输");
+      if (result.dangerousGoodsPending) evidence.push("运输危险性待复核，SDS第14部分或理化数据存在缺口");
+      if (result.isHazChem) result.hazReasons.forEach((reason) => evidence.push(reason));
+      if (result.hazPending) evidence.push("CAS/成分或目录状态待确认，危险化学品结论不能关闭");
+      if (data.newChemical) evidence.push("勾选新化学物质或新用途环境管理风险");
+      if (data.precursor) evidence.push("勾选易制毒化学品");
+      if (data.explosivePrecursor) evidence.push("勾选易制爆危险化学品");
+      if (data.controlledChemical) evidence.push("勾选监控化学品/CWC相关");
+      if (data.toxicRestricted) evidence.push("勾选严格限制的有毒化学品");
+      if (data.ods) evidence.push("勾选消耗臭氧层物质");
+      if (result.controlledHfc) evidence.push("命中受控HFC/制冷剂许可证目录风险，如R134a/HFC-134a、HS 2903450000或相关混合物");
+      if (data.dualUse) evidence.push("勾选两用物项或相关技术");
+
+      if (wantsImport) {
+        importDocs.push("合同、发票、装箱单、提单/运单、申报要素、HS编码、SDS、成分说明、用途说明");
+        if (result.isHazChem) {
+          importDocs.push("《进口危险化学品企业符合性声明》");
+          importDocs.push("中文危险公示标签样本、中文安全数据单样本");
+          importDocs.push("报关填报危险类别、包装类别、UN号、包装UN标记；散装按规定处理");
+          if (data.needsStabilizer) importDocs.push("抑制剂或稳定剂实际名称、数量等情况说明");
+          importDocs.push("首次进口目录内危险化学品前，办理危险化学品登记");
+        }
+        if (data.newChemical) importDocs.push("生产/进口前办理新化学物质常规登记、简易登记或备案");
+        if (data.precursor) importDocs.push("易制毒化学品进口批复单及两用物项和技术进口许可证");
+        if (data.controlledChemical) importDocs.push("监控化学品进口批准文件及两用物项和技术进口许可证");
+        if (data.toxicRestricted) importDocs.push("有毒化学品进口环境管理放行通知单");
+        if (data.ods) importDocs.push("受控ODS审批/配额文件及进口许可证");
+        if (result.controlledHfc) importDocs.push("受控HFC/制冷剂按2026年进口许可证目录核对HS，命中时办理进口许可证");
+        if (data.dualUse) importDocs.push("两用物项和技术进口许可证；放射性同位素等按专项规定先报批");
+        if (data.sectorRegulated) importDocs.push("农药、食品、药品、化妆品等行业注册/备案、标签和检验检疫资料");
+      }
+
+      if (wantsExport) {
+        exportDocs.push("合同、发票、装箱单、提单/运单、申报要素、HS编码、SDS、成分说明、用途说明");
+        if (result.isHazChem) {
+          exportDocs.push("《出口危险化学品生产企业符合性声明》");
+          exportDocs.push("危险特性分类鉴别报告");
+          exportDocs.push("危险公示标签、安全数据单样本；外文样本提供中文翻译件");
+          if (data.needsStabilizer) exportDocs.push("抑制剂或稳定剂实际名称、数量等情况说明");
+        }
+        if (result.isDangerousGoods && data.packaging !== "bulk" && data.packaging !== "exempt") {
+          exportDocs.push("《出境货物运输包装性能检验结果单》");
+          exportDocs.push("《出境危险货物运输包装使用鉴定结果单》");
+          exportDocs.push("出口危险货物危险特性分类鉴别报告；用于危包使用鉴定、订舱和运输分类复核");
+        }
+        if (result.isDangerousGoods) {
+          exportDocs.push("危险货物订舱/申报资料；空运DGD或海运危险货物申报按运输方式执行");
+          exportDocs.push("如使用钢瓶、罐箱或其他压力容器，另核对气瓶/压力容器检验、定检、阀门保护帽、容器标记及口岸对危包证适用口径");
+        }
+        if (data.precursor) exportDocs.push("易制毒化学品出口批复单、两用物项和技术出口许可证、进口方合法使用证明或保证文件");
+        if (data.controlledChemical) exportDocs.push("监控化学品出口批准文件及两用物项和技术出口许可证");
+        if (data.toxicRestricted) exportDocs.push("有毒化学品出口环境管理放行通知单");
+        if (data.ods) exportDocs.push("受控ODS审批/配额文件及出口许可证");
+        if (result.controlledHfc) exportDocs.push("受控HFC/制冷剂按2026年出口许可证目录核对HS，命中时办理出口许可证");
+        if (data.dualUse) exportDocs.push("两用物项出口许可证；准备技术说明/检测报告、最终用户和最终用途证明");
+        if (data.sectorRegulated) exportDocs.push("按目的国和中国行业监管要求准备注册/备案、标签、检验报告");
+      }
+
+      workflow.push("用SDS第2、3、9、10、14、15部分核对GHS分类、成分、理化性质、运输信息和法规信息");
+      workflow.push("用CAS、成分占比和特定条目核对危险化学品目录；混合物计算目录内主要成分合计比例");
+      workflow.push("用UN号、Class、PG和运输方式核对危险货物包装、订舱和申报要求");
+      workflow.push("按HS编码和商品描述核对海关监管条件、进出口许可证目录、两用物项目录和特殊行业要求");
+      if (result.isDangerousGoods && data.packaging === "packaged") workflow.push("出口危险货物先做危包性能检验，再做危包使用鉴定");
+      if (result.isHazChem) workflow.push("进出口危险化学品按海关危险化学品及其包装检验监管提交符合性声明、标签、SDS等资料");
+      if (data.precursor || data.controlledChemical || data.dualUse) workflow.push("两用/易制毒/监控化学品先取得主管部门批复或许可证，再向海关申报验核");
+      if (result.controlledHfc) workflow.push("R134a/HFC及其混合物需先按HS编码核对2026年进出口许可证目录，再办理商务主管部门许可证后通关");
+      if (data.newChemical) workflow.push("新化学物质在生产或进口前完成生态环境部登记或备案，取得结果后再开展进口");
+
+      return { importDocs, exportDocs, workflow, missing, evidence };
+    }
+
+    function getSdsAge(data) {
+      if (!data.sdsDate) return null;
+      const date = new Date(`${data.sdsDate}T00:00:00`);
+      if (Number.isNaN(date.getTime())) return null;
+      const now = new Date();
+      const days = Math.floor((now - date) / 86400000);
+      return { days, years: days / 365.25 };
+    }
+
+    function normalizeUn(value) {
+      const match = String(value || "").toUpperCase().match(/\bUN\s?(\d{4})\b/);
+      return match ? `UN${match[1]}` : "";
+    }
+
+    function isControlledHfc(data) {
+      if (data.controlledHfc) return true;
+      const hs = String(data.hsCode || "").replace(/\D/g, "");
+      if (["2903450000", "3827640000", "3827680000"].includes(hs)) return true;
+      const nameText = `${data.cnName || ""} ${data.enName || ""} ${data.model || ""}`.toUpperCase();
+      if (/(R-?134A|HFC-?134A|1,1,1,2-?TETRAFLUOROETHANE|四氟乙烷)/i.test(nameText)) return true;
+      return (data.components || []).some((component) => {
+        const cas = String(component.cas || "").replace(/\D/g, "");
+        const name = String(component.name || "").toUpperCase();
+        return cas === "811972" || /(R-?134A|HFC-?134A|1,1,1,2-?TETRAFLUOROETHANE|四氟乙烷)/i.test(name);
+      });
+    }
+
+    function computeCompleteness(data, result) {
+      const items = [];
+      const add = (ok, label) => items.push({ ok: Boolean(ok), label });
+
+      add(data.cnName || data.enName, "商品名称");
+      add(data.hsCode, "HS编码");
+      add(data.sdsDate, "SDS日期");
+      add(data.supplier || data.sdsVerified, "SDS来源/供应商");
+      add(data.direction, "业务方向");
+      add(data.packaging && data.packaging !== "unknown", "包装形式");
+
+      if (result.isChemical || result.hazPending) {
+        add(data.components.length > 0 && !result.hasComponentMissing, "CAS/成分信息");
+        add(!result.hasUnknownCatalog, "危化品目录状态");
+        if (data.productType === "mixture") add(!result.hasPercentMissing, "混合物含量");
+      }
+
+      if (result.isDangerousGoods || result.dangerousGoodsPending) {
+        add(data.unNumber, "UN号");
+        add(data.dgClass, "危险货物类别");
+        add(data.psn, "正确运输名称");
+        add(data.packingGroup || data.packaging === "exempt", "包装类别/豁免依据");
+      }
+
+      if (result.isHazChem || result.hazPending) {
+        add(data.labelAvailable, "标签样本");
+        add(data.sdsVerified || data.supplier, "SDS来源验证");
+      }
+
+      const complete = items.filter((item) => item.ok).length;
+      const score = items.length ? Math.round((complete / items.length) * 100) : 0;
+      const status = score >= 85 ? "可进入申报复核" : score >= 65 ? "资料基本可用" : "资料缺口较多";
+      return {
+        score,
+        status,
+        missing: items.filter((item) => !item.ok).map((item) => item.label)
+      };
+    }
+
+    function buildRegulatoryMatrix(data, result, completeness) {
+      const rows = [];
+      rows.push(`资料完整度：${completeness.score}%（${completeness.status}）`);
+      rows.push(`化学品属性：${result.isChemical ? "按化学品/释放型物品初筛" : "按物品初筛"}`);
+      if (result.unNotice) rows.push(`UN号有效性：${result.unNotice.title}，需用最新版运输规则或鉴定报告复核`);
+      rows.push(`运输危险货物：${result.isDangerousGoods ? "触发UN/运输分类要求" : result.dangerousGoodsPending ? "待运输鉴定" : "暂未触发"}`);
+      rows.push(`中国危险化学品：${result.isHazChem ? "触发目录/鉴定/混合物口径" : result.hazPending ? "待目录和成分复核" : "暂未触发"}`);
+      rows.push(`海关申报：按HS编码、监管条件、进出口危险化学品及包装检验要求复核`);
+      if (result.isDangerousGoods) rows.push(`运输/包装：按${transportLabel(data.transportMode)}规则准备危险品订舱、包装和申报资料`);
+      if (result.isHazChem) rows.push("应急管理/境内流通：关注危险化学品登记、经营、仓储、使用或生产资质");
+      if (data.newChemical) rows.push("生态环境：生产或进口前核对新化学物质登记、简易登记或备案");
+      if (data.precursor || data.controlledChemical || data.dualUse) rows.push("商务/海关：核对两用物项、易制毒或监控化学品许可证路径");
+      if (result.controlledHfc) rows.push("商务/海关：受控HFC/制冷剂按进出口许可证目录核对，纯R134a常见HS为2903450000");
+      if (data.explosivePrecursor) rows.push("公安：境内购买、销售、流向和治安防范要求需同步确认");
+      if (data.toxicRestricted) rows.push("生态环境/海关：核对有毒化学品进出口环境管理放行通知单");
+      if (data.ods) rows.push("生态环境/商务/海关：核对ODS审批、配额和进出口许可证");
+      if (result.controlledHfc) rows.push("生态环境/商务/海关：核对受控HFC配额、用途和许可证管理要求");
+      if (data.sectorRegulated) rows.push("行业主管部门：农药、食品、药品、化妆品等专项准入另行核对");
+      return rows;
+    }
+
+    function buildRoleTasks(data, result, lists, completeness) {
+      const tasks = [];
+      const missing = completeness.missing.length ? `补齐：${completeness.missing.join("、")}` : "保持资料版本和来源可追溯";
+      tasks.push(`业务/采购：向供应商确认SDS、成分、用途、标签和包装资料；${missing}`);
+      tasks.push("合规：按CAS、含量、目录条目、特殊监管清单和鉴定报告关闭判定依据");
+      tasks.push("报关：核对HS编码、申报要素、监管条件、许可证目录和口岸资料上传要求");
+      if (result.isDangerousGoods) tasks.push("物流：核对UN号、PSN、Class、PG、限量/例外数量、危包证和订舱资料");
+      if (result.isHazChem) tasks.push("仓储/EHS：确认中文SDS、危险公示标签、库区条件、应急措施和境内资质");
+      if (lists.missing.length) tasks.push(`负责人${data.owner ? "（" + data.owner + "）" : ""}：处理${lists.missing.length}项缺资料/风险提示后再提交批准`);
+      if (data.caseStatus !== "approved") tasks.push("管理者：资料复核完成后将结论状态更新为已批准，再用于正式申报");
+      return tasks;
+    }
+
+    function buildAudit(data, result, lists, completeness) {
+      const sdsAge = getSdsAge(data);
+      const triggers = [];
+      if (result.isDangerousGoods) triggers.push("危险货物");
+      if (result.isHazChem) triggers.push("危险化学品");
+      if (data.precursor || data.controlledChemical || data.dualUse || data.ods || result.controlledHfc || data.toxicRestricted || data.newChemical) triggers.push("特殊监管清单");
+      if (!triggers.length) triggers.push("一般化学品/一般物品初筛");
+
+      return [
+        `审计编号：${makeAuditId(data)}`,
+        `生成时间：${formatDateTime(new Date())}`,
+        `结论状态：${statusLabel(data.caseStatus)}；资料完整度：${completeness.score}%`,
+        `责任链：${data.owner || "未填责任人"} / ${data.site || "未填站点"} / ${data.supplier || "未填供应商"}`,
+        `关键触发：${triggers.join("、")}`,
+        `SDS状态：${data.sdsDate ? data.sdsDate + (sdsAge ? `，约${Math.max(0, sdsAge.years).toFixed(1)}年` : "") : "未填日期"}`,
+        `未关闭风险：${lists.missing.length}项；导出JSON/CSV可作为内部流转记录`
+      ];
+    }
+
+    function makeAuditId(data) {
+      const seed = `${data.cnName || data.enName || "ITEM"}-${data.hsCode || "HS"}-${Date.now()}`;
+      let hash = 0;
+      for (let i = 0; i < seed.length; i += 1) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+      return `MSDS-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${Math.abs(hash).toString(36).toUpperCase()}`;
+    }
+
+    function formatDateTime(date) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+    }
+
+    function statusLabel(value) {
+      return value === "approved" ? "已批准" : value === "review" ? "待复核" : "草稿";
+    }
+
+    function transportLabel(value) {
+      return {
+        sea: "海运",
+        air: "空运",
+        road: "公路",
+        rail: "铁路",
+        multi: "多式联运"
+      }[value] || "运输";
+    }
+
+    function assess() {
+      const data = collect();
+      const result = classify(data);
+      const lists = buildDocs(data, result);
+      const completeness = computeCompleteness(data, result);
+      const regulatoryMatrix = buildRegulatoryMatrix(data, result, completeness);
+      const roleTasks = buildRoleTasks(data, result, lists, completeness);
+      const audit = buildAudit(data, result, lists, completeness);
+
+      const badges = $("badges");
+      const scoreCards = $("scoreCards");
+      badges.innerHTML = "";
+      scoreCards.innerHTML = "";
+
+      badges.appendChild(badge(result.isChemical ? "化学品" : "非化学品/物品", result.isChemical ? "teal" : "blue"));
+      badges.appendChild(badge(result.isDangerousGoods ? "危险货物" : result.dangerousGoodsPending ? "运输待鉴定" : "非危险货物", result.isDangerousGoods ? "amber" : result.dangerousGoodsPending ? "red" : "green"));
+      badges.appendChild(badge(result.isHazChem ? "危险化学品" : result.hazPending ? "危化待复核" : "非危险化学品", result.isHazChem ? "red" : result.hazPending ? "amber" : "green"));
+      if (data.precursor || data.controlledChemical || data.dualUse) badges.appendChild(badge("重点管制", "violet"));
+
+      $("summaryTitle").textContent = result.category;
+      $("summaryText").textContent = buildSummary(data, result);
+
+      scoreCards.appendChild(card("危险货物", result.isDangerousGoods ? `${data.unNumber || "UN未填"} ${data.dgClass ? "Class " + data.dgClass : ""}`.trim() : result.dangerousGoodsPending ? "待鉴定" : "未触发"));
+      scoreCards.appendChild(card("危险化学品", result.isHazChem ? "触发目录/鉴定/混合物口径" : result.hazPending ? "CAS或目录状态待确认" : "未触发"));
+      scoreCards.appendChild(card("目录内成分合计", `${result.listedSum.toFixed(1)}%`));
+      scoreCards.appendChild(card("业务方向", data.direction === "both" ? "进口 + 出口" : data.direction === "import" ? "进口" : "出口"));
+      scoreCards.appendChild(card("资料完整度", `${completeness.score}% · ${completeness.status}`));
+      scoreCards.appendChild(card("结论状态", statusLabel(data.caseStatus)));
+
+      renderList("evidenceList", lists.evidence, "暂无判定依据。", "info");
+      renderList("regulatoryMatrix", regulatoryMatrix, "暂无监管矩阵。", "info");
+      renderList("importDocs", lists.importDocs, "当前业务方向不涉及进口，或未触发进口专项证件。", "ok");
+      renderList("exportDocs", lists.exportDocs, "当前业务方向不涉及出口，或未触发出口专项证件。", "ok");
+      renderMissing(lists.missing);
+      renderList("roleTasks", roleTasks, "暂无岗位任务。", "info");
+      renderList("workflowList", lists.workflow, "暂无办理路径。", "info");
+      renderList("auditList", audit, "暂无审计摘要。", "info");
+
+      return { data, result, lists, completeness, regulatoryMatrix, roleTasks, audit };
+    }
+
+    function buildSummary(data, result) {
+      const name = data.cnName || data.enName || "该商品";
+      if (result.isDangerousGoods && result.isHazChem) {
+        return `${name} 同时触发运输危险货物和中国危险化学品口径，进出口危险化学品检验、危险货物运输及包装要求需要叠加执行。`;
+      }
+      if (result.isDangerousGoods) {
+        return `${name} 触发运输危险货物口径，重点处理UN信息、危险品订舱、包装和运输申报；是否危险化学品仍以目录、CAS和鉴定结论为准。`;
+      }
+      if (result.isHazChem) {
+        return `${name} 触发危险化学品口径，重点处理海关危险化学品检验、中文标签/SDS、登记和境内经营/仓储资质。`;
+      }
+      if (result.hazPending || result.dangerousGoodsPending) {
+        return `${name} 存在资料缺口，建议补齐SDS、CAS、成分含量或鉴定报告后再出最终结论。`;
+      }
+      if (result.isChemical) {
+        return `${name} 暂按一般化学品处理，仍需按HS编码和特殊清单核对许可证、法检、行业监管和目的国要求。`;
+      }
+      return `${name} 暂按非化学品/物品处理，若含电池、气体、磁性材料或有意释放化学物质，应按对应专项规则复核。`;
+    }
+
+    function renderList(id, items, emptyText, type) {
+      const list = $(id);
+      list.innerHTML = "";
+      if (!items.length) {
+        setEmpty(list, emptyText);
+        return;
+      }
+      items.forEach((item) => addItem(list, item, type));
+    }
+
+    function renderMissing(items) {
+      const list = $("missingList");
+      list.innerHTML = "";
+      if (!items.length) {
+        setEmpty(list, "关键资料齐备度良好。正式申报前仍需按最新版名录和口岸要求复核。");
+        return;
+      }
+      items.forEach(([text, type]) => addItem(list, text, type));
+    }
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(collect()));
+      assess();
+    }
+
+    function exportResult() {
+      const payload = assess();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const name = (payload.data.cnName || payload.data.enName || "msds-un-result").replace(/[\\/:*?"<>|]/g, "_");
+      a.href = url;
+      a.download = `${name}-判定结果.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function exportCsvResult() {
+      const payload = assess();
+      const headers = [
+        "商品中文名", "商品英文名", "型号/规格", "HS编码", "供应商/生产商", "仓库/部门", "责任人",
+        "业务方向", "运输方式", "包装形式", "SDS日期", "UN号", "危险货物类别", "正确运输名称",
+        "包装类别", "判定结论", "是否化学品", "是否危险货物", "是否危险化学品", "资料完整度",
+        "进口证件", "出口证件", "缺资料/风险", "监管矩阵", "审计编号"
+      ];
+      const auditId = payload.audit[0]?.replace("审计编号：", "") || "";
+      const row = [
+        payload.data.cnName, payload.data.enName, payload.data.model, payload.data.hsCode,
+        payload.data.supplier, payload.data.site, payload.data.owner,
+        payload.data.direction, payload.data.transportMode, payload.data.packaging,
+        payload.data.sdsDate, payload.data.unNumber, payload.data.dgClass, payload.data.psn,
+        payload.data.packingGroup, payload.result.category,
+        payload.result.isChemical ? "是" : "否",
+        payload.result.isDangerousGoods ? "是" : "否",
+        payload.result.isHazChem ? "是" : "否",
+        `${payload.completeness.score}%`,
+        payload.lists.importDocs.join("；"),
+        payload.lists.exportDocs.join("；"),
+        payload.lists.missing.map((item) => item[0]).join("；"),
+        payload.regulatoryMatrix.join("；"),
+        auditId
+      ];
+      const csv = "\uFEFF" + [headers, row].map((line) => line.map(csvCell).join(",")).join("\r\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const name = (payload.data.cnName || payload.data.enName || "msds-un-result").replace(/[\\/:*?"<>|]/g, "_");
+      a.href = url;
+      a.download = `${name}-判定台账.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function csvCell(value) {
+      const text = String(value ?? "");
+      return `"${text.replaceAll('"', '""')}"`;
+    }
+
+    function exportWordResult() {
+      const payload = assess();
+      const blob = new Blob(["\uFEFF", buildReportHtml(payload, "word")], { type: "application/msword;charset=utf-8" });
+      downloadBlob(blob, `${reportFileName(payload)}-判定报告.doc`);
+    }
+
+    function exportExcelResult() {
+      const payload = assess();
+      const html = buildExcelHtml(payload);
+      const blob = new Blob(["\uFEFF", html], { type: "application/vnd.ms-excel;charset=utf-8" });
+      downloadBlob(blob, `${reportFileName(payload)}-判定台账.xls`);
+    }
+
+    function exportPdfResult() {
+      const payload = assess();
+      const win = window.open("", "_blank");
+      if (!win) {
+        alert("浏览器阻止了PDF窗口，请允许弹窗后重试。");
+        return;
+      }
+      win.document.open();
+      win.document.write(buildReportHtml(payload, "pdf"));
+      win.document.close();
+      win.focus();
+      setTimeout(() => win.print(), 300);
+    }
+
+    function exportJpgResult() {
+      const payload = assess();
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const width = 1600;
+      const margin = 80;
+      const contentWidth = width - margin * 2;
+      const sections = buildReportSections(payload);
+      const lines = [];
+
+      lines.push({ type: "brand", text: "CSTAR  危化判定" });
+      lines.push({ type: "title", text: payload.result.category || "危化判定报告" });
+      lines.push({ type: "body", text: buildSummary(payload.data, payload.result) });
+      lines.push({ type: "space" });
+      buildReportRows(payload).forEach(([label, value]) => lines.push({ type: "kv", label, text: value || "-" }));
+      sections.forEach((section) => {
+        lines.push({ type: "space" });
+        lines.push({ type: "section", text: section.title });
+        section.items.forEach((item) => lines.push({ type: "body", text: `• ${item}` }));
+      });
+
+      ctx.font = "26px Microsoft YaHei, Arial, sans-serif";
+      const measured = [];
+      lines.forEach((line) => {
+        if (line.type === "space") {
+          measured.push({ ...line, height: 22 });
+          return;
+        }
+        ctx.font = jpgFont(line.type);
+        const text = line.type === "kv" ? `${line.label}：${line.text}` : line.text;
+        const wrapped = wrapCanvasText(ctx, text, contentWidth);
+        measured.push({ ...line, wrapped, height: wrapped.length * jpgLineHeight(line.type) + jpgBlockGap(line.type) });
+      });
+
+      const height = Math.max(900, margin * 2 + measured.reduce((sum, line) => sum + line.height, 0));
+      canvas.width = width;
+      canvas.height = height;
+
+      ctx.fillStyle = "#f4f8fb";
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = "#07889a";
+      ctx.fillRect(0, 0, width, 18);
+      ctx.fillStyle = "#ffffff";
+      roundRect(ctx, 48, 48, width - 96, height - 96, 18);
+      ctx.fill();
+
+      let y = margin;
+      measured.forEach((line) => {
+        if (line.type === "space") {
+          y += line.height;
+          return;
+        }
+        ctx.font = jpgFont(line.type);
+        ctx.fillStyle = jpgColor(line.type);
+        const lineHeight = jpgLineHeight(line.type);
+        line.wrapped.forEach((text) => {
+          ctx.fillText(text, margin, y + lineHeight);
+          y += lineHeight;
+        });
+        y += jpgBlockGap(line.type);
+      });
+
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          const a = document.createElement("a");
+          a.href = canvas.toDataURL("image/jpeg", 0.92);
+          a.download = `${reportFileName(payload)}-判定报告.jpg`;
+          a.click();
+          return;
+        }
+        downloadBlob(blob, `${reportFileName(payload)}-判定报告.jpg`);
+      }, "image/jpeg", 0.92);
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function reportFileName(payload) {
+      return (payload.data.cnName || payload.data.enName || "危化判定").replace(/[\\/:*?"<>|]/g, "_");
+    }
+
+    function buildReportRows(payload) {
+      const data = payload.data;
+      const result = payload.result;
+      const auditId = payload.audit[0]?.replace("审计编号：", "") || "";
+      return [
+        ["商品中文名", data.cnName],
+        ["商品英文名", data.enName],
+        ["型号/规格", data.model],
+        ["HS编码", data.hsCode],
+        ["供应商/生产商", data.supplier],
+        ["仓库/部门", data.site],
+        ["责任人", data.owner],
+        ["业务方向", directionLabel(data.direction)],
+        ["运输方式", transportLabel(data.transportMode)],
+        ["包装形式", packagingLabel(data.packaging)],
+        ["SDS日期", data.sdsDate],
+        ["UN号", data.unNumber],
+        ["危险货物类别", data.dgClass],
+        ["正确运输名称", data.psn],
+        ["包装类别", data.packingGroup],
+        ["判定结论", result.category],
+        ["是否化学品", result.isChemical ? "是" : "否"],
+        ["是否危险货物", result.isDangerousGoods ? "是" : "否"],
+        ["是否危险化学品", result.isHazChem ? "是" : "否"],
+        ["资料完整度", `${payload.completeness.score}% · ${payload.completeness.status}`],
+        ["结论状态", statusLabel(data.caseStatus)],
+        ["审计编号", auditId]
+      ];
+    }
+
+    function buildReportSections(payload) {
+      return [
+        { title: "判定依据", items: normalizeReportItems(payload.lists.evidence) },
+        { title: "监管矩阵", items: normalizeReportItems(payload.regulatoryMatrix) },
+        { title: "进口证件与资料", items: normalizeReportItems(payload.lists.importDocs) },
+        { title: "出口证件与资料", items: normalizeReportItems(payload.lists.exportDocs) },
+        { title: "缺资料与风险提示", items: normalizeReportItems(payload.lists.missing.map((item) => item[0])) },
+        { title: "岗位任务", items: normalizeReportItems(payload.roleTasks) },
+        { title: "办理路径", items: normalizeReportItems(payload.lists.workflow) },
+        { title: "审计摘要", items: normalizeReportItems(payload.audit) }
+      ];
+    }
+
+    function normalizeReportItems(items) {
+      return (items && items.length ? items : ["暂无"]).map((item) => String(item || "-"));
+    }
+
+    function buildReportHtml(payload, mode) {
+      const rows = buildReportRows(payload);
+      const sections = buildReportSections(payload);
+      const generatedAt = formatDateTime(new Date());
+      return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>危化判定报告</title>
+  <style>
+    body { margin: 0; padding: 32px; color: #172536; font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif; background: #f4f8fb; }
+    .report { max-width: 980px; margin: 0 auto; padding: 34px; background: #fff; border: 1px solid #dce6ee; border-radius: 8px; }
+    .brand { color: #07889a; font-size: 13px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; }
+    h1 { margin: 10px 0 8px; font-size: 30px; line-height: 1.2; color: #172536; }
+    .summary { margin: 0 0 22px; color: #617386; line-height: 1.7; }
+    table { width: 100%; border-collapse: collapse; margin: 14px 0 24px; }
+    th, td { border: 1px solid #dce6ee; padding: 9px 10px; text-align: left; vertical-align: top; font-size: 13px; }
+    th { width: 180px; color: #2d4258; background: #eef7f8; }
+    h2 { margin: 22px 0 8px; color: #07889a; font-size: 18px; }
+    ul { margin: 0 0 12px; padding-left: 20px; }
+    li { margin: 5px 0; line-height: 1.55; }
+    .meta { margin-top: 22px; color: #7a8a9c; font-size: 12px; }
+    @media print { body { background: #fff; padding: 0; } .report { border: 0; } }
+  </style>
+</head>
+<body>
+  <div class="report">
+    <div class="brand">CSTAR SUPPLY CHAIN COMPLIANCE</div>
+    <h1>危化判定报告</h1>
+    <p class="summary">${escapeHtml(buildSummary(payload.data, payload.result))}</p>
+    <table>
+      <tbody>
+        ${rows.map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value || "-")}</td></tr>`).join("")}
+      </tbody>
+    </table>
+    ${sections.map((section) => `<h2>${escapeHtml(section.title)}</h2><ul>${section.items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`).join("")}
+    <div class="meta">生成时间：${escapeHtml(generatedAt)}${mode === "pdf" ? " · 请在打印窗口选择“另存为 PDF”" : ""}</div>
+  </div>
+</body>
+</html>`;
+    }
+
+    function buildExcelHtml(payload) {
+      const rows = buildReportRows(payload);
+      const sections = buildReportSections(payload);
+      const sectionRows = sections.flatMap((section) => [
+        [`【${section.title}】`, ""],
+        ...section.items.map((item) => [item, ""])
+      ]);
+      const allRows = [
+        ["危化判定报告", ""],
+        ["报告摘要", buildSummary(payload.data, payload.result)],
+        ...rows,
+        ...sectionRows
+      ];
+      return `<!doctype html><html><head><meta charset="utf-8" /></head><body><table>${allRows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell || "-")}</td>`).join("")}</tr>`).join("")}</table></body></html>`;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function directionLabel(value) {
+      return value === "both" ? "进口 + 出口" : value === "import" ? "进口" : value === "export" ? "出口" : value || "";
+    }
+
+    function packagingLabel(value) {
+      return {
+        packaged: "包装件",
+        bulk: "散装",
+        exempt: "限量/例外/豁免",
+        unknown: "待确认"
+      }[value] || value || "";
+    }
+
+    function jpgFont(type) {
+      return {
+        brand: "bold 28px Microsoft YaHei, Arial, sans-serif",
+        title: "bold 54px Microsoft YaHei, Arial, sans-serif",
+        section: "bold 32px Microsoft YaHei, Arial, sans-serif",
+        kv: "26px Microsoft YaHei, Arial, sans-serif",
+        body: "26px Microsoft YaHei, Arial, sans-serif"
+      }[type] || "26px Microsoft YaHei, Arial, sans-serif";
+    }
+
+    function jpgColor(type) {
+      return {
+        brand: "#07889a",
+        title: "#172536",
+        section: "#07889a",
+        kv: "#2d4258",
+        body: "#4f6072"
+      }[type] || "#172536";
+    }
+
+    function jpgLineHeight(type) {
+      return type === "title" ? 64 : type === "section" ? 42 : 36;
+    }
+
+    function jpgBlockGap(type) {
+      return type === "title" ? 24 : type === "section" ? 12 : 8;
+    }
+
+    function wrapCanvasText(ctx, text, maxWidth) {
+      const result = [];
+      let line = "";
+      for (const char of String(text || "")) {
+        const next = line + char;
+        if (ctx.measureText(next).width > maxWidth && line) {
+          result.push(line);
+          line = char;
+        } else {
+          line = next;
+        }
+      }
+      if (line) result.push(line);
+      return result;
+    }
+
+    function roundRect(ctx, x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.arcTo(x + width, y, x + width, y + height, radius);
+      ctx.arcTo(x + width, y + height, x, y + height, radius);
+      ctx.arcTo(x, y + height, x, y, radius);
+      ctx.arcTo(x, y, x + width, y, radius);
+      ctx.closePath();
+    }
+
+    function parseTransportInfo() {
+      const text = ($("transportText").value || "").replace(/\s+/g, " ").trim();
+      if (!text) return;
+
+      const unMatch = text.match(/\bUN\s?(\d{4})\b/i);
+      const classMatch = text.match(/\b(?:Class|Division|危险(?:货物)?类别|类别)\s*[:：]?\s*([1-9](?:\.\d)?)\b/i);
+      const pgMatch = text.match(/\b(?:PG|Packing\s*Group|包装类别)\s*[:：]?\s*(I{1,3}|1|2|3)\b/i);
+      const psnMatch = text.match(/\bUN\s?\d{4}\b\s*[,;，；-]?\s*([A-Z][A-Z0-9 .,'()/-]{4,})/);
+
+      if (unMatch) {
+        $("unNumber").value = `UN${unMatch[1]}`;
+        $("transportRegulated").checked = !unNotices[`UN${unMatch[1]}`];
+        $("transportUnknown").checked = Boolean(unNotices[`UN${unMatch[1]}`]);
+      }
+      if (classMatch) $("dgClass").value = classMatch[1];
+      if (pgMatch) $("packingGroup").value = normalizePackingGroup(pgMatch[1]);
+      if (psnMatch && !$("psn").value) $("psn").value = psnMatch[1].replace(/\s+(Class|PG|Packing Group).*$/i, "").trim();
+      if (/marine pollutant|海洋污染物/i.test(text)) $("marinePollutant").checked = true;
+      if (/limited quantity|excepted quantity|限量|例外数量/i.test(text)) $("packaging").value = "exempt";
+      if (/not regulated|not subject to|非危险货物|不受管制/i.test(text) && !unMatch) {
+        $("transportRegulated").checked = false;
+        $("transportUnknown").checked = false;
+      }
+      assess();
+    }
+
+    async function readMsdsFile() {
+      const file = $("msdsFile").files && $("msdsFile").files[0];
+      if (!file) {
+        setMsdsStatus("请先选择一个MSDS/SDS文件。");
+        return;
+      }
+      try {
+        setMsdsStatus("正在读取文件...");
+        let text = "";
+        if (/\.pdf$/i.test(file.name)) {
+          text = await extractPdfText(await file.arrayBuffer());
+        } else {
+          text = await file.text();
+        }
+        $("msdsText").value = text.trim();
+        setMsdsStatus(text.trim() ? `已读取 ${file.name}，可点击自动识别。` : `未从 ${file.name} 抽取到文字，可能是扫描件，需要OCR或复制文字。`);
+        if (text.trim()) parseMsdsInfo();
+      } catch (error) {
+        setMsdsStatus(`读取失败：${error.message || error}`);
+      }
+    }
+
+    function parseMsdsInfo() {
+      const raw = `${$("msdsText").value || ""}\n${$("transportText").value || ""}`;
+      const text = raw.replace(/\r/g, "\n");
+      const flat = text.replace(/\s+/g, " ").trim();
+      if (!flat) {
+        setMsdsStatus("请先粘贴MSDS/SDS文字，或读取文件。");
+        return;
+      }
+
+      const found = [];
+      const productName = extractProductName(text);
+      if (productName && !$("cnName").value && !$("enName").value) {
+        $("enName").value = productName;
+        found.push("品名");
+      }
+
+      const casList = uniqueMatches(flat, /\b\d{2,7}-\d{2}-\d\b/g).slice(0, 8);
+      if (casList.length) {
+        fillComponentsFromCas(casList, flat);
+        $("productType").querySelector('[data-value="substance"]').click();
+        found.push(`CAS ${casList.join("、")}`);
+      }
+
+      const unMatch = flat.match(/\bUN\s?(\d{4})\b/i);
+      if (unMatch) {
+        $("unNumber").value = `UN${unMatch[1]}`;
+        $("transportRegulated").checked = !unNotices[`UN${unMatch[1]}`];
+        $("transportUnknown").checked = Boolean(unNotices[`UN${unMatch[1]}`]);
+        found.push(`UN${unMatch[1]}`);
+      }
+
+      const classMatch = flat.match(/\b(?:Class(?:\s*No\.?)?|Transport\s+hazard\s+class(?:es)?|Division|危险(?:货物)?类别|类别)\s*[:：]?\s*([1-9](?:\.\d)?)\b/i);
+      if (classMatch) {
+        $("dgClass").value = classMatch[1];
+        found.push(`Class ${classMatch[1]}`);
+      }
+
+      const pgMatch = flat.match(/\b(?:Packing\s*group|Packing\s*category|PG|包装类别)\s*[:：]?\s*(I{1,3}|1|2|3|N\/A|Not\s+applicable|不适用)\b/i);
+      if (pgMatch) {
+        $("packingGroup").value = normalizePackingGroup(pgMatch[1]);
+        found.push(`PG ${$("packingGroup").value}`);
+      } else if ($("dgClass").value === "2.2") {
+        $("packingGroup").value = "N/A";
+      }
+
+      const psn = extractShippingName(flat);
+      if (psn && !$("psn").value) {
+        $("psn").value = psn;
+        found.push("正确运输名称");
+      }
+
+      if (/marine pollutant|海洋污染物/i.test(flat)) {
+        $("marinePollutant").checked = true;
+        found.push("海洋污染物标记");
+      }
+      if (/limited quantity|excepted quantity|限量|例外数量/i.test(flat)) {
+        $("packaging").value = "exempt";
+        found.push("限量/例外数量");
+      }
+      if (/cylinder|steel cylinder|iso tank|罐箱|钢瓶|气瓶/i.test(flat) && $("packaging").value === "unknown") {
+        $("packaging").value = "packaged";
+      }
+
+      if (isR134aText(flat)) {
+        if (!$("hsCode").value) $("hsCode").value = "2903450000";
+        $("controlledHfc").checked = true;
+        if (!$("psn").value) $("psn").value = "1,1,1,2-TETRAFLUOROETHANE (REFRIGERANT GAS R134a)";
+        if (!$("dgClass").value) $("dgClass").value = "2.2";
+        if (!$("unNumber").value) $("unNumber").value = "UN3159";
+        if (!$("packingGroup").value) $("packingGroup").value = "N/A";
+        $("transportRegulated").checked = true;
+        found.push("R134a/HFC制冷剂");
+      }
+
+      $("transportText").value = buildTransportText();
+      setMsdsStatus(found.length ? `已识别：${found.join("、")}。请复核HS、目录状态和许可证口径。` : "未识别到关键字段，请粘贴SDS第1、2、3、14、15部分。");
+      assess();
+    }
+
+    function setMsdsStatus(message) {
+      $("msdsParseStatus").textContent = message;
+    }
+
+    function uniqueMatches(text, regex) {
+      return [...new Set([...text.matchAll(regex)].map((match) => match[0]))];
+    }
+
+    function extractProductName(text) {
+      const lines = text.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+      const patterns = [
+        /^(?:Product\s*name|Chemical\s*name|Name\s*of\s*chemical|Substance\s*name|化学品名称|产品名称|品名)\s*[:：]\s*(.{2,80})$/i,
+        /\b(R-?134A|HFC-?134A|1,1,1,2-?TETRAFLUOROETHANE|1,1,1,2-四氟乙烷|四氟乙烷)\b/i
+      ];
+      for (const line of lines) {
+        for (const pattern of patterns) {
+          const match = line.match(pattern);
+          if (match) return (match[1] || match[0]).replace(/\s{2,}/g, " ").trim();
+        }
+      }
+      return "";
+    }
+
+    function extractShippingName(flat) {
+      const patterns = [
+        /(?:Proper\s+shipping\s+name|UN\s+proper\s+shipping\s+name|Shipping\s+name|正确运输名称)\s*[:：]?\s*([A-Z0-9 ,.'()/-]{4,120})/i,
+        /\bUN\s?\d{4}\b\s*[,;，；-]?\s*([A-Z][A-Z0-9 .,'()/-]{4,120})/
+      ];
+      for (const pattern of patterns) {
+        const match = flat.match(pattern);
+        if (match) return match[1].replace(/\s+(Class|PG|Packing Group|Transport).*$/i, "").trim();
+      }
+      if (isR134aText(flat)) return "1,1,1,2-TETRAFLUOROETHANE (REFRIGERANT GAS R134a)";
+      return "";
+    }
+
+    function fillComponentsFromCas(casList, flat) {
+      $("components").innerHTML = "";
+      casList.forEach((cas) => {
+        const component = {
+          cas,
+          name: inferNameForCas(cas, flat),
+          percent: inferPercentNearCas(cas, flat),
+          catalog: inferCatalogForCas(cas, flat)
+        };
+        addComponent(component);
+      });
+    }
+
+    function inferNameForCas(cas, flat) {
+      if (cas === "811-97-2" || isR134aText(flat)) return "1,1,1,2-四氟乙烷 / R134a";
+      const index = flat.indexOf(cas);
+      if (index < 0) return "";
+      const windowText = flat.slice(Math.max(0, index - 80), index + 80);
+      const match = windowText.match(/([A-Za-z0-9,，.\-\s]{4,50})\s+(?:\d{1,3}(?:\.\d+)?\s*%)?\s*$/);
+      return match ? match[1].trim() : "";
+    }
+
+    function inferPercentNearCas(cas, flat) {
+      const index = flat.indexOf(cas);
+      if (index < 0) return "";
+      const windowText = flat.slice(Math.max(0, index - 120), index + 160);
+      const match = windowText.match(/(\d{1,3}(?:\.\d+)?)\s*%/);
+      return match ? match[1] : "";
+    }
+
+    function inferCatalogForCas(cas, flat) {
+      if (cas === "811-97-2" || isR134aText(flat)) return "not_listed";
+      return "unknown";
+    }
+
+    function isR134aText(text) {
+      return /(R-?134A|HFC-?134A|811-97-2|1,1,1,2-?TETRAFLUOROETHANE|1,1,1,2-四氟乙烷|四氟乙烷)/i.test(text);
+    }
+
+    function buildTransportText() {
+      return [
+        $("unNumber").value,
+        $("psn").value,
+        $("dgClass").value ? `Class ${$("dgClass").value}` : "",
+        $("packingGroup").value ? `Packing Group ${$("packingGroup").value}` : ""
+      ].filter(Boolean).join(", ");
+    }
+
+    async function extractPdfText(arrayBuffer) {
+      const bytes = new Uint8Array(arrayBuffer);
+      const binary = bytesToLatin1(bytes);
+      const chunks = [];
+      let pos = 0;
+      while (true) {
+        const streamIndex = binary.indexOf("stream", pos);
+        if (streamIndex < 0) break;
+        let start = streamIndex + 6;
+        if (binary[start] === "\r" && binary[start + 1] === "\n") start += 2;
+        else if (binary[start] === "\n" || binary[start] === "\r") start += 1;
+        const end = binary.indexOf("endstream", start);
+        if (end < 0) break;
+
+        const dictStart = binary.lastIndexOf("<<", streamIndex);
+        const dictEnd = binary.lastIndexOf(">>", streamIndex);
+        const dict = dictStart >= 0 && dictEnd > dictStart ? binary.slice(dictStart, dictEnd + 2) : "";
+        let streamBytes = bytes.subarray(start, end);
+        if (/FlateDecode/i.test(dict)) {
+          streamBytes = await inflatePdfStream(streamBytes);
+        }
+        const text = textFromPdfStream(bytesToLatin1(streamBytes));
+        if (text.trim()) chunks.push(text);
+        pos = end + 9;
+      }
+      return chunks.join("\n").replace(/\s+/g, " ").trim();
+    }
+
+    async function inflatePdfStream(bytes) {
+      if (typeof DecompressionStream === "undefined") return bytes;
+      try {
+        const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate"));
+        return new Uint8Array(await new Response(stream).arrayBuffer());
+      } catch {
+        return bytes;
+      }
+    }
+
+    function bytesToLatin1(bytes) {
+      let output = "";
+      const size = 8192;
+      for (let i = 0; i < bytes.length; i += size) {
+        output += String.fromCharCode(...bytes.subarray(i, i + size));
+      }
+      return output;
+    }
+
+    function textFromPdfStream(stream) {
+      const pieces = [];
+      let i = 0;
+      while (i < stream.length) {
+        if (stream[i] === "(") {
+          let depth = 1;
+          let j = i + 1;
+          let raw = "";
+          while (j < stream.length && depth > 0) {
+            const char = stream[j];
+            if (char === "\\") {
+              raw += char + (stream[j + 1] || "");
+              j += 2;
+            } else if (char === "(") {
+              depth += 1;
+              raw += char;
+              j += 1;
+            } else if (char === ")") {
+              depth -= 1;
+              if (depth > 0) raw += char;
+              j += 1;
+            } else {
+              raw += char;
+              j += 1;
+            }
+          }
+          const after = stream.slice(j, j + 60);
+          if (/\s*(?:Tj|'|"|TJ|\])/.test(after) || raw.length > 3) pieces.push(decodePdfString(raw));
+          i = j;
+        } else {
+          i += 1;
+        }
+      }
+      return pieces.join(" ");
+    }
+
+    function decodePdfString(value) {
+      const output = [];
+      for (let i = 0; i < value.length; i += 1) {
+        const char = value[i];
+        if (char !== "\\") {
+          output.push(char);
+          continue;
+        }
+        i += 1;
+        const next = value[i];
+        if (next === "n") output.push("\n");
+        else if (next === "r") output.push("\r");
+        else if (next === "t") output.push("\t");
+        else if (next === "b") output.push("\b");
+        else if (next === "f") output.push("\f");
+        else if (next === "(" || next === ")" || next === "\\") output.push(next);
+        else if (/[0-7]/.test(next || "")) {
+          let octal = next;
+          for (let j = 0; j < 2 && /[0-7]/.test(value[i + 1] || ""); j += 1) octal += value[++i];
+          output.push(String.fromCharCode(parseInt(octal, 8)));
+        } else if (next === "\r" && value[i + 1] === "\n") i += 1;
+        else if (next === "\n" || next === "\r") {}
+        else output.push(next || "");
+      }
+      return output.join("");
+    }
+
+    function normalizePackingGroup(value) {
+      const text = String(value).toUpperCase();
+      if (text === "1") return "I";
+      if (text === "2") return "II";
+      if (text === "3") return "III";
+      if (text === "N/A" || text.startsWith("NOT") || text.includes("不适用")) return "N/A";
+      return text;
+    }
+
+    function getCases() {
+      try {
+        return JSON.parse(localStorage.getItem(CASE_STORE_KEY) || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    function setCases(cases) {
+      localStorage.setItem(CASE_STORE_KEY, JSON.stringify(cases));
+      renderCaseOptions();
+    }
+
+    function renderCaseOptions() {
+      const picker = $("casePicker");
+      if (!picker) return;
+      const cases = getCases();
+      picker.innerHTML = "";
+      if (!cases.length) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "暂无本地案例";
+        picker.appendChild(option);
+      } else {
+        cases.forEach((entry) => {
+          const option = document.createElement("option");
+          option.value = entry.id;
+          option.textContent = `${entry.name} · ${entry.savedAt.slice(0, 10)}`;
+          picker.appendChild(option);
+        });
+      }
+      $("caseStoreNote").textContent = `本地案例：${cases.length} 个。案例只保存在当前浏览器本地。`;
+    }
+
+    function saveCase() {
+      const payload = assess();
+      const cases = getCases();
+      const id = makeAuditId(payload.data);
+      const name = payload.data.cnName || payload.data.enName || id;
+      cases.unshift({
+        id,
+        name,
+        savedAt: new Date().toISOString(),
+        data: payload.data
+      });
+      setCases(cases.slice(0, 100));
+    }
+
+    function loadCase() {
+      const id = $("casePicker").value;
+      if (!id) return;
+      const entry = getCases().find((item) => item.id === id);
+      if (entry) fill(entry.data);
+    }
+
+    function deleteCase() {
+      const id = $("casePicker").value;
+      if (!id) return;
+      setCases(getCases().filter((item) => item.id !== id));
+    }
+
+    function exportCasesCsv() {
+      const cases = getCases();
+      if (!cases.length) return;
+      const headers = [
+        "审计编号", "保存时间", "商品中文名", "商品英文名", "HS编码", "供应商/生产商", "责任人",
+        "判定结论", "是否危险货物", "是否危险化学品", "资料完整度", "缺资料/风险", "进口证件", "出口证件"
+      ];
+      const rows = cases.map((entry) => {
+        const result = classify(entry.data);
+        const lists = buildDocs(entry.data, result);
+        const completeness = computeCompleteness(entry.data, result);
+        return [
+          entry.id,
+          entry.savedAt,
+          entry.data.cnName,
+          entry.data.enName,
+          entry.data.hsCode,
+          entry.data.supplier,
+          entry.data.owner,
+          result.category,
+          result.isDangerousGoods ? "是" : "否",
+          result.isHazChem ? "是" : "否",
+          `${completeness.score}%`,
+          lists.missing.map((item) => item[0]).join("；"),
+          lists.importDocs.join("；"),
+          lists.exportDocs.join("；")
+        ];
+      });
+      const csv = "\uFEFF" + [headers, ...rows].map((line) => line.map(csvCell).join(",")).join("\r\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "MSDS_UN案例库批量判定.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function loadDemo() {
+      fill({
+        cnName: "溶剂型清洗剂",
+        enName: "Solvent Cleaner",
+        model: "20L/桶",
+        hsCode: "3814000000",
+        supplier: "示例化工有限公司",
+        site: "上海仓",
+        owner: "合规部",
+        quantity: "500kg",
+        reviewYears: "3",
+        caseStatus: "review",
+        productType: "mixture",
+        direction: "both",
+        transportMode: "sea",
+        packaging: "packaged",
+        sdsDate: "2026-05-20",
+        unNumber: "UN1993",
+        dgClass: "3",
+        psn: "FLAMMABLE LIQUID, N.O.S.",
+        packingGroup: "II",
+        flashPoint: "18°C",
+        transportText: "UN1993, FLAMMABLE LIQUID, N.O.S., Class 3, Packing Group II",
+        transportRegulated: true,
+        marinePollutant: false,
+        needsStabilizer: false,
+        transportUnknown: false,
+        sdsVerified: true,
+        labelAvailable: true,
+        catalogSpecificEntry: false,
+        hazardousByReport: false,
+        catalogUnknown: false,
+        dieselRule: false,
+        newChemical: false,
+        precursor: true,
+        explosivePrecursor: false,
+        controlledChemical: false,
+        toxicRestricted: false,
+        ods: false,
+        dualUse: false,
+        sectorRegulated: false,
+        components: [
+          { cas: "67-64-1", name: "丙酮", percent: "45", catalog: "listed" },
+          { cas: "108-88-3", name: "甲苯", percent: "35", catalog: "listed" },
+          { cas: "", name: "助剂", percent: "20", catalog: "not_listed" }
+        ],
+        notes: "演示用数据，正式申报前需核实最新版目录和目的国要求。"
+      });
+    }
+
+    function resetAll() {
+      localStorage.removeItem(STORAGE_KEY);
+      fill({ productType: "substance", direction: "both", transportMode: "sea", packaging: "packaged", reviewYears: "3", caseStatus: "draft", components: [{}] });
+    }
+
+    document.querySelectorAll("#productType .segment").forEach((button) => {
+      button.addEventListener("click", () => {
+        setProductType(button.dataset.value);
+        assess();
+      });
+    });
+
+    fields.forEach((id) => $(id).addEventListener("input", assess));
+    checks.forEach((id) => $(id).addEventListener("change", assess));
+    $("addComponentBtn").addEventListener("click", () => {
+      addComponent();
+      assess();
+    });
+    $("assessBtn").addEventListener("click", assess);
+    $("readMsdsBtn").addEventListener("click", readMsdsFile);
+    $("parseMsdsBtn").addEventListener("click", parseMsdsInfo);
+    $("parseTransportBtn").addEventListener("click", parseTransportInfo);
+    $("saveBtn").addEventListener("click", save);
+    $("exportBtn").addEventListener("click", exportResult);
+    $("csvBtn").addEventListener("click", exportCsvResult);
+    $("wordBtn").addEventListener("click", exportWordResult);
+    $("excelBtn").addEventListener("click", exportExcelResult);
+    $("pdfBtn").addEventListener("click", exportPdfResult);
+    $("jpgBtn").addEventListener("click", exportJpgResult);
+    $("saveCaseBtn").addEventListener("click", saveCase);
+    $("loadCaseBtn").addEventListener("click", loadCase);
+    $("deleteCaseBtn").addEventListener("click", deleteCase);
+    $("exportCasesBtn").addEventListener("click", exportCasesCsv);
+    $("printBtn").addEventListener("click", () => window.print());
+    $("demoBtn").addEventListener("click", loadDemo);
+    $("resetBtn").addEventListener("click", resetAll);
+
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        fill(JSON.parse(saved));
+      } catch {
+        resetAll();
+      }
+    } else {
+      resetAll();
+    }
+    renderCaseOptions();
+  </script>
+</body>
+</html>
