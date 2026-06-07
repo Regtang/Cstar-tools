@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HS编码·申报要素速查 · 喜事达</title>
+  <link rel="stylesheet" href="/cstar-ui.css" />
+  <script src="/cstar-tool.js"></script>
+  <style>
+    main { max-width: 1120px; margin: 20px auto; padding: 0 18px 48px; }
+    .layout { display: grid; grid-template-columns: 380px 1fr; gap: 18px; align-items: start; }
+    .searchbar { display: flex; gap: 8px; }
+    .searchbar input { flex: 1; }
+    .results { max-height: 540px; overflow: auto; margin-top: 12px; border: 1px solid var(--cs-line); border-radius: 10px; }
+    .ritem { padding: 10px 12px; border-bottom: 1px solid var(--cs-line); cursor: pointer; }
+    .ritem:last-child { border-bottom: 0; }
+    .ritem:hover { background: #f1f6f8; }
+    .ritem.active { background: #e6f3f6; }
+    .ritem .code { font-weight: 800; color: var(--cs-teal-dark); font-family: "SF Mono", Menlo, monospace; letter-spacing: .5px; }
+    .ritem .nm { font-size: 13px; color: var(--cs-ink); margin-top: 2px; }
+    .ritem .tags { margin-top: 4px; }
+    .cat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .chip { font-size: 12px; padding: 4px 10px; border-radius: 20px; border: 1px solid #cfd6e0; background: #fff; cursor: pointer; color: var(--cs-muted); }
+    .chip.on { background: var(--cs-teal); border-color: var(--cs-teal); color: #fff; font-weight: 700; }
+    .doc { background: #fff; border: 1px solid var(--cs-line); border-radius: 12px; padding: 22px 24px; color: #1f2a37; }
+    .doc h2 { font-size: 20px; margin: 0 0 2px; }
+    .doc .codeline { font-family: "SF Mono", Menlo, monospace; font-size: 22px; font-weight: 800; color: var(--cs-teal-dark); letter-spacing: 1px; }
+    .doc table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 14px; }
+    .doc th, .doc td { border: 1px solid #c9d2dc; padding: 8px 11px; vertical-align: top; }
+    .doc th { background: #f1f6f8; text-align: left; width: 130px; font-weight: 700; white-space: nowrap; }
+    .rate-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
+    .rate-box { border: 1px solid var(--cs-line); border-radius: 10px; padding: 10px 12px; text-align: center; background: #fafcfd; }
+    .rate-box .v { font-size: 22px; font-weight: 800; color: var(--cs-teal-dark); }
+    .rate-box .v.warn { color: var(--cs-warn); }
+    .rate-box .k { font-size: 12px; color: var(--cs-muted); margin-top: 2px; }
+    .elem { margin-top: 4px; line-height: 1.7; }
+    .elem ol { margin: 6px 0 0; padding-left: 22px; }
+    .empty { color: var(--cs-muted); text-align: center; padding: 60px 20px; }
+    .muted { color: var(--cs-muted); font-size: 12px; }
+    @media (max-width: 920px) { .layout { grid-template-columns: 1fr; } .rate-grid { grid-template-columns: repeat(2,1fr); } }
+    @media print { .panel,.cs-header,.no-print { display:none !important; } .doc{border:0;padding:0} body.cstar-ui{background:#fff} main,.layout{display:block;margin:0;max-width:none} }
+  </style>
+</head>
+<body class="cstar-ui">
+  <header class="cs-header">
+    <h1>HS编码 · 申报要素速查</h1>
+    <p>商品归类 / 申报要素 / 监管条件 / 关税·增值税·退税率 · 报关前一查便知</p>
+  </header>
+
+  <main>
+    <div class="cs-note cs-note-warn no-print" style="margin-bottom:14px">
+      ⚠ 本工具为<strong>常用商品速查库（示例数据）</strong>，税率与监管条件随政策调整，最终请以<strong>海关申报系统 / 海关总署最新税则、监管证件目录</strong>为准。
+    </div>
+
+    <div class="layout">
+      <!-- 左：检索 -->
+      <section class="cs-card panel no-print">
+        <h2>检索</h2>
+        <div class="cs-card-body">
+          <label class="cs-label">输入 HS 编码 或 商品名称关键词</label>
+          <div class="searchbar">
+            <input id="q" class="cs-input" placeholder="如 8517 / 锂电池 / 咖啡" oninput="doSearch()" />
+            <button class="cs-btn cs-btn-primary" onclick="doSearch()">查</button>
+          </div>
+          <div class="cat-chips" id="chips"></div>
+          <div class="muted" style="margin-top:8px">共 <span id="total">0</span> 条 · 命中 <span id="hit">0</span> 条</div>
+          <div class="results" id="results"></div>
+          <div class="cs-actions" style="margin-top:12px">
+            <button class="cs-btn cs-btn-soft" onclick="fillDemo()">示例查询</button>
+            <button class="cs-btn cs-btn-ghost" onclick="exportDB()">导出速查库CSV</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 右：详情 -->
+      <section>
+        <div id="docWrap">
+          <div class="doc"><div class="empty" id="emptyTip">← 在左侧检索并选择一个商品，这里显示完整归类与申报信息</div></div>
+        </div>
+        <div class="cs-actions no-print" id="docActions" style="display:none;margin-top:12px">
+          <button class="cs-btn cs-btn-primary" onclick="window.print()">打印申报参考单</button>
+          <button class="cs-btn cs-btn-ghost" onclick="Cstar.exportPDF('doc','HS申报参考.pdf')">PDF</button>
+          <button class="cs-btn cs-btn-ghost" onclick="Cstar.exportWord('doc','HS申报参考.doc')">Word</button>
+          <button class="cs-btn cs-btn-ghost" onclick="copyElem()">复制申报要素</button>
+          <button class="cs-btn cs-btn-ghost" onclick="saveFav()">收藏</button>
+        </div>
+
+        <div class="cs-card no-print" style="margin-top:14px">
+          <h2>常用监管证件代码对照</h2>
+          <div class="cs-card-body">
+            <table class="cs-table" style="font-size:13px">
+              <tr><th>代码</th><th>含义</th><th>代码</th><th>含义</th></tr>
+              <tr><td>A</td><td>入境货物通关单（检验检疫）</td><td>B</td><td>出境货物通关单（检验检疫）</td></tr>
+              <tr><td>1</td><td>进口许可证</td><td>4</td><td>出口许可证</td></tr>
+              <tr><td>7</td><td>自动进口许可证</td><td>O</td><td>自动进口许可证（新旧机电）</td></tr>
+              <tr><td>2/3</td><td>两用物项和技术进口/出口许可证</td><td>q/r</td><td>进/出口药品通关单</td></tr>
+              <tr><td>S</td><td>进/出口农药登记证明</td><td>F</td><td>濒危物种允许进出口证明书</td></tr>
+              <tr><td>无</td><td>无监管证件（一般贸易直接申报）</td><td>—</td><td>—</td></tr>
+            </table>
+            <div class="muted" style="margin-top:8px">代码会随商品与政策叠加（如「A」「AB」「7A」等）。以申报系统提示的监管条件为准。</div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+  /* ===== 常用商品速查库（示例数据，便于报关前快速参考；税率/监管随政策调整） =====
+     字段：code 编码 | name 名称 | cat 类别 | unit 法定单位 | mfn 最惠国关税% | gen 普通关税%
+          | vat 增值税% | rebate 出口退税% | ce 消费税% | reg 监管条件 | ciq 检验检疫类别
+          | elem 申报要素(数组) | note 备注 */
+  const DB = [
+    {code:"8507600090",name:"锂离子蓄电池（其他）",cat:"机电",unit:"个/千克",mfn:8,gen:30,vat:13,rebate:13,ce:0,reg:"无（危险货物需鉴定）",ciq:"",elem:["品名","用途(用于…)","品牌(中文/外文)","电池种类(锂离子)","容量(mAh/Wh)","是否含液态电解质","规格型号","额定电压/容量"],note:"空运/海运按 UN3480/3481 危险品申报，需危包证/鉴定报告。"},
+    {code:"8517130000",name:"智能手机",cat:"机电",unit:"台/千克",mfn:0,gen:130,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","品牌(中文/外文)","型号","是否带通信功能","屏幕尺寸","用途"],note:"含无线模块的，部分需SRRC型号核准（进口）。"},
+    {code:"8471300000",name:"便携式自动数据处理设备(笔记本)≤10kg",cat:"机电",unit:"台/千克",mfn:0,gen:20,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","品牌(中文/外文)","型号","处理器主频","内存","硬盘容量","重量"],note:""},
+    {code:"8504401400",name:"开关电源/适配器(≤1kVA)",cat:"机电",unit:"个/千克",mfn:0,gen:35,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","品牌","型号","原理(开关/线性)","输出功率","输入/输出电压"],note:""},
+    {code:"8541430000",name:"光伏电池组件(已装成组件)",cat:"机电",unit:"个/千克/千瓦",mfn:0,gen:20,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","品牌","型号","功率(W)","是否封装成组件","单/多晶","用途"],note:"出口光伏退税13%，注意目的国双反/反倾销。"},
+    {code:"8708299000",name:"汽车零件(车身附件)",cat:"机电",unit:"个/千克",mfn:6,gen:35,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","品牌","用途(适用车型)","材质","加工方法","是否原厂件"],note:""},
+    {code:"8413709990",name:"离心泵(其他)",cat:"机电",unit:"台/千克",mfn:6,gen:35,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","品牌","型号","原理(离心)","流量","扬程","用途"],note:""},
+    {code:"9405119000",name:"LED 吊灯/枝形灯(电气)",cat:"机电",unit:"套/千克",mfn:6,gen:100,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","品牌","材质","光源(LED)","用途","款式","额定功率"],note:""},
+
+    {code:"2933990099",name:"其他杂环化合物(含氮)",cat:"化工",unit:"千克",mfn:6.5,gen:30,vat:13,rebate:9,ce:0,reg:"无（如属危化按MSDS）",ciq:"",elem:["品名","成分/含量","用途","外观","CAS号","包装规格"],note:"危险化学品需提供MSDS、危包证及成分报告。"},
+    {code:"3824999999",name:"化工产品及配制品(其他)",cat:"化工",unit:"千克",mfn:6.5,gen:30,vat:13,rebate:0,ce:0,reg:"无（按实际成分判定）",ciq:"",elem:["品名","成分及含量","用途","外观","品牌","CAS号"],note:"该税号常被布控查验，申报要素务必准确。"},
+    {code:"2710199900",name:"其他润滑油及润滑剂",cat:"化工",unit:"千克",mfn:6,gen:11,vat:13,rebate:0,ce:0,reg:"无",ciq:"",elem:["品名","成分(矿物油/合成)","用途","运动粘度","品牌","包装"],note:""},
+    {code:"3208909090",name:"涂料(非水基,其他)",cat:"化工",unit:"千克",mfn:10,gen:45,vat:13,rebate:0,ce:0,reg:"无（含危化成分需鉴定）",ciq:"",elem:["品名","成分(溶剂型)","用途","品牌","包装","固含量"],note:"闪点≤60℃多为危险品，需危包证。"},
+    {code:"3215190090",name:"其他油墨",cat:"化工",unit:"千克",mfn:6.5,gen:35,vat:13,rebate:0,ce:0,reg:"无",ciq:"",elem:["品名","成分","颜色","用途","品牌","包装"],note:""},
+    {code:"2807000010",name:"硫酸",cat:"化工",unit:"千克",mfn:2,gen:30,vat:13,rebate:0,ce:0,reg:"AB（危险化学品）",ciq:"危险化学品",elem:["品名","成分/浓度","用途","包装规格","CAS:7664-93-9"],note:"危险化学品，进出口需登记证及通关单，按危险品运输。"},
+    {code:"3105300000",name:"磷酸氢二铵(化肥)",cat:"化工",unit:"千克",mfn:1,gen:50,vat:9,rebate:0,ce:0,reg:"4B（出口许可+检疫）",ciq:"出境检疫",elem:["品名","成分及含量","用途","包装","是否复合肥"],note:"化肥出口部分实行出口许可证管理，注意时令政策。"},
+
+    {code:"0901210000",name:"已焙炒咖啡(未浸除咖啡碱)",cat:"食品农产",unit:"千克",mfn:8,gen:80,vat:13,rebate:0,ce:0,reg:"AB",ciq:"进出境动植物检疫",elem:["品名","是否焙炒","是否浸除咖啡碱","品牌","等级","包装","产地"],note:"需进境动植检，首次进口需准入及注册。"},
+    {code:"2204210000",name:"葡萄酒(≤2升容器装)",cat:"食品农产",unit:"升/千克",mfn:14,gen:180,vat:13,rebate:0,ce:10,reg:"AB",ciq:"进口食品",elem:["品名","酒精浓度","年份","品牌","产区","容器规格","是否起泡"],note:"进口需中文标签备案，含消费税10%。"},
+    {code:"1905900000",name:"其他面包糕点饼干",cat:"食品农产",unit:"千克",mfn:10,gen:100,vat:13,rebate:0,ce:0,reg:"AB",ciq:"进出口食品",elem:["品名","成分","品牌","包装","保质期","用途"],note:""},
+    {code:"0306170090",name:"冻虾(其他)",cat:"食品农产",unit:"千克",mfn:5,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"动植物检疫",elem:["品名","拉丁学名","是否养殖","规格(只/kg)","加工状态(冻)","包装","产地"],note:"需境外注册企业+官方检疫证书。"},
+    {code:"2009891990",name:"其他单一水果/蔬菜汁",cat:"食品农产",unit:"千克",mfn:7.5,gen:90,vat:13,rebate:0,ce:0,reg:"AB",ciq:"进出口食品",elem:["品名","原料","浓度(brix)","是否发酵","品牌","包装"],note:""},
+
+    {code:"6109100022",name:"棉制针织T恤衫(男式)",cat:"纺织服装",unit:"件/千克",mfn:6,gen:90,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","针织或钩编","种类(T恤)","适用性别","成分及含量","品牌","是否成套"],note:"出口退税13%，按FOB申报。"},
+    {code:"6203420090",name:"棉制男裤(梭织)",cat:"纺织服装",unit:"条/千克",mfn:8,gen:90,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","梭织","种类(裤)","适用性别","成分及含量","品牌"],note:""},
+    {code:"6402990000",name:"其他橡胶/塑料鞋",cat:"纺织服装",unit:"双/千克",mfn:10,gen:100,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","鞋面材质","鞋底材质","用途","品牌","是否运动鞋"],note:""},
+    {code:"4202129000",name:"塑料/纺织面箱包",cat:"纺织服装",unit:"个/千克",mfn:10,gen:100,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","外表面材质","用途","品牌","是否带轮"],note:""},
+
+    {code:"7308900000",name:"钢铁结构体及部件(其他)",cat:"金属矿产",unit:"千克",mfn:6,gen:50,vat:13,rebate:0,ce:0,reg:"无",ciq:"",elem:["品名","材质","用途","加工方法","表面处理","规格"],note:"部分钢铁制品取消出口退税，注意时点。"},
+    {code:"7606122000",name:"铝合金板带(矩形)",cat:"金属矿产",unit:"千克",mfn:6,gen:14,vat:13,rebate:0,ce:0,reg:"无",ciq:"",elem:["品名","成分(合金)","形状","厚度","表面处理","用途","状态(H/O)"],note:""},
+    {code:"7204490090",name:"钢铁废碎料(其他)",cat:"金属矿产",unit:"千克",mfn:0,gen:0,vat:13,rebate:0,ce:0,reg:"无（再生原料按标准）",ciq:"固废鉴别",elem:["品名","成分","来源","形态","是否符合再生钢铁原料标准"],note:"进口须符合《再生钢铁原料》国标，否则按固废禁止。"},
+    {code:"2516120000",name:"花岗岩(锯成方/板)",cat:"金属矿产",unit:"千克",mfn:3,gen:50,vat:13,rebate:0,ce:0,reg:"无",ciq:"",elem:["品名","加工程度(锯/磨)","形状","规格","用途","产地"],note:""},
+
+    {code:"3923100090",name:"塑料制盒/箱及类似品",cat:"塑料橡胶",unit:"个/千克",mfn:6.5,gen:80,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","材质","用途","规格","是否带盖"],note:""},
+    {code:"3926909090",name:"其他塑料制品",cat:"塑料橡胶",unit:"千克",mfn:6.5,gen:80,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","材质","用途","品牌","形状/规格"],note:"归类常见兜底税号，申报要素需具体。"},
+    {code:"4011100000",name:"小客车用新充气橡胶轮胎",cat:"塑料橡胶",unit:"条/千克",mfn:10,gen:80,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","用途(轿车)","规格","品牌","是否子午线","是否新胎"],note:""},
+
+    {code:"9403300090",name:"办公用木家具(其他)",cat:"家具轻工",unit:"件/千克",mfn:0,gen:100,vat:13,rebate:13,ce:0,reg:"无（实木需查濒危）",ciq:"",elem:["品名","材质(木种)","用途","款式","是否成套","品牌"],note:"实木涉及濒危木种需F证。"},
+    {code:"9503008900",name:"其他玩具",cat:"家具轻工",unit:"个/千克",mfn:0,gen:80,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","材质","用途(年龄段)","是否电动","品牌"],note:"出口欧美需符合 CE/CPC 等目的国标准。"},
+    {code:"4819100000",name:"瓦楞纸或纸板制箱/盒",cat:"家具轻工",unit:"千克",mfn:5,gen:80,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","材质","用途","是否瓦楞","规格"],note:""},
+
+    {code:"9018390000",name:"导管/插管/注射器等医疗器械",cat:"医疗器械",unit:"个/千克",mfn:4,gen:17,vat:13,rebate:13,ce:0,reg:"无（注册按械管）",ciq:"",elem:["品名","品牌","型号","用途","材质","是否一次性"],note:"进口医疗器械需注册证；防疫物资关注白名单。"},
+    {code:"3004900000",name:"其他制剂西药(零售包装)",cat:"医疗器械",unit:"千克",mfn:0,gen:20,vat:13,rebate:0,ce:0,reg:"q（进口药品通关单）",ciq:"",elem:["品名","成分","剂型","品牌","规格","用途","批准文号"],note:"药品需药监审批+通关单。"},
+  ];
+
+  const CATS = ["全部","机电","化工","食品农产","纺织服装","金属矿产","塑料橡胶","家具轻工","医疗器械"];
+  let curCat = "全部", curList = [], curItem = null;
+  const fav = Cstar.records("hs_fav", 200);
+
+  function init() {
+    document.getElementById("total").textContent = DB.length;
+    const wrap = document.getElementById("chips");
+    wrap.innerHTML = CATS.map(c => `<span class="chip${c==='全部'?' on':''}" data-c="${c}" onclick="setCat('${c}')">${c}</span>`).join("");
+    doSearch();
+    Cstar.stamp({ tool: "HS编码·申报要素速查", version: "v1.0.0", author: "老瑞" });
+  }
+  function setCat(c) {
+    curCat = c;
+    document.querySelectorAll(".chip").forEach(el => el.classList.toggle("on", el.dataset.c === c));
+    doSearch();
+  }
+  function doSearch() {
+    const q = (document.getElementById("q").value || "").trim().toUpperCase();
+    curList = DB.filter(r => {
+      if (curCat !== "全部" && r.cat !== curCat) return false;
+      if (!q) return true;
+      return r.code.includes(q) || r.name.toUpperCase().includes(q) ||
+             (r.elem.join(" ").toUpperCase().includes(q));
+    });
+    document.getElementById("hit").textContent = curList.length;
+    const box = document.getElementById("results");
+    if (!curList.length) { box.innerHTML = '<div class="empty" style="padding:30px">无匹配结果，换个关键词试试</div>'; return; }
+    box.innerHTML = curList.map((r, i) =>
+      `<div class="ritem" data-i="${i}" onclick="pick(${i})">
+        <div class="code">${r.code}</div>
+        <div class="nm">${Cstar.esc(r.name)}</div>
+        <div class="tags">
+          <span class="cs-badge cs-badge-info">${r.cat}</span>
+          ${r.reg && r.reg.indexOf("无")<0 ? '<span class="cs-badge cs-badge-warn">监管 '+Cstar.esc(r.reg)+'</span>' : ''}
+          ${r.ce>0 ? '<span class="cs-badge cs-badge-danger">消费税'+r.ce+'%</span>' : ''}
+        </div>
+      </div>`).join("");
+  }
+  function pick(i) {
+    curItem = curList[i];
+    document.querySelectorAll(".ritem").forEach(el => el.classList.toggle("active", +el.dataset.i === i));
+    render(curItem);
+  }
+  function render(r) {
+    const elemHtml = r.elem.map((e,i)=>`<li>${Cstar.esc(e)}</li>`).join("");
+    const html =
+      `<div class="doc" id="doc">
+        <h2>${Cstar.esc(r.name)}</h2>
+        <div class="codeline">${r.code}</div>
+        <span class="cs-badge cs-badge-info">${r.cat}</span>
+        <span class="cs-badge">法定单位：${Cstar.esc(r.unit)}</span>
+
+        <div class="rate-grid">
+          <div class="rate-box"><div class="v">${r.mfn}%</div><div class="k">最惠国关税</div></div>
+          <div class="rate-box"><div class="v">${r.gen}%</div><div class="k">普通关税</div></div>
+          <div class="rate-box"><div class="v">${r.vat}%</div><div class="k">进口增值税</div></div>
+          <div class="rate-box"><div class="v ${r.rebate>0?'':'warn'}">${r.rebate}%</div><div class="k">出口退税率</div></div>
+        </div>
+
+        <table>
+          <tr><th>申报要素</th><td><div class="elem">规范申报顺序：<ol>${elemHtml}</ol></div></td></tr>
+          <tr><th>监管条件</th><td>${Cstar.esc(r.reg||'无')}</td></tr>
+          <tr><th>检验检疫</th><td>${Cstar.esc(r.ciq||'—')}</td></tr>
+          <tr><th>消费税</th><td>${r.ce>0?('<strong style="color:var(--cs-danger)">'+r.ce+'%</strong>'):'无'}</td></tr>
+          <tr><th>报关提示</th><td>${Cstar.esc(r.note||'—')}</td></tr>
+        </table>
+        <div class="muted" style="margin-top:14px;border-top:1px dashed var(--cs-line);padding-top:8px">
+          ${Cstar.stampLine()} · 生成 ${Cstar.nowStr()}<br>
+          税率/监管为速查库示例值，实际以海关申报系统及最新税则为准。
+        </div>
+      </div>`;
+    document.getElementById("docWrap").innerHTML = html;
+    document.getElementById("docActions").style.display = "flex";
+  }
+  function copyElem() {
+    if (!curItem) return;
+    const txt = curItem.elem.map((e,i)=>(i+1)+":"+e).join("|");
+    navigator.clipboard ? navigator.clipboard.writeText(txt).then(()=>alert("已复制申报要素：\n"+txt)) : prompt("复制：", txt);
+  }
+  function saveFav() {
+    if (!curItem) return;
+    fav.add({ code: curItem.code, name: curItem.name, cat: curItem.cat });
+    alert("已收藏：" + curItem.code + " " + curItem.name);
+  }
+  function exportDB() {
+    const cols = [["code","HS编码"],["name","商品名称"],["cat","类别"],["unit","法定单位"],
+      ["mfn","最惠国关税%"],["gen","普通关税%"],["vat","增值税%"],["rebate","出口退税%"],
+      ["ce","消费税%"],["reg","监管条件"],["ciq","检验检疫"],["note","备注"]];
+    const recs = Cstar.records("_tmp_hs");
+    recs.exportCSV("HS速查库.csv", cols, DB);
+  }
+  function fillDemo() {
+    document.getElementById("q").value = "锂";
+    setCat("全部"); doSearch();
+    if (curList.length) pick(0);
+  }
+  init();
+  </script>
+</body>
+</html>
