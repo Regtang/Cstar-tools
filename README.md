@@ -12,7 +12,7 @@
 | 出口海关研判助手 | — | 关务部 | 出口报关合规研判：风险点、所需单证、归类提示、处置建议。 | `/export-customs-app.html` | `aeo/portal/export-customs-app.html`、`export-customs/` |
 | 集装箱设备交接单 EIR | v1.2.0 | 老瑞 | 集装箱进出场/提还空重电子交接：ISO 6346 箱号校验、箱况示意图、CEDEX/IICL 箱损代码、带水印照片、电子签名、堆存滞箱提醒、可搜台账+CSV/Excel/Word/PDF、CEDEX 报文、二维码。 | `/container-eir-app.html` | `aeo/portal/container-eir-app.html`、`container-eir/` |
 | 进出口税费试算器 | v1.0.0 | 老瑞 | 进口关税/增值税/消费税估算 + 出口退税估算：按货价、运费、保险、汇率与各项税率算出完税价、各税与含税总成本，历史台账 + CSV/Excel/PDF 导出。仅供估算。 | `/duty-calc-app.html` | `aeo/portal/duty-calc-app.html` |
-| HS编码·申报要素速查 | v2.0.0 | 老瑞 | 报关前速查：收录 90+ 高频商品，支持 HS 编码/商品名/俗称/英文检索与按 HS 章浏览、查不到时智能引导、关键词高亮、搜索历史、同章相关推荐。展示归类、规范申报要素、监管条件、检验检疫类别，及最惠国/普通关税、进口增值税、出口退税、消费税率；附监管证件代码对照，打印/PDF/Word 申报参考单 + 速查库导出。示例数据。 | `/hs-lookup-app.html` | `aeo/portal/hs-lookup-app.html` |
+| HS编码·申报要素速查 | v2.1.0 | 老瑞 | 报关前速查：230+ 商品（147 详细 + 91 HS 品目归类指引），支持 HS 编码/商品名/俗称/英文检索与按 HS 章浏览，并一键直达海关官方权威库查全部 8500+ 编码。详细条目含归类、规范申报要素、监管条件、检验检疫、关税/增值税/退税/消费税率；其余给品目级归类指引。关键词高亮、搜索历史、同章推荐、监管证件代码对照，打印/PDF/Word 申报参考单 + 速查库导出。示例数据。 | `/hs-lookup-app.html` | `aeo/portal/hs-lookup-app.html` |
 
 > 单文件工具的"权威源码"在 `aeo/portal/`（部署目录）；根目录的 `msds-un/`、`export-customs/`、`container-eir/` 是同一文件的独立副本，便于单独查阅。
 

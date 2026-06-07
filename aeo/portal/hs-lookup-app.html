@@ -63,7 +63,7 @@
 
   <main>
     <div class="cs-note cs-note-warn no-print" style="margin-bottom:14px">
-      ⚠ 本工具为<strong>常用商品速查库</strong>，覆盖 90+ 高频商品，支持俗称/英文检索与按章浏览；税率与监管随政策调整，最终请以<strong>海关申报系统 / 海关总署最新税则、监管证件目录</strong>为准。
+      ⚠ 本工具为<strong>报关前速查辅助</strong>：常用商品给出详细申报信息（标「详」），其余给出 HS 品目<strong>归类指引</strong>（标「品目」）帮你缩小范围。<strong>完整 8500+ 编码、权威申报要素与税率请以海关申报系统为准</strong>，可点右侧「官方查询」直达。税率/监管为示例值，随政策调整。
     </div>
 
     <div class="layout">
@@ -88,7 +88,7 @@
             <div id="recentWrap" style="margin-top:8px;display:none">
               <span class="muted">最近：</span><span class="chips" id="recent" style="display:inline-flex"></span>
             </div>
-            <div class="muted" style="margin-top:8px">库内 <span id="total">0</span> 条 · 命中 <span id="hit">0</span> 条</div>
+            <div class="muted" style="margin-top:8px">库内 <span id="total">0</span> 条（详+品目指引）· 命中 <span id="hit">0</span> 条</div>
             <div class="results" id="results"></div>
           </div>
 
@@ -100,6 +100,7 @@
 
           <div class="cs-actions" style="margin-top:12px">
             <button class="cs-btn cs-btn-soft" onclick="hotPick()">热门示例</button>
+            <a class="cs-btn cs-btn-ghost" href="http://online.customs.gov.cn/" target="_blank" rel="noopener">🔗 官方查询</a>
             <button class="cs-btn cs-btn-ghost" onclick="exportDB()">导出速查库CSV</button>
           </div>
         </div>
@@ -275,8 +276,180 @@
     {code:"3923100090",name:"塑料制盒/箱及类似品",cat:"塑料橡胶",unit:"个/千克",mfn:6.5,gen:80,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","材质","用途","规格","是否带盖"],note:"",kw:["塑料盒","塑料箱","周转箱","plastic box","收纳箱"]},
     {code:"3926909090",name:"其他塑料制品",cat:"塑料橡胶",unit:"千克",mfn:6.5,gen:80,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","材质","用途","品牌","形状/规格"],note:"归类常见兜底税号,申报要素需具体。",kw:["塑料制品","塑料件","plastic","塑料配件"]},
     {code:"4819100000",name:"瓦楞纸或纸板制箱/盒",cat:"家具轻工",unit:"千克",mfn:5,gen:80,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","材质","用途","是否瓦楞","规格"],note:"",kw:["纸箱","纸盒","包装箱","carton","瓦楞纸箱"]},
-    {code:"8541430000",name:"光伏电池组件（已装成组件）",cat:"机电",unit:"个/千克/千瓦",mfn:0,gen:20,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","品牌","型号","功率(W)","是否封装成组件","单/多晶","用途"],note:"出口光伏退税13%,注意目的国双反/反倾销。",kw:["光伏","太阳能板","光伏组件","solar panel","太阳能电池板"]}
+    {code:"8541430000",name:"光伏电池组件（已装成组件）",cat:"机电",unit:"个/千克/千瓦",mfn:0,gen:20,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","品牌","型号","功率(W)","是否封装成组件","单/多晶","用途"],note:"出口光伏退税13%,注意目的国双反/反倾销。",kw:["光伏","太阳能板","光伏组件","solar panel","太阳能电池板"]},
+
+    // —— 07 蔬菜 ——
+    {code:"0707000000",name:"鲜或冷藏黄瓜及小黄瓜",cat:"食品农产",unit:"千克",mfn:13,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","鲜或冷藏","品种","规格","产地"],note:"需准入+植物检疫证书。",kw:["黄瓜","小黄瓜","cucumber","青瓜"]},
+    {code:"0702000000",name:"鲜或冷藏番茄",cat:"食品农产",unit:"千克",mfn:13,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","鲜或冷藏","品种","规格","产地"],note:"",kw:["番茄","西红柿","tomato","圣女果"]},
+    {code:"0701900090",name:"鲜或冷藏马铃薯（其他）",cat:"食品农产",unit:"千克",mfn:13,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","鲜或冷藏","用途(种用?)","规格","产地"],note:"",kw:["土豆","马铃薯","potato","洋芋"]},
+    {code:"0703100090",name:"鲜或冷藏洋葱及青葱（其他）",cat:"食品农产",unit:"千克",mfn:13,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","鲜或冷藏","种类(洋葱/葱)","规格","产地"],note:"",kw:["洋葱","葱","大葱","onion"]},
+    {code:"0703200000",name:"鲜或冷藏大蒜",cat:"食品农产",unit:"千克",mfn:13,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","鲜或冷藏","规格","产地"],note:"大蒜出口为我国优势品类。",kw:["大蒜","蒜","蒜头","garlic"]},
+    {code:"0706100000",name:"鲜或冷藏胡萝卜及萝卜",cat:"食品农产",unit:"千克",mfn:13,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","鲜或冷藏","种类","规格","产地"],note:"",kw:["胡萝卜","萝卜","carrot","白萝卜"]},
+    {code:"0709601000",name:"鲜或冷藏甜椒（柿子椒）",cat:"食品农产",unit:"千克",mfn:13,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","鲜或冷藏","种类","规格","产地"],note:"干辣椒归 0904。",kw:["辣椒","青椒","甜椒","彩椒","柿子椒","pepper","chili"]},
+    {code:"0704100000",name:"鲜或冷藏花椰菜及西兰花",cat:"食品农产",unit:"千克",mfn:13,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","鲜或冷藏","种类","规格","产地"],note:"",kw:["西兰花","花椰菜","菜花","broccoli","cauliflower","西蓝花"]},
+    {code:"0705110000",name:"鲜或冷藏结球莴苣（生菜）",cat:"食品农产",unit:"千克",mfn:13,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","鲜或冷藏","种类","规格","产地"],note:"",kw:["生菜","莴苣","lettuce"]},
+    {code:"0709519000",name:"鲜或冷藏食用菌（蘑菇,其他）",cat:"食品农产",unit:"千克",mfn:13,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","鲜或冷藏","品种","规格","产地"],note:"",kw:["蘑菇","香菇","金针菇","平菇","mushroom","菌菇"]},
+    {code:"0910110000",name:"鲜姜",cat:"食品农产",unit:"千克",mfn:20,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","鲜或干","规格","产地"],note:"",kw:["姜","生姜","ginger","老姜"]},
+    {code:"0710900000",name:"冷冻什锦蔬菜",cat:"食品农产",unit:"千克",mfn:13,gen:80,vat:9,rebate:0,ce:0,reg:"AB",ciq:"进出口食品",elem:["品名","加工状态(冻)","成分","包装","产地"],note:"",kw:["冷冻蔬菜","速冻蔬菜","frozen vegetables","冻菜"]},
+
+    // —— 08 水果坚果 ——
+    {code:"0808100000",name:"鲜苹果",cat:"食品农产",unit:"千克",mfn:10,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","品种","规格","产地"],note:"",kw:["苹果","apple","富士"]},
+    {code:"0803901100",name:"鲜香蕉",cat:"食品农产",unit:"千克",mfn:10,gen:40,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","鲜或干","品种","规格","产地"],note:"",kw:["香蕉","banana"]},
+    {code:"0806100000",name:"鲜葡萄",cat:"食品农产",unit:"千克",mfn:13,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","品种","规格","产地"],note:"",kw:["葡萄","提子","grape","阳光玫瑰"]},
+    {code:"0807110000",name:"鲜西瓜",cat:"食品农产",unit:"千克",mfn:20,gen:80,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","品种","规格","产地"],note:"",kw:["西瓜","watermelon"]},
+    {code:"0807190000",name:"鲜甜瓜（哈密瓜等）",cat:"食品农产",unit:"千克",mfn:20,gen:80,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","品种","规格","产地"],note:"",kw:["哈密瓜","甜瓜","香瓜","melon","蜜瓜"]},
+    {code:"0810100000",name:"鲜草莓",cat:"食品农产",unit:"千克",mfn:14,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","品种","规格","产地"],note:"",kw:["草莓","strawberry"]},
+    {code:"0810400000",name:"鲜越橘、蓝莓",cat:"食品农产",unit:"千克",mfn:30,gen:80,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","品种","规格","产地"],note:"",kw:["蓝莓","越橘","blueberry"]},
+    {code:"0810909000",name:"其他鲜果（火龙果/百香果等）",cat:"食品农产",unit:"千克",mfn:20,gen:80,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","品种","规格","产地"],note:"",kw:["火龙果","百香果","dragon fruit","莲雾","山竹"]},
+    {code:"0805500000",name:"鲜柠檬及青柠",cat:"食品农产",unit:"千克",mfn:11,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","品种","规格","产地"],note:"",kw:["柠檬","青柠","lemon","lime"]},
+    {code:"0804300000",name:"鲜或干菠萝",cat:"食品农产",unit:"千克",mfn:15,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","鲜或干","品种","规格","产地"],note:"",kw:["菠萝","凤梨","pineapple"]},
+    {code:"0810500000",name:"鲜猕猴桃",cat:"食品农产",unit:"千克",mfn:20,gen:80,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","品种","规格","产地"],note:"",kw:["猕猴桃","奇异果","kiwi"]},
+    {code:"0805210000",name:"鲜柑橘（蜜橘等）",cat:"食品农产",unit:"千克",mfn:12,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","品种","规格","产地"],note:"",kw:["橘子","桔子","柑橘","蜜桔","mandarin","tangerine"]},
+    {code:"0802320000",name:"去壳核桃",cat:"食品农产",unit:"千克",mfn:20,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","是否带壳","规格","产地"],note:"",kw:["核桃","walnut","核桃仁"]},
+    {code:"0801320000",name:"去壳腰果",cat:"食品农产",unit:"千克",mfn:20,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","是否带壳","规格","产地"],note:"",kw:["腰果","cashew"]},
+    {code:"0806200000",name:"葡萄干",cat:"食品农产",unit:"千克",mfn:10,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"进口食品",elem:["品名","品种","规格","产地"],note:"",kw:["葡萄干","raisin","提子干"]},
+
+    // —— 10/11/15/17/25 粮油糖盐调味 ——
+    {code:"1006309000",name:"大米（精米,其他）",cat:"食品农产",unit:"千克",mfn:1,gen:180,vat:9,rebate:0,ce:0,reg:"AB（关税配额）",ciq:"进口粮食",elem:["品名","加工程度","是否粳米","包装","产地"],note:"大米实行关税配额管理,配额外税率很高。",kw:["大米","米","rice","稻米"]},
+    {code:"1001990000",name:"小麦（其他）",cat:"食品农产",unit:"千克",mfn:1,gen:180,vat:9,rebate:0,ce:0,reg:"AB（关税配额）",ciq:"进口粮食",elem:["品名","用途","是否种用","包装","产地"],note:"小麦实行关税配额管理。",kw:["小麦","wheat","麦子"]},
+    {code:"1005900000",name:"玉米（其他）",cat:"食品农产",unit:"千克",mfn:1,gen:180,vat:9,rebate:0,ce:0,reg:"AB（关税配额）",ciq:"进口粮食",elem:["品名","用途","是否种用","包装","产地"],note:"玉米实行关税配额管理。",kw:["玉米","corn","maize","苞米"]},
+    {code:"1201900000",name:"大豆（非种用）",cat:"食品农产",unit:"千克",mfn:3,gen:30,vat:9,rebate:0,ce:0,reg:"AB",ciq:"进口粮食",elem:["品名","用途(榨油/食用)","是否转基因","包装","产地"],note:"转基因需安全证书。",kw:["大豆","黄豆","soybean","soya"]},
+    {code:"1509900000",name:"橄榄油（其他）",cat:"食品农产",unit:"千克",mfn:10,gen:30,vat:9,rebate:0,ce:0,reg:"AB",ciq:"进口食品",elem:["品名","是否初榨","酸度","品牌","包装","产地"],note:"",kw:["橄榄油","olive oil","初榨橄榄油"]},
+    {code:"1507900000",name:"大豆油（精制）",cat:"食品农产",unit:"千克",mfn:9,gen:30,vat:9,rebate:0,ce:0,reg:"AB",ciq:"进口食品",elem:["品名","是否精炼","用途","品牌","包装"],note:"",kw:["大豆油","豆油","食用油","soybean oil","植物油"]},
+    {code:"1701990000",name:"精制白砂糖（其他）",cat:"食品农产",unit:"千克",mfn:50,gen:125,vat:13,rebate:0,ce:0,reg:"AB（关税配额）",ciq:"进口食品",elem:["品名","加工程度","包装","产地"],note:"食糖实行关税配额管理。",kw:["白糖","砂糖","糖","sugar","白砂糖"]},
+    {code:"2501000090",name:"食盐及纯氯化钠（其他）",cat:"食品农产",unit:"千克",mfn:3,gen:30,vat:13,rebate:0,ce:0,reg:"无",ciq:"",elem:["品名","用途(食用/工业)","包装","纯度"],note:"食盐进口涉盐业管理。",kw:["盐","食盐","salt","氯化钠"]},
+    {code:"0904110000",name:"未磨胡椒",cat:"食品农产",unit:"千克",mfn:20,gen:70,vat:9,rebate:0,ce:0,reg:"AB",ciq:"植物检疫",elem:["品名","是否研磨","种类(黑/白)","包装","产地"],note:"",kw:["胡椒","黑胡椒","白胡椒","胡椒粉","peppercorn"]},
+
+    // —— 日用消费品（详） ——
+    {code:"4818100000",name:"卫生纸",cat:"消费品",unit:"千克",mfn:5,gen:80,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","材质","用途","规格","品牌"],note:"",kw:["卫生纸","纸巾","厕纸","toilet paper","抽纸"]},
+    {code:"3306101000",name:"牙膏",cat:"消费品",unit:"千克",mfn:7.5,gen:150,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","成分","用途","品牌","规格"],note:"",kw:["牙膏","toothpaste"]},
+    {code:"9603210000",name:"牙刷（含牙齿清洁刷）",cat:"消费品",unit:"支/千克",mfn:8,gen:80,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","材质","用途","是否电动","品牌"],note:"电动牙刷归 8509。",kw:["牙刷","toothbrush"]},
+    {code:"9617001100",name:"保温杯/保温瓶（容积≤0.55L）",cat:"消费品",unit:"个/千克",mfn:12,gen:100,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","材质","容量","是否真空","品牌"],note:"",kw:["保温杯","保温瓶","vacuum flask","水杯","杯子"]},
+    {code:"6302600000",name:"棉制毛巾、厨房用织物",cat:"消费品",unit:"千克",mfn:8,gen:90,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","材质成分","用途","规格","品牌"],note:"",kw:["毛巾","towel","浴巾","抹布"]},
+    {code:"6302319000",name:"棉制床单、被套等床上用品",cat:"消费品",unit:"千克",mfn:8,gen:90,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","材质成分","用途","规格","品牌"],note:"",kw:["床单","被套","床上用品","四件套","bedsheet","床品"]},
+    {code:"6601990000",name:"雨伞、阳伞（其他）",cat:"消费品",unit:"把/千克",mfn:10,gen:80,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","伞面材质","是否自动","用途","品牌"],note:"",kw:["雨伞","伞","太阳伞","umbrella"]},
+    {code:"9608100000",name:"圆珠笔",cat:"消费品",unit:"支/千克",mfn:10,gen:80,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","笔类(圆珠)","材质","品牌","用途"],note:"",kw:["圆珠笔","笔","pen","中性笔","签字笔"]},
+    {code:"7323930000",name:"不锈钢厨房或餐桌用具",cat:"消费品",unit:"千克",mfn:12,gen:100,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","材质(不锈钢)","用途","规格","品牌"],note:"",kw:["锅","不锈钢锅","厨具","餐具","pot","炒锅","刀具"]},
+
+    // —— 日用电器（详） ——
+    {code:"8516600000",name:"电烤箱、电饭锅、电炉等",cat:"机电",unit:"台/千克",mfn:8,gen:100,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","品牌","型号","功能","额定功率","用途"],note:"",kw:["电饭煲","电饭锅","电烤箱","rice cooker","oven","电炉"]},
+    {code:"8516310000",name:"电吹风",cat:"机电",unit:"台/千克",mfn:8,gen:100,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","品牌","型号","额定功率","用途"],note:"",kw:["吹风机","电吹风","hair dryer"]},
+    {code:"8509400000",name:"食物研磨机、搅拌器、榨汁机",cat:"机电",unit:"台/千克",mfn:8,gen:100,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","品牌","型号","功能","额定功率"],note:"",kw:["榨汁机","破壁机","搅拌机","料理机","blender"]},
+    {code:"8508110000",name:"真空吸尘器（功率≤1500W,集尘≤20L）",cat:"机电",unit:"台/千克",mfn:8,gen:100,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","品牌","型号","功率","集尘容量","是否无线"],note:"",kw:["吸尘器","vacuum cleaner","扫地机"]},
+    {code:"8471609000",name:"鼠标及其他输入部件",cat:"机电",unit:"个/千克",mfn:0,gen:20,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","品牌","型号","接口","是否无线","用途"],note:"",kw:["鼠标","mouse","无线鼠标"]},
+    {code:"8528521000",name:"可连接数据处理设备的显示器",cat:"机电",unit:"台/千克",mfn:0,gen:30,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","品牌","型号","显示屏类型","屏幕尺寸","分辨率"],note:"",kw:["显示器","monitor","电脑屏幕","屏幕"]},
+    {code:"8523512000",name:"固态非易失性存储器件（U盘等）",cat:"机电",unit:"个/千克",mfn:0,gen:0,vat:13,rebate:13,ce:0,reg:"无",ciq:"",elem:["品名","品牌","型号","容量","接口","用途"],note:"",kw:["u盘","优盘","闪存盘","usb","flash drive","固态硬盘","ssd"]}
   ];
+
+  /* ===== 归类指引层（LITE）：仅 编码+品名+关键词，用于覆盖长尾，让搜索"不空手"。
+     命中后给出 HS 品目与所属章，并引导到官方权威库查完整申报要素/税率。 ===== */
+  const LITE = [
+    // 水产/肉/蛋奶
+    {code:"0304",name:"鱼片及鱼肉",kw:["鱼片","巴沙鱼片","鳕鱼片","fish fillet"]},
+    {code:"1604",name:"罐头/加工鱼（金枪鱼罐头等）",kw:["金枪鱼","吞拿鱼","鱼罐头","tuna","沙丁鱼"]},
+    {code:"0305",name:"干鱼、咸鱼、熏鱼",kw:["鱼干","咸鱼","海米","干贝","鱿鱼丝"]},
+    {code:"0306",name:"虾蟹等甲壳动物",kw:["螃蟹","帝王蟹","面包蟹","小龙虾","crayfish"]},
+    {code:"0207",name:"禽肉及杂碎（鸡鸭鹅）",kw:["鸡腿","鸡爪","凤爪","鸭肉","鹅肉","duck"]},
+    {code:"0210",name:"腌、熏肉（火腿/培根）",kw:["火腿","培根","ham","bacon","腊肉","香肠"]},
+    {code:"0406",name:"奶酪及凝乳",kw:["奶酪","芝士","cheese"]},
+    {code:"0405",name:"黄油及乳脂",kw:["黄油","butter","奶油"]},
+    {code:"0407",name:"鲜蛋",kw:["鸡蛋","鸭蛋","egg","蛋"]},
+    // 谷物/制品
+    {code:"1101",name:"小麦或混合麦面粉",kw:["面粉","flour","小麦粉"]},
+    {code:"1902",name:"面食（意面/方便面/通心粉）",kw:["意大利面","方便面","通心粉","pasta","noodle","挂面","面条"]},
+    {code:"1904",name:"谷物制食品（麦片/燕麦片）",kw:["燕麦","麦片","oatmeal","cereal","谷物早餐"]},
+    {code:"2103",name:"调味酱（酱油/番茄酱/沙拉酱）",kw:["酱油","番茄酱","沙拉酱","ketchup","soy sauce","蚝油","辣椒酱"]},
+    {code:"2104",name:"汤料及调味汤",kw:["汤料","浓汤宝","火锅底料","soup"]},
+    {code:"0904",name:"胡椒及辣椒干（调味）",kw:["辣椒粉","干辣椒","花椒","调味料","spice"]},
+    {code:"0902",name:"茶叶",kw:["红茶","乌龙茶","普洱","black tea","茶包"]},
+    {code:"1704",name:"糖果（无可可）",kw:["糖果","软糖","硬糖","candy","棒棒糖"]},
+    {code:"2105",name:"冰淇淋及食用冰",kw:["冰淇淋","雪糕","ice cream","冰激凌"]},
+    {code:"2202",name:"含糖饮料/碳酸饮料/功能饮料",kw:["饮料","可乐","汽水","果汁饮料","能量饮料","soda","drink"]},
+    {code:"0901",name:"咖啡（含生豆）",kw:["生咖啡豆","咖啡生豆","green coffee"]},
+    // 化妆个护/家清
+    {code:"3305",name:"洗护发用品（洗发水）",kw:["洗发水","护发素","shampoo","洗发露"]},
+    {code:"3307",name:"剃须、沐浴、除臭用品",kw:["沐浴露","沐浴乳","须后水","止汗","shower gel","body wash"]},
+    {code:"9619",name:"卫生巾、纸尿裤",kw:["纸尿裤","尿不湿","卫生巾","diaper","sanitary"]},
+    {code:"3923",name:"塑料包装制品（瓶/袋/膜）",kw:["塑料瓶","塑料袋","保鲜膜","包装膜","气泡膜"]},
+    {code:"3924",name:"塑料餐厨及卫生用具",kw:["塑料餐具","水杯","塑料碗","保鲜盒","塑料桶"]},
+    // 家居家纺
+    {code:"9404",name:"寝具（枕头/被子/睡袋）",kw:["枕头","被子","羽绒被","睡袋","pillow","quilt"]},
+    {code:"5701",name:"地毯（打结）",kw:["地毯","carpet","地垫","rug"]},
+    {code:"7013",name:"玻璃器皿（杯/碗）",kw:["玻璃杯","玻璃碗","glassware","酒杯"]},
+    {code:"6911",name:"瓷制餐具及厨房器具",kw:["陶瓷餐具","瓷碗","骨瓷","陶瓷","ceramic"]},
+    {code:"9405",name:"灯具及照明装置",kw:["台灯","落地灯","射灯","路灯","灯串","light"]},
+    {code:"3406",name:"蜡烛",kw:["蜡烛","candle","香薰蜡烛"]},
+    {code:"4419",name:"木制餐厨用具",kw:["木砧板","木勺","竹制品","砧板"]},
+    // 服装鞋帽配饰
+    {code:"6110",name:"针织毛衣、卫衣、开衫",kw:["毛衣","卫衣","针织衫","开衫","sweater","hoodie"]},
+    {code:"6104",name:"针织女式套装/连衣裙",kw:["连衣裙","女装","裙子","dress"]},
+    {code:"6505",name:"针织或制帽（帽子）",kw:["帽子","棒球帽","针织帽","cap","hat"]},
+    {code:"6115",name:"袜子及连裤袜",kw:["袜子","丝袜","socks","船袜"]},
+    {code:"6116",name:"针织手套",kw:["手套","gloves","劳保手套"]},
+    {code:"6212",name:"胸罩、束腰等",kw:["内衣","文胸","胸罩","bra","内裤"]},
+    {code:"4203",name:"皮革服装及配件（皮带/皮手套）",kw:["皮带","腰带","belt","皮手套"]},
+    {code:"6403",name:"皮面鞋靴",kw:["皮鞋","靴子","leather shoes","boots"]},
+    {code:"9003",name:"眼镜架",kw:["眼镜架","镜框","frame"]},
+    {code:"9101",name:"手表（贵金属壳）",kw:["手表","名表","机械表","watch","腕表"]},
+    {code:"9102",name:"手表（其他）",kw:["电子表","石英表","智能手表","smart watch"]},
+    // 电子数码/电气
+    {code:"8517",name:"通信设备（路由器/交换机等）",kw:["路由器","交换机","router","modem","基站","网络设备"]},
+    {code:"8471",name:"数据处理设备及部件",kw:["服务器","硬盘","内存条","显卡","server","gpu","主板"]},
+    {code:"8504",name:"变压器、电源、充电器",kw:["充电器","充电头","稳压器","ups","电源适配器"]},
+    {code:"8536",name:"低压电器（开关/插座/连接器）",kw:["开关","插座","插头","继电器","断路器","端子"]},
+    {code:"8544",name:"电线电缆",kw:["电线","电缆","网线","cable","线缆"]},
+    {code:"9405",name:"LED 灯具",kw:["led灯泡","灯泡","灯带","bulb"]},
+    {code:"8513",name:"手电筒及便携电灯",kw:["手电筒","头灯","flashlight"]},
+    {code:"8536",name:"插线板/排插",kw:["插线板","排插","power strip","接线板"]},
+    {code:"9504",name:"游戏机及游戏设备",kw:["游戏机","游戏主机","switch","ps5","console"]},
+    {code:"8543",name:"其他电气设备（独立功能）",kw:["美容仪","电子设备","净化器","加湿器"]},
+    // 机械/工具/五金
+    {code:"8467",name:"手持电动工具",kw:["电钻","角磨机","电动工具","drill","电锯"]},
+    {code:"8205",name:"手工具（扳手/螺丝刀）",kw:["扳手","螺丝刀","钳子","手工具","wrench","锤子"]},
+    {code:"7318",name:"螺钉、螺栓、螺母等紧固件",kw:["螺丝","螺栓","螺母","紧固件","screw","bolt"]},
+    {code:"8201",name:"农用手工具（锄/铲/镰）",kw:["锄头","铁锹","园艺工具","shovel"]},
+    {code:"8302",name:"贱金属附件（铰链/拉手/挂钩）",kw:["铰链","拉手","合页","挂钩","门锁配件"]},
+    {code:"8301",name:"挂锁及锁具",kw:["锁","挂锁","门锁","lock","密码锁"]},
+    // 建材/化工/塑料
+    {code:"3917",name:"塑料管及管件",kw:["塑料管","pvc管","水管","管件","pipe"]},
+    {code:"6810",name:"水泥、混凝土制品",kw:["水泥制品","混凝土","砖","路缘石"]},
+    {code:"6907",name:"陶瓷砖（地砖/墙砖）",kw:["瓷砖","地砖","墙砖","tile"]},
+    {code:"4407",name:"锯材（木板）",kw:["木板","板材","木材","锯材","timber","实木"]},
+    {code:"4411",name:"纤维板/密度板",kw:["密度板","纤维板","mdf","刨花板"]},
+    {code:"3208",name:"油漆涂料（溶剂型）",kw:["油漆","涂料","木器漆","乳胶漆"]},
+    {code:"3506",name:"胶粘剂、胶水",kw:["胶水","胶粘剂","ab胶","glue","硅胶密封"]},
+    {code:"3402",name:"表面活性剂、洗涤制品",kw:["洗衣粉","洗洁精","清洁剂","detergent"]},
+    {code:"2836",name:"碳酸盐（纯碱/小苏打）",kw:["纯碱","小苏打","碳酸钠","碳酸钙"]},
+    {code:"3920",name:"塑料板、片、膜（非泡沫）",kw:["塑料板","塑料片","pe膜","pet片","亚克力"]},
+    {code:"4002",name:"合成橡胶",kw:["合成橡胶","丁苯橡胶","橡胶原料"]},
+    {code:"4016",name:"硫化橡胶制品（密封件等）",kw:["橡胶垫","密封圈","o型圈","橡胶制品"]},
+    // 汽车/交通
+    {code:"8703",name:"小汽车（载人）",kw:["汽车","轿车","suv","小汽车","car","二手车"]},
+    {code:"8704",name:"货车、卡车",kw:["卡车","货车","truck","皮卡"]},
+    {code:"8708",name:"汽车零部件",kw:["刹车片","保险杠","汽车灯","离合器","变速箱","车灯"]},
+    {code:"4011",name:"新充气轮胎",kw:["卡车轮胎","工程胎","摩托车胎","tyre"]},
+    {code:"8714",name:"自行车/摩托车零件",kw:["自行车配件","车架","脚踏","摩托车零件"]},
+    // 文体/办公/医疗
+    {code:"4901",name:"书籍、印刷品",kw:["书","书籍","画册","book","图书"]},
+    {code:"4820",name:"笔记本、账簿等纸文具",kw:["笔记本本子","账本","便签","notebook纸"]},
+    {code:"9503",name:"玩具（积木/娃娃/模型）",kw:["积木","乐高","娃娃","模型","遥控车","toy"]},
+    {code:"9506",name:"运动及健身器材",kw:["瑜伽垫","球类","球拍","健身器械","哑铃","ball"]},
+    {code:"9018",name:"医疗仪器及器械",kw:["血压计","血糖仪","医疗仪器","听诊器","体温计"]},
+    {code:"3005",name:"医用敷料（纱布/创可贴）",kw:["纱布","创可贴","绷带","医用敷料","口罩"]},
+    {code:"9021",name:"矫形及助残器具",kw:["助听器","义肢","轮椅","矫形器"]},
+    // 宠物/农资/其他
+    {code:"2309",name:"宠物食品及饲料",kw:["猫粮","狗粮","宠物食品","pet food","饲料"]},
+    {code:"3808",name:"农药、杀虫剂、消毒剂",kw:["农药","杀虫剂","除草剂","消毒液","pesticide"]},
+    {code:"3101",name:"动植物肥料（有机肥）",kw:["有机肥","农家肥","肥料"]},
+    {code:"4601",name:"编结材料制品（草编/藤编）",kw:["藤编","草编","竹编","编织制品"]},
+    {code:"6913",name:"陶瓷雕像及装饰品",kw:["陶瓷摆件","工艺品","装饰品","摆件"]},
+    {code:"7117",name:"仿首饰",kw:["饰品","仿真首饰","耳环","手链","imitation jewelry"]},
+    {code:"9603",name:"扫帚、刷子",kw:["刷子","扫把","拖把","brush","油漆刷"]},
+    {code:"4202",name:"箱包、钱包、手袋",kw:["钱包","手包","钱夹","卡包","化妆包","wallet"]}
+  ];
+  /* 官方权威库（完整 8500+ 编码、申报要素、税率以此为准） */
+  const OFFICIAL = "http://online.customs.gov.cn/";       // 互联网+海关（中国海关）
+  const OFFICIAL2 = "https://hs.e-to-china.com.cn/";       // 归类通 第三方查询
 
   const CATS = ["全部","食品农产","机电","消费品","纺织服装","化工","金属矿产","塑料橡胶","家具轻工","医疗器械"];
   /* 找不到时的概念引导：俗称 → 推荐查询词 */
@@ -293,13 +466,13 @@
   const recent = Cstar.records("hs_recent", 12);
 
   function init() {
-    document.getElementById("total").textContent = DB.length;
+    document.getElementById("total").textContent = DB.length + "+" + LITE.length;
     document.getElementById("cats").innerHTML =
       CATS.map(c => `<span class="chip${c==='全部'?' on':''}" data-c="${c}" onclick="setCat('${c}')">${c}</span>`).join("");
     buildChTree();
     renderRecent();
     doSearch();
-    Cstar.stamp({ tool: "HS编码·申报要素速查", version: "v2.0.0", author: "老瑞" });
+    Cstar.stamp({ tool: "HS编码·申报要素速查", version: "v2.1.0", author: "老瑞" });
   }
   function setTab(m) {
     mode = m;
@@ -317,7 +490,7 @@
   /* 匹配评分：编码前缀>名称>关键词>申报要素 */
   function score(r, q) {
     if (!q) return 1;
-    const code = r.code, name = r.name.toUpperCase(), kw = (r.kw||[]).join(" ").toUpperCase(), el = r.elem.join(" ").toUpperCase();
+    const code = r.code, name = r.name.toUpperCase(), kw = (r.kw||[]).join(" ").toUpperCase(), el = (r.elem||[]).join(" ").toUpperCase();
     if (code.startsWith(q)) return 100;
     if (code.includes(q)) return 90;
     if (name.includes(q)) return 80;
@@ -325,26 +498,47 @@
     if (el.includes(q)) return 40;
     return 0;
   }
+  /* 单条结果行（兼容 详=DB / 导=LITE） */
+  function itemRow(r, i, raw) {
+    if (r.lite) {
+      return `<div class="ritem" data-i="${i}" onclick="pick(${i})">
+        <div class="code">${r.code} <span class="cs-badge" style="background:#eef3f7;color:#5b6b7a">品目</span></div>
+        <div class="nm">${hl(r.name, raw)}</div>
+        <div class="tags"><span class="cs-badge cs-badge-warn">归类指引</span>
+          <span class="cs-badge">第${r.code.slice(0,2)}章 ${CH[r.code.slice(0,2)]||""}</span></div>
+      </div>`;
+    }
+    return `<div class="ritem" data-i="${i}" onclick="pick(${i})">
+      <div class="code">${r.code} <span class="cs-badge cs-badge-ok" style="font-size:10px">详</span></div>
+      <div class="nm">${hl(r.name, raw)}</div>
+      <div class="tags">
+        <span class="cs-badge cs-badge-info">${r.cat}</span>
+        ${r.reg && r.reg.indexOf("无")<0 ? '<span class="cs-badge cs-badge-warn">监管 '+Cstar.esc(r.reg.split("（")[0])+'</span>' : ''}
+        ${r.ce>0 ? '<span class="cs-badge cs-badge-danger">消费税'+r.ce+'%</span>' : ''}
+      </div>
+    </div>`;
+  }
   function doSearch() {
     const raw = (document.getElementById("q").value || "").trim();
     const q = raw.toUpperCase();
-    let arr = DB.map(r => ({ r, s: score(r, q) }))
-                .filter(x => (curCat === "全部" || x.r.cat === curCat) && (!q || x.s > 0))
-                .sort((a,b) => b.s - a.s || a.r.code.localeCompare(b.r.code));
-    curList = arr.map(x => x.r);
+    // 详细库（DB）
+    let dbArr = DB.map(r => ({ r, s: score(r, q) }))
+                  .filter(x => (curCat === "全部" || x.r.cat === curCat) && (!q || x.s > 0))
+                  .sort((a,b) => b.s - a.s || a.r.code.localeCompare(b.r.code))
+                  .map(x => x.r);
+    // 归类指引库（LITE），仅在"全部"类别且有查询词时补充
+    let liteArr = [];
+    if (q && curCat === "全部") {
+      liteArr = LITE.map(r => ({ r: Object.assign({lite:true, cat:"归类指引"}, r), s: score(r, q) }))
+                    .filter(x => x.s > 0)
+                    .sort((a,b) => b.s - a.s)
+                    .map(x => x.r);
+    }
+    curList = dbArr.concat(liteArr);
     document.getElementById("hit").textContent = curList.length;
     const box = document.getElementById("results");
     if (!curList.length) { box.innerHTML = noHit(raw); return; }
-    box.innerHTML = curList.map((r, i) =>
-      `<div class="ritem" data-i="${i}" onclick="pick(${i})">
-        <div class="code">${r.code}</div>
-        <div class="nm">${hl(r.name, raw)}</div>
-        <div class="tags">
-          <span class="cs-badge cs-badge-info">${r.cat}</span>
-          ${r.reg && r.reg.indexOf("无")<0 ? '<span class="cs-badge cs-badge-warn">监管 '+Cstar.esc(r.reg.split("（")[0])+'</span>' : ''}
-          ${r.ce>0 ? '<span class="cs-badge cs-badge-danger">消费税'+r.ce+'%</span>' : ''}
-        </div>
-      </div>`).join("");
+    box.innerHTML = curList.map((r, i) => itemRow(r, i, raw)).join("");
   }
   function hl(text, q) {
     if (!q) return Cstar.esc(text);
@@ -358,8 +552,12 @@
     const hot = HOT.map(h => `<span class="chip chip-hot" onclick="quick('${h}')">${h}</span>`).join("");
     return `<div class="nohit">
       <div class="big">未直接命中「${Cstar.esc(raw)||''}」</div>
-      <div class="muted" style="margin:6px 0 10px">本库收录 90+ 高频商品（示例），可能未含该品。建议：换用更通用的品名/俗称，或切到「按 HS 章浏览」。</div>
+      <div class="muted" style="margin:6px 0 10px">速查库已收录常用商品的详细+品目指引；该词可能太具体或属长尾。建议换更通用品名/俗称，或切到「按 HS 章浏览」，也可直接到官方权威库查全部 8500+ 编码。</div>
       ${tips.length ? '<div class="muted" style="margin-bottom:8px">💡 试试：<b>'+tips.join(" / ")+'</b></div>' : ''}
+      <div class="cs-actions" style="margin:6px 0 10px">
+        <a class="cs-btn cs-btn-primary" href="${OFFICIAL}" target="_blank" rel="noopener">🔗 中国海关官方查询</a>
+        <a class="cs-btn cs-btn-soft" href="${OFFICIAL2}" target="_blank" rel="noopener">归类通查询</a>
+      </div>
       <div class="muted" style="margin-bottom:6px">热门关键词：</div>
       <div class="chips">${hot}</div>
     </div>`;
@@ -383,10 +581,12 @@
     document.getElementById("recent").innerHTML = list.map(r => `<span class="chip" onclick="quick('${Cstar.esc(r.w).replace(/'/g,"")}')">${Cstar.esc(r.w)}</span>`).join("");
   }
 
-  /* 章浏览 */
+  /* 章浏览（含详细库 + 归类指引库） */
+  function allRows() { return DB.concat(LITE.map(x => Object.assign({lite:true, cat:"归类指引"}, x))); }
   function buildChTree() {
-    const chs = [...new Set(DB.map(r => r.code.slice(0,2)))].sort();
-    const cnt = {}; DB.forEach(r => { const c=r.code.slice(0,2); cnt[c]=(cnt[c]||0)+1; });
+    const pool = allRows();
+    const chs = [...new Set(pool.map(r => r.code.slice(0,2)))].sort();
+    const cnt = {}; pool.forEach(r => { const c=r.code.slice(0,2); cnt[c]=(cnt[c]||0)+1; });
     document.getElementById("chtree").innerHTML =
       `<div class="chsec">已收录 ${chs.length} 个 HS 章（点击筛选）</div>` +
       chs.map(c => `<div class="chrow" onclick="byChapter('${c}')">
@@ -396,13 +596,10 @@
   function byChapter(c) {
     setTab("kw");
     document.getElementById("q").value = "";
-    curList = DB.filter(r => r.code.slice(0,2) === c).sort((a,b)=>a.code.localeCompare(b.code));
+    curList = allRows().filter(r => r.code.slice(0,2) === c).sort((a,b)=>a.code.localeCompare(b.code));
     curCat = "全部"; document.querySelectorAll("#cats .chip").forEach(el=>el.classList.toggle("on",el.dataset.c==="全部"));
     document.getElementById("hit").textContent = curList.length;
-    const box = document.getElementById("results");
-    box.innerHTML = curList.map((r,i)=>`<div class="ritem" data-i="${i}" onclick="pick(${i})">
-      <div class="code">${r.code}</div><div class="nm">${Cstar.esc(r.name)}</div>
-      <div class="tags"><span class="cs-badge cs-badge-info">${r.cat}</span></div></div>`).join("");
+    document.getElementById("results").innerHTML = curList.map((r,i)=>itemRow(r,i,"")).join("");
     if (curList.length) pick(0);
   }
 
@@ -411,7 +608,40 @@
     document.querySelectorAll(".ritem").forEach(el => el.classList.toggle("active", +el.dataset.i === i));
     render(curItem);
   }
+  function officialBtns(term) {
+    const t = encodeURIComponent(term||"");
+    return `<div class="cs-actions" style="margin-top:10px">
+      <a class="cs-btn cs-btn-primary" href="${OFFICIAL}" target="_blank" rel="noopener">🔗 中国海关官方查询</a>
+      <a class="cs-btn cs-btn-soft" href="${OFFICIAL2}" target="_blank" rel="noopener">归类通查询</a>
+    </div>`;
+  }
+  function renderLite(r) {
+    const ch = r.code.slice(0,2);
+    const rel = DB.concat(LITE.map(x=>Object.assign({lite:true},x)))
+      .filter(x => x.code.slice(0,2)===ch && x.code!==r.code).slice(0,6);
+    const relHtml = rel.length ? `<div class="related"><div class="muted" style="margin-bottom:4px">同章相关（第${ch}章 ${CH[ch]||""}）：</div>` +
+      rel.map(x=>`<a onclick="quick('${x.code}')">${x.code} ${Cstar.esc(x.name.slice(0,12))}</a>`).join("") + `</div>` : "";
+    const html = `<div class="doc" id="doc">
+      <h2>${Cstar.esc(r.name)}</h2>
+      <div class="codeline">${r.code} <span style="font-size:13px;color:var(--cs-muted)">（HS 品目，需细分到 10 位）</span></div>
+      <span class="cs-badge cs-badge-warn">归类指引</span>
+      <span class="cs-badge">第${ch}章 ${CH[ch]||""}</span>
+      <div class="cs-note cs-note-info" style="margin-top:14px">
+        本品在速查库中为<strong>归类指引</strong>：已定位到 HS 品目 <strong>${r.code}</strong>（${Cstar.esc(r.name)}）。
+        完整的 <strong>10 位编码、规范申报要素、关税/增值税/退税率与监管条件</strong>请到官方权威库按规格细分确认。
+      </div>
+      ${officialBtns(r.name)}
+      ${relHtml}
+      <div class="muted" style="margin-top:14px;border-top:1px dashed var(--cs-line);padding-top:8px">
+        ${Cstar.stampLine()} · 生成 ${Cstar.nowStr()}<br>
+        归类指引仅供缩小范围，最终编码与税率以海关申报系统为准。
+      </div>
+    </div>`;
+    document.getElementById("docWrap").innerHTML = html;
+    document.getElementById("docActions").style.display = "none";
+  }
   function render(r) {
+    if (r.lite) return renderLite(r);
     const elemHtml = r.elem.map(e=>`<li>${Cstar.esc(e)}</li>`).join("");
     const rel = DB.filter(x => x.code.slice(0,2)===r.code.slice(0,2) && x.code!==r.code).slice(0,6);
     const relHtml = rel.length ? `<div class="related"><div class="muted" style="margin-bottom:4px">同章相关（第${r.code.slice(0,2)}章 ${CH[r.code.slice(0,2)]||""}）：</div>` +
@@ -448,7 +678,7 @@
     document.getElementById("docActions").style.display = "flex";
   }
   function copyElem() {
-    if (!curItem) return;
+    if (!curItem || !curItem.elem) return;
     const txt = curItem.elem.map((e,i)=>(i+1)+":"+e).join("|");
     navigator.clipboard ? navigator.clipboard.writeText(txt).then(()=>alert("已复制申报要素：\n"+txt)) : prompt("复制：", txt);
   }
