@@ -857,7 +857,9 @@ def clear(db: Session = Depends(database.get_db), user=Depends(_admin)):
 # ============ 前端静态托管 ============
 @app.get("/")
 def index():
-    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
+    # index.html 不缓存：保证每次更新后浏览器立即取到最新版本（再按 ?v= 拉取最新 JS/CSS）
+    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"),
+                        headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
 
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="static")

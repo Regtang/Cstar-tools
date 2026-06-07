@@ -121,7 +121,7 @@ const NAV=[
   ['业务记录系统',[['customs','⎙','关务单证管理','customs'],['logistics','⇄','物流与集装箱','logistics'],
     ['finance','¥','财务状况记录','finance']]],
   ['贸易安全',[['security','⛨','贸易安全管理','security'],['partner','⚯','商业伙伴评估','partner']]],
-  ['合规支撑',[['docs','▤','制度与档案库','docs'],['training','◉','培训管理','training']]],
+  ['合规支撑',[['docs','▤','制度与档案库','docs'],['training','◉','培训管理','training'],['regs','§','法规与政策库','']]],
   ['外部工具',[['packer','⊞','装箱软件','','/packer/']]],
   ['系统',[['users','👤','用户管理','__admin'],['logs','📋','操作日志','__admin'],['settings','⚙','设置']]],
 ];
@@ -148,7 +148,8 @@ async function enterApp(){
   $('#loginView').classList.add('hidden');$('#appView').classList.remove('hidden');
   $('#uName').textContent=ME.name||ME.username;
   $('#uRole').textContent=ME.roleName;
-  $('#uAvatar').textContent=(ME.name||ME.username).slice(0,1);
+  $('#uAvatar').innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 19.5c1-3.7 4-5 6.5-5s5.5 1.3 6.5 5" stroke-linecap="round"/></svg>';
+  const _v=$('#appVer'); if(_v) _v.textContent=(window.APP_VERSION||'v1.0')+(window.APP_BUILD?' · '+window.APP_BUILD:'');
   buildNav();
   go('dashboard');
 }
@@ -159,7 +160,7 @@ const TITLES={dashboard:['认证驾驶舱','首页 / 认证总览'],selfassess:[
   customs:['关务单证管理','业务记录系统 / 关务'],logistics:['物流与集装箱','业务记录系统 / 物流'],
   finance:['财务状况记录','业务记录系统 / 财务'],security:['贸易安全管理','贸易安全 / 安全管控'],
   partner:['商业伙伴评估','贸易安全 / 商业伙伴'],docs:['制度与档案库','合规支撑 / 档案'],
-  training:['培训管理','合规支撑 / 培训'],users:['用户管理','系统 / 用户'],
+  training:['培训管理','合规支撑 / 培训'],regs:['法规与政策库','合规支撑 / 法规'],users:['用户管理','系统 / 用户'],
   logs:['操作日志','系统 / 日志'],settings:['设置','系统 / 设置']};
 let _curView='dashboard';
 async function go(v){
@@ -241,7 +242,10 @@ VIEWS.dashboard=async()=>{
     <div class="card flex1"><h3>四大类标准达标情况</h3>
       ${d.cats.map(c=>`<div style="margin:14px 0"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
         <span>${c.cat} <span class="mini">（${c.ok}/${c.total} 项达标）</span></span><b>${c.rate}%</b></div>
-        <div class="bar"><i style="width:${c.rate}%;background:${c.rate>=85?'#22c55e':c.rate>=60?'#f59e0b':'#e54c5e'}"></i></div></div>`).join('')}
+        <div class="bar"><i style="width:${c.rate}%;background:${c.rate>=85?'#22c55e':c.rate>=60?'#f59e0b':'#e84368'}"></i></div></div>`).join('')}
+      <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:10px;display:flex;justify-content:space-between;align-items:center">
+        <span>附加标准（加分项）<span class="mini">已获得 ${d.bonusGot||0}/${d.bonusTotal||0} 项 · 每项+1，高级认证最多+2</span></span>
+        <b style="color:var(--brand2);font-size:16px">+${Math.min(2,d.bonusGot||0)} 分</b></div>
     </div>
   </div>
   <div class="row" style="margin-top:16px">
@@ -276,6 +280,7 @@ VIEWS.selfassess=async()=>{
     <select id="fCat" onchange="renderSA()"><option value="">全部类别</option>${CATS.map(c=>`<option>${c}</option>`).join('')}</select>
     <select id="fStat" onchange="renderSA()"><option value="">全部状态</option><option>待评估</option><option>达标</option><option>基本达标</option><option>不达标</option></select>
     <input id="fKw" placeholder="搜索名称/条款号…" oninput="renderSA()" style="flex:1;min-width:160px">
+    <button class="btn ghost" onclick="exportSAReport()">📄 导出自评报告</button>
     ${w?'<button class="btn" onclick="addSA()">+ 新增标准项</button>':''}</div>
     <div class="card" style="padding:0;overflow:hidden"><div id="saTable"></div></div>`;
   $('#content').innerHTML=h;renderSA();
@@ -292,6 +297,56 @@ function renderSA(){
 }
 function addSA(){openForm('新增标准项',SA_FIELDS,{cat:'内部控制',status:'待评估'},v=>api('/standards','POST',v));}
 function editSA(id){const s=CACHE.standards.find(x=>x.id===id);openForm('编辑标准项 '+s.code,SA_FIELDS,s,v=>api('/standards/'+id,'PUT',v));}
+/* 功能①：一键导出/打印 AEO 自评报告 */
+function exportSAReport(){
+  const s=CACHE.standards||[]; const byCat={};
+  s.forEach(x=>{(byCat[x.cat]=byCat[x.cat]||[]).push(x);});
+  const core=s.filter(x=>x.cat!=='附加标准'); const ok=core.filter(x=>x.status==='达标').length;
+  const bonus=s.filter(x=>x.cat==='附加标准'&&x.status==='达标').length;
+  let rows='';
+  CATS.forEach(c=>{const arr=(byCat[c]||[]).slice().sort((a,b)=>a.code.localeCompare(b.code,'zh'));if(!arr.length)return;
+    rows+=`<tr><th colspan="4" style="background:#eef3f7;text-align:left">${c}</th></tr>`;
+    arr.forEach(x=>rows+=`<tr><td>${esc(x.code)}</td><td>${esc(x.name)}</td><td>${esc(x.status)}</td><td>${esc(x.note||'')}</td></tr>`);});
+  const html=`<html><head><meta charset="utf-8"><title>AEO自评报告</title><style>
+    body{font-family:"Microsoft YaHei",sans-serif;color:#1f2a37;padding:30px}h1{font-size:20px;margin:0 0 4px}
+    .sum{color:#555;font-size:13px;margin:3px 0}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:14px}
+    th,td{border:1px solid #999;padding:5px 8px;text-align:left;vertical-align:top}thead th{background:#252f45;color:#fff}
+    .ft{margin-top:18px;color:#888;font-size:11px}</style></head><body>
+    <h1>喜事达 AEO 高级认证 · 标准自评报告</h1>
+    <div class="sum">依据：海关总署公告2026年第34号《海关高级认证企业标准》（通用标准—进出口货物收发货人）</div>
+    <div class="sum">核心条款达标：<b>${ok}/${core.length}</b> · 附加标准加分：<b>+${Math.min(2,bonus)}</b> 分 · 生成时间：${new Date().toLocaleString('zh-CN',{hour12:false})}</div>
+    <table><thead><tr><th>条款</th><th>标准名称</th><th>自评状态</th><th>问题说明</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="ft">${(window.APP_VERSION||'')} · 喜事达AEO认证管理平台 · 本报告由系统自动生成，最终以海关认定为准。</div>
+    </body></html>`;
+  const w=window.open('','_blank'); if(!w){alert('请允许弹出窗口以导出报告');return;}
+  w.document.write(html); w.document.close(); w.focus(); setTimeout(()=>{try{w.print();}catch(e){}},400);
+}
+/* 功能③：法规与政策库 */
+VIEWS.regs=async()=>{
+  const items=[
+    ['海关总署公告2026年第34号','《海关高级认证企业标准》《海关认证企业标准》（2026/4/1施行，废止2022年第106号、114号）','http://www.customs.gov.cn/customs/2026-03/31/article_2026033118200739179.html'],
+    ['海关总署令第282号','《海关注册登记和备案企业信用管理办法》（2026/4/1施行）',''],
+    ['SAFE标准框架（2025版）','世界海关组织《全球贸易安全与便利标准框架》，AEO制度国际互认依据','']
+  ];
+  let h=`<div class="section-title">法规与政策库 <small>AEO 认证依据与最新动态</small></div>
+  <div class="card"><h3>2026版标准修订要点（公告第34号）</h3>
+   <ul style="margin:10px 0 0;padding-left:20px;line-height:2.05">
+    <li>通用标准细分为「进出口货物收发货人」与「报关企业」2类；单项标准由 10 类精简为 4 类</li>
+    <li>保留 内部控制 / 财务状况 / 守法规范 / 贸易安全 四大核心模块（对标 SAFE 2025）</li>
+    <li>财务状况改为 9 项指标（4 项偿债 + 5 项盈利），区分生产型/非生产型，新增达标判定规则</li>
+    <li>内部控制新增「禁限及两用物项审查」单独分项</li>
+    <li>守法规范覆盖面扩展至更多关联主体，量化要求增加</li>
+    <li>新增 附加标准（加分项）：每项 +1 分，高级认证最多累计 +2 分</li>
+    <li>建立容错整改机制：除附加标准外可申请整改，整改期 6 个月 / 1 年，期间保留信用等级</li>
+   </ul></div>
+  <div class="card" style="margin-top:14px"><h3>核心法规文件</h3>
+   <table><thead><tr><th>文号</th><th>名称</th><th>链接</th></tr></thead><tbody>
+   ${items.map(it=>`<tr><td><b>${esc(it[0])}</b></td><td>${esc(it[1])}</td><td>${it[2]?`<a href="${it[2]}" target="_blank" rel="noopener" style="color:var(--brand2)">官方原文 ↗</a>`:'—'}</td></tr>`).join('')}
+   </tbody></table>
+   <div class="alert info" style="margin-top:12px"><span class="ai">ℹ</span><div>标准逐条原文以海关总署公告附件为准；本平台标准框架已按公告第34号更新。</div></div>
+  </div>`;
+  $('#content').innerHTML=h;
+};
 
 /* ---- 内审 ---- */
 const AUD_FIELDS=[
@@ -578,7 +633,7 @@ VIEWS.settings=async()=>{
   }
   h+=`<div class="section-title">关于</div>
   <div class="card" style="max-width:520px"><div class="kv">
-    <div class="k">产品</div><div>喜事达AEO认证管理平台 v1.1</div>
+    <div class="k">产品</div><div>喜事达AEO认证管理平台 ${window.APP_VERSION||'v1.0'}${window.APP_BUILD?'（构建 '+window.APP_BUILD+'）':''}</div>
     <div class="k">依据标准</div><div>《海关高级认证企业标准》（海关总署公告2026年第34号，2026/4/1施行）</div>
     <div class="k">信用管理</div><div>海关总署令第282号</div>
     <div class="k">技术架构</div><div>FastAPI + SQLite + 多角色权限</div>
