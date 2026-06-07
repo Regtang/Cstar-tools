@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>进出口税费试算器 · 喜事达</title>
+  <link rel="stylesheet" href="/cstar-ui.css" />
+  <script src="/cstar-tool.js"></script>
+  <style>
+    main { max-width: 1100px; margin: 20px auto; padding: 0 18px 40px; }
+    .layout { display: grid; grid-template-columns: 440px 1fr; gap: 18px; align-items: start; }
+    .seg { display: flex; gap: 6px; }
+    .seg label { flex: 1; text-align: center; border: 1px solid #cfd6e0; border-radius: 9px; padding: 9px 4px; font-size: 14px; cursor: pointer; background: #fff; }
+    .seg input { display: none; }
+    .seg label:has(input:checked) { border-color: var(--cs-teal); background: #e6f3f6; color: var(--cs-teal-dark); font-weight: 800; }
+    .hint { font-size: 12px; color: var(--cs-muted); margin-top: 4px; }
+    .res table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    .res th, .res td { border: 1px solid #c9d2dc; padding: 7px 10px; }
+    .res th { background: #f1f6f8; text-align: left; width: 56%; font-weight: 700; }
+    .res td { text-align: right; }
+    .res .total th, .res .total td { background: #eef7f9; font-weight: 800; color: var(--cs-teal-dark); font-size: 15px; }
+    .doc { background: #fff; border: 1px solid var(--cs-line); border-radius: 12px; padding: 24px 26px; color: #1f2a37; }
+    .doc h2 { font-size: 18px; margin: 0 0 4px; }
+    .doc .en { color: var(--cs-muted); font-size: 12px; margin-bottom: 12px; }
+    .muted { color: var(--cs-muted); }
+    @media (max-width: 920px) { .layout { grid-template-columns: 1fr; } }
+    @media print { .panel,.cs-header,.no-print { display:none !important; } .doc{border:0;padding:0} body.cstar-ui{background:#fff} main,.layout{display:block;margin:0;max-width:none} }
+  </style>
+</head>
+<body class="cstar-ui">
+  <header class="cs-header">
+    <h1>进出口税费试算器</h1>
+    <p>进口关税 / 增值税 / 消费税 估算 · 出口退税估算 · 仅供参考，实际以海关审定为准</p>
+  </header>
+
+  <main>
+    <div class="layout">
+      <section class="cs-card panel no-print">
+        <h2>录入</h2>
+        <div class="cs-card-body">
+          <label class="cs-label">业务类型</label>
+          <div class="seg" id="seg">
+            <label><input type="radio" name="mode" value="import" checked onclick="switchMode()">进口税费</label>
+            <label><input type="radio" name="mode" value="export" onclick="switchMode()">出口退税</label>
+          </div>
+
+          <div id="impBox">
+            <div class="cs-row" style="margin-top:12px">
+              <div><label class="cs-label">币种</label>
+                <select id="cur" class="cs-select" onchange="syncRate()"><option>USD</option><option>CNY</option><option>EUR</option><option>JPY</option><option>HKD</option></select></div>
+              <div><label class="cs-label">汇率(对人民币)</label><input id="rate" class="cs-input" type="number" step="0.0001" value="7.2" oninput="calc()" /></div>
+            </div>
+            <label class="cs-label">货价（成交价，按所选币种）*</label>
+            <input id="goods" class="cs-input" type="number" min="0" placeholder="如 10000" oninput="calc()" />
+            <div class="cs-row">
+              <div><label class="cs-label">国际运费</label><input id="freight" class="cs-input" type="number" min="0" value="0" oninput="calc()" /></div>
+              <div><label class="cs-label">保险费</label><input id="insur" class="cs-input" type="number" min="0" value="0" oninput="calc()" /></div>
+            </div>
+            <div class="hint">保险费未知？<a href="javascript:void(0)" onclick="estInsur()">按 (货价+运费)×0.3% 估算</a></div>
+            <div class="cs-row" style="margin-top:8px">
+              <div><label class="cs-label">关税率 %</label><input id="duty" class="cs-input" type="number" min="0" step="0.1" value="0" oninput="calc()" /></div>
+              <div><label class="cs-label">增值税率</label>
+                <select id="vat" class="cs-select" onchange="calc()"><option value="13">13%</option><option value="9">9%</option><option value="3">3%</option></select></div>
+            </div>
+            <label class="cs-label">消费税率 %（无则填 0，如化妆品 15）</label>
+            <input id="cons" class="cs-input" type="number" min="0" step="0.1" value="0" oninput="calc()" />
+          </div>
+
+          <div id="expBox" style="display:none">
+            <label class="cs-label" style="margin-top:12px">采购金额（含增值税专票，人民币）*</label>
+            <input id="buy" class="cs-input" type="number" min="0" placeholder="如 113000" oninput="calc()" />
+            <div class="cs-row">
+              <div><label class="cs-label">征税率 %</label>
+                <select id="taxr" class="cs-select" onchange="calc()"><option value="13">13%</option><option value="9">9%</option><option value="6">6%</option></select></div>
+              <div><label class="cs-label">退税率 %</label><input id="refund" class="cs-input" type="number" min="0" step="0.1" value="13" oninput="calc()" /></div>
+            </div>
+            <div class="hint">退税额 = 采购不含税额 × 退税率；征退差 = 不含税额 ×(征税率−退税率)，计入成本。</div>
+          </div>
+
+          <div id="err" class="cs-error-text" style="margin-top:10px"></div>
+          <div class="cs-actions">
+            <button class="cs-btn cs-btn-soft" onclick="fillDemo()">填入示例</button>
+            <button class="cs-btn cs-btn-ghost" onclick="saveRec()">存入台账</button>
+            <button class="cs-btn cs-btn-ghost" onclick="Cstar.exportPDF('doc','税费试算.pdf')">PDF</button>
+            <button class="cs-btn cs-btn-ghost" onclick="Cstar.exportExcel('resTable','税费试算.xls')">Excel</button>
+            <button class="cs-btn cs-btn-ghost" onclick="recs.exportCSV('税费台账.csv',COLS)">台账CSV</button>
+            <button class="cs-btn cs-btn-ghost" onclick="clearForm()">清空</button>
+          </div>
+
+          <div style="font-weight:800;color:var(--cs-teal-dark);margin:16px 0 6px">历史台账</div>
+          <input id="q" class="cs-input no-print" placeholder="搜备注/类型" oninput="renderHist()" style="margin-bottom:8px" />
+          <div id="hist"></div>
+        </div>
+      </section>
+
+      <section><div class="doc" id="doc"></div></section>
+    </div>
+  </main>
+
+<script>
+Cstar.stamp({ tool:"进出口税费试算器", version:"v1.0.0", author:"老瑞" });
+const $ = Cstar.$, esc = Cstar.esc;
+const recs = Cstar.records("dutycalc_records");
+const COLS = [["mode","类型"],["base","计税基数"],["total","税费/退税"],["grand","总成本/到手"],["note","备注"],["ts2","时间"]];
+const FIELDS = ["cur","rate","goods","freight","insur","duty","vat","cons","buy","taxr","refund"];
+let last = null;
+
+Cstar.store.bindForm("dutycalc_form", FIELDS, { onRestore: switchMode });
+
+function n(id){ return parseFloat($(id).value) || 0; }
+function fmt(x){ return "¥" + (x||0).toLocaleString("zh-CN",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function mode(){ return document.querySelector('input[name="mode"]:checked').value; }
+function switchMode(){ const im=mode()==="import"; $("impBox").style.display=im?"":"none"; $("expBox").style.display=im?"none":""; calc(); }
+function syncRate(){ if($("cur").value==="CNY") $("rate").value=1; calc(); }
+function estInsur(){ $("insur").value=(((n("goods")+n("freight"))*0.003)).toFixed(2); calc(); }
+
+function calc(){
+  $("err").textContent="";
+  if(mode()==="import"){
+    const rate=n("rate"), cif=(n("goods")+n("freight")+n("insur"))*rate;
+    const dutyR=n("duty")/100, vatR=n("vat")/100, consR=n("cons")/100;
+    const duty=cif*dutyR;
+    const cons=consR>0 ? (cif+duty)/(1-consR)*consR : 0;
+    const vat=(cif+duty+cons)*vatR;
+    const tax=duty+cons+vat, grand=cif+tax;
+    last={mode:"进口", base:cif, total:tax, grand:grand};
+    renderDoc("进口税费","IMPORT DUTY & TAX",
+      [["完税价格 CIF（货价+运费+保险）×汇率",cif],["关税（完税价×"+n("duty")+"%）",duty],
+       ["消费税（"+n("cons")+"%，组成计税价）",cons],["增值税（"+n("vat")+"%）",vat]],
+      "合计进口税费",tax,"进口总成本（完税价+税费）",grand,
+      "税负率 "+(cif?(tax/cif*100).toFixed(1):0)+"%");
+  } else {
+    const buy=n("buy"), taxR=n("taxr")/100, refR=n("refund")/100;
+    const net=buy/(1+taxR), refund=net*refR, gap=net*(taxR-refR);
+    last={mode:"出口", base:net, total:refund, grand:refund};
+    renderDoc("出口退税","EXPORT VAT REFUND",
+      [["采购金额（含税）",buy],["不含税采购额 ÷(1+"+n("taxr")+"%)",net],
+       ["应退税额（不含税×"+n("refund")+"%）",refund],["征退税差（不可退，计入成本）",gap]],
+      "应退税额",refund,"退税后实际采购成本",net-refund+gap,
+      "退税率 "+n("refund")+"% / 征税率 "+n("taxr")+"%");
+  }
+}
+function renderDoc(title,en,rows,totalLabel,totalVal,grandLabel,grandVal,foot){
+  $("doc").innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid var(--cs-teal);padding-bottom:8px;margin-bottom:10px">
+      <div><span style="font-family:Arial;font-weight:900;color:var(--cs-teal);letter-spacing:1.5px">CST<span style="color:var(--cs-red)">A</span>R 喜事达</span></div>
+      <div class="muted" style="font-size:12px">${new Date().toLocaleString("zh-CN",{hour12:false})}</div>
+    </div>
+    <h2>${title}试算</h2><div class="en">${en} · 仅供估算</div>
+    <div class="res"><table id="resTable">
+      ${rows.map(r=>`<tr><th>${esc(r[0])}</th><td>${fmt(r[1])}</td></tr>`).join("")}
+      <tr class="total"><th>${esc(totalLabel)}</th><td>${fmt(totalVal)}</td></tr>
+      <tr class="total"><th>${esc(grandLabel)}</th><td>${fmt(grandVal)}</td></tr>
+    </table></div>
+    <p class="muted" style="font-size:11.5px;margin-top:10px">${esc(foot)}　·　本结果仅供估算，实际税费以海关审定及税务机关为准。</p>
+    <p class="muted" style="font-size:10px;text-align:center;border-top:1px dashed var(--cs-line);padding-top:6px;margin-top:8px">${esc(Cstar.stampLine())}</p>`;
+}
+
+function fillDemo(){
+  if(mode()==="import"){ $("cur").value="USD";$("rate").value="7.2";$("goods").value="10000";$("freight").value="800";estInsur();$("duty").value="8";$("vat").value="13";$("cons").value="0"; }
+  else { $("buy").value="113000";$("taxr").value="13";$("refund").value="13"; }
+  Cstar.store.bindForm("dutycalc_form",FIELDS).save(); calc();
+}
+function clearForm(){ FIELDS.forEach(id=>{const e=$(id);if(e&&e.tagName==="INPUT")e.value=(id==="rate"?"7.2":"0");}); $("goods").value="";$("buy").value=""; Cstar.store.remove("dutycalc_form"); calc(); }
+
+function saveRec(){
+  if(!last) calc();
+  const note=prompt("给这条试算加个备注（如客户/品名）：","")||"";
+  recs.add({ mode:last.mode, base:last.base.toFixed(2), total:last.total.toFixed(2), grand:last.grand.toFixed(2), note, ts2:Cstar.nowStr() });
+  renderHist(); alert("已存入台账");
+}
+function renderHist(){
+  const all=recs.all(), q=($("q").value||"").toUpperCase();
+  const list=all.filter(x=>((x.mode||"")+(x.note||"")).toUpperCase().includes(q));
+  $("hist").innerHTML=list.length?list.map(x=>{const i=all.indexOf(x);
+    return `<div style="display:flex;justify-content:space-between;align-items:center;border:1px solid var(--cs-line);border-radius:8px;padding:6px 9px;margin-bottom:6px">
+      <span><b>${esc(x.mode)}</b> ${fmt(parseFloat(x.total))} <span class="muted" style="font-size:12px">${esc(x.note||"")} · ${esc((x.ts2||"").slice(5,16))}</span></span>
+      <button class="cs-btn cs-btn-ghost no-print" onclick="recs.remove(${i});renderHist()">删</button></div>`;}).join("")
+    :'<p class="muted" style="font-size:13px">暂无记录。</p>';
+}
+
+renderHist(); calc();
+</script>
+</body>
+</html>

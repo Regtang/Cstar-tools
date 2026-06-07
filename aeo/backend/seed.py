@@ -4,9 +4,14 @@
 管理员可在「设置」中一键装载/清空示例数据用于试用与培训。
 """
 import os
+import datetime
 from database import Base, ENGINE, SessionLocal
 import models
 from auth import hash_pw
+
+
+def now_str():
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # 32 项标准框架：(条款号, 类别, 名称, 要求, 责任部门)
 STANDARD_FRAME = [
@@ -101,6 +106,11 @@ DEFAULT_TOOLS = [
          owner_dept="仓储物流部", icon="EIR",
          color="linear-gradient(135deg,#0a7d8c,#0a9bbd)", bar="linear-gradient(90deg,#0a7d8c,#0a9bbd)",
          visibility="both", status="online", entry_kind="embed", entry_path="/container-eir-app.html?embed=1", sort_order=50),
+    dict(slug="duty-calc", name="进出口税费试算器", category="财务",
+         summary="进口关税/增值税/消费税估算 + 出口退税估算：按货价、运费、保险、汇率与各项税率自动算出完税价、各税与含税总成本，支持历史台账与 CSV/Excel/PDF 导出。仅供估算，实际以海关审定为准。",
+         owner_dept="财务部", icon="税费",
+         color="linear-gradient(135deg,#b45309,#f59e0b)", bar="linear-gradient(90deg,#b45309,#f59e0b)",
+         visibility="both", status="online", entry_kind="embed", entry_path="/duty-calc-app.html?embed=1", sort_order=35),
 ]
 
 
@@ -122,9 +132,11 @@ def run():
             for code, cat, name, req, dept in STANDARD_FRAME:
                 db.add(models.Standard(code=code, cat=cat, name=name, req=req,
                                        dept=dept, status="待评估", note="", evidence=[]))
-        if db.query(models.Tool).count() == 0:
-            for t in DEFAULT_TOOLS:
-                db.add(models.Tool(**t))
+        # 工具注册表：按 slug 补建缺失的默认工具（新增工具部署后自动上架；不覆盖已有）
+        have = {x.slug for x in db.query(models.Tool).all()}
+        for t in DEFAULT_TOOLS:
+            if t["slug"] not in have:
+                db.add(models.Tool(**dict(t, created_at=now_str(), updated_at=now_str())))
         db.commit()
     finally:
         db.close()
