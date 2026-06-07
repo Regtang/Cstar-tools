@@ -360,12 +360,16 @@ def packer_delete(pid: int, db: Session = Depends(database.get_db), user=Depends
 # ============ 仪表盘聚合 ============
 @app.get("/api/dashboard")
 def dashboard(db: Session = Depends(database.get_db), user=Depends(auth.staff_only)):
-    stds = db.query(models.Standard).all()
+    all_stds = db.query(models.Standard).all()
+    # 附加标准为加分项，不计入核心达标率与通过判定
+    stds = [s for s in all_stds if s.cat != "附加标准"]
+    bonus = [s for s in all_stds if s.cat == "附加标准"]
     ok = sum(1 for s in stds if s.status == "达标")
     mid = sum(1 for s in stds if s.status == "基本达标")
     bad = sum(1 for s in stds if s.status == "不达标")
     pending = sum(1 for s in stds if s.status not in ("达标", "基本达标", "不达标"))
     total = len(stds)
+    bonus_got = sum(1 for s in bonus if s.status == "达标")
     cats = []
     for cat in ["内部控制", "财务状况", "守法规范", "贸易安全"]:
         items = [s for s in stds if s.cat == cat]
@@ -377,6 +381,7 @@ def dashboard(db: Session = Depends(database.get_db), user=Depends(auth.staff_on
     decls = db.query(models.Decl).all()
     return {
         "ok": ok, "mid": mid, "bad": bad, "pending": pending, "total": total,
+        "bonusGot": bonus_got, "bonusTotal": len(bonus),
         "pass": bad == 0 and pending == 0 and mid <= 3,
         "overall": round((ok + mid * 0.6) / total * 100) if total else 0,
         "cats": cats,

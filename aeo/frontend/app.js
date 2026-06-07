@@ -1,6 +1,6 @@
 /* 喜事达AEO认证管理平台 —— 前端 SPA */
 const $ = s => document.querySelector(s);
-const CATS = ['内部控制', '财务状况', '守法规范', '贸易安全'];
+const CATS = ['内部控制', '财务状况', '守法规范', '贸易安全', '附加标准'];
 let TOKEN = localStorage.getItem('aeo_token') || '';
 let ME = null;
 const CACHE = {};                  // 实体数据缓存
@@ -116,7 +116,7 @@ function logout(){doLogout();}
 
 /* ---------- 导航（按权限） ---------- */
 const NAV=[
-  ['认证总览',[['dashboard','▥','认证驾驶舱'],['selfassess','✓','标准自评（32项）','standards'],
+  ['认证总览',[['dashboard','▥','认证驾驶舱'],['selfassess','✓','标准自评（2026版）','standards'],
     ['audit','⊚','内部审计','audit'],['rectify','⟳','整改跟踪','rectify']]],
   ['业务记录系统',[['customs','⎙','关务单证管理','customs'],['logistics','⇄','物流与集装箱','logistics'],
     ['finance','¥','财务状况记录','finance']]],
@@ -154,7 +154,7 @@ async function enterApp(){
 }
 
 /* ---------- 路由 ---------- */
-const TITLES={dashboard:['认证驾驶舱','首页 / 认证总览'],selfassess:['标准自评（32项）','认证总览 / 标准自评'],
+const TITLES={dashboard:['认证驾驶舱','首页 / 认证总览'],selfassess:['标准自评（2026版）','认证总览 / 标准自评'],
   audit:['内部审计','认证总览 / 内部审计'],rectify:['整改跟踪','认证总览 / 整改跟踪'],
   customs:['关务单证管理','业务记录系统 / 关务'],logistics:['物流与集装箱','业务记录系统 / 物流'],
   finance:['财务状况记录','业务记录系统 / 财务'],security:['贸易安全管理','贸易安全 / 安全管控'],
@@ -226,7 +226,7 @@ VIEWS.dashboard=async()=>{
   const d=await api('/dashboard');
   $('#pillOverall').textContent=d.overall+'%';
   let h=`<div class="grid kpis">
-    ${kpi(d.total,'纳入自评标准','32项 / 4大类','info','▥')}
+    ${kpi(d.total,'纳入自评标准','2026版 · 4大类核心'+(d.bonusTotal?' + 附加'+d.bonusTotal+'项':''),'info','▥')}
     ${kpi(d.ok,'达标项',d.total?Math.round(d.ok/d.total*100)+'%':'0%','ok','✓')}
     ${kpi(d.mid,'基本达标项','通过上限 ≤3 项','mid','◐')}
     ${kpi(d.bad+d.pending,'未达标/待评',d.bad+' 不达标 · '+d.pending+' 待评','bad','✕')}
@@ -302,7 +302,7 @@ const AUD_FIELDS=[
 VIEWS.audit=async()=>{
   await reload('audits');const w=canW('audit');const list=CACHE.audits;
   const tot=list.reduce((s,a)=>s+a.find,0),cl=list.reduce((s,a)=>s+a.closed,0);
-  let h=`<div class="section-title">内部审计计划与记录 <small>106号公告 1.8 内审制度 / 1.9 改进机制</small>${w?'<button class="btn sm" onclick="addAud()">+ 新增内审</button>':''}</div>
+  let h=`<div class="section-title">内部审计计划与记录 <small>公告2026年第34号 1.8 内审制度 / 1.9 改进机制</small>${w?'<button class="btn sm" onclick="addAud()">+ 新增内审</button>':''}</div>
   <div class="card" style="padding:0">${list.length?`<table><thead><tr><th>编号</th><th>范围</th><th>周期</th><th>负责人</th><th>发现</th><th>闭环</th><th>状态</th><th>操作</th></tr></thead><tbody>
     ${list.map(a=>{const cls=a.status==='已结案'?'t-ok':a.status==='整改中'?'t-mid':'t-gray';
       return `<tr><td><b>${esc(a.no)}</b></td><td>${esc(a.scope)}</td><td>${esc(a.date)}</td><td>${esc(a.lead)}</td>
@@ -386,7 +386,7 @@ const CON_FIELDS=[
   {key:'status',label:'状态',type:'select',options:['已铅封发运','已拆箱入库','待复核','装箱中']}];
 VIEWS.logistics=async()=>{
   await reload('containers');const w=canW('logistics');const list=CACHE.containers;
-  let h=`<div class="section-title">货物物流与集装箱安全 <small>106号公告 4.4 货物 / 4.5 集装箱 / 4.6 运输工具</small>${w?'<button class="btn sm" onclick="addCon()">+ 新增集装箱</button>':''}</div>
+  let h=`<div class="section-title">货物物流与集装箱安全 <small>公告2026年第34号 4.4 货物 / 4.5 集装箱 / 4.6 运输工具</small>${w?'<button class="btn sm" onclick="addCon()">+ 新增集装箱</button>':''}</div>
   <div class="card" style="padding:0">${list.length?`<table><thead><tr><th>箱号</th><th>箱型</th><th>铅封号</th><th>货物</th><th>检查</th><th>照片</th><th>状态</th><th>操作</th></tr></thead><tbody>
     ${list.map(c=>`<tr><td><b>${esc(c.no)}</b></td><td>${esc(c.type)}</td><td>${esc(c.seal)}</td><td>${esc(c.goods)}</td>
       <td>${c.photo==='是'?'<span class="tag t-ok">'+esc(c.chk)+'</span>':'<span class="tag t-mid">'+esc(c.chk)+'</span>'}</td>
@@ -414,7 +414,7 @@ VIEWS.finance=async()=>{
   await reload('finance');const w=canW('finance');
   const list=CACHE.finance.slice().sort((a,b)=>String(a.y).localeCompare(String(b.y)));
   const max=Math.max(1,...list.map(f=>f.rate));
-  let h=`<div class="section-title">财务状况记录 <small>106号公告 · 无连续5年资产负债率超95%</small>${w?'<button class="btn sm" onclick="addFin()">+ 新增年度</button>':''}</div>
+  let h=`<div class="section-title">财务状况记录 <small>公告2026年第34号 · 9项指标（偿债4+盈利5）· 生产型/非生产型差异化</small>${w?'<button class="btn sm" onclick="addFin()">+ 新增年度</button>':''}</div>
   <div class="row"><div class="card flex1"><h3>资产负债率趋势（预警线 95%）</h3>
     <div style="display:flex;align-items:flex-end;gap:18px;height:180px;padding:10px 0">
     ${list.length?list.map(f=>`<div style="flex:1;text-align:center;display:flex;flex-direction:column;justify-content:flex-end;height:100%">
@@ -467,7 +467,7 @@ VIEWS.partner=async()=>{
   await reload('partners');const w=canW('partner');const list=CACHE.partners;
   const pending=list.filter(p=>p.sec!=='已评估').length;
   const aeoCnt=list.filter(p=>p.aeo&&p.aeo!=='未认证'&&p.aeo!=='-').length;
-  let h=`<div class="section-title">商业伙伴安全评估 <small>106号公告 4.7 商业伙伴安全</small>${w?'<button class="btn sm" onclick="addPt()">+ 新增伙伴</button>':''}</div>
+  let h=`<div class="section-title">商业伙伴安全评估 <small>公告2026年第34号 4.7 商业伙伴安全</small>${w?'<button class="btn sm" onclick="addPt()">+ 新增伙伴</button>':''}</div>
   ${pending?`<div class="alert warn"><span class="ai">⚠</span><div>有 <b>${pending}</b> 家商业伙伴安全评估待补齐。</div></div>`:''}
   <div class="card" style="padding:0">${list.length?`<table><thead><tr><th>商业伙伴</th><th>类型</th><th>合作内容</th><th>风险</th><th>AEO资质</th><th>安全评估</th><th>到期</th><th>操作</th></tr></thead><tbody>
     ${list.map(p=>`<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.type)}</td><td class="mini">${esc(p.role)}</td><td>${riskTag(p.risk)}</td>
@@ -506,7 +506,7 @@ const TR_FIELDS=[
   {key:'passrate',label:'考核通过率'},{key:'status',label:'状态',type:'select',options:['计划中','进行中','已完成']}];
 VIEWS.training=async()=>{
   await reload('trainings');const w=canW('training');const list=CACHE.trainings;
-  let h=`<div class="section-title">培训管理 <small>106号公告 4.9 海关业务与贸易安全培训</small>${w?'<button class="btn sm" onclick="addTr()">+ 新增培训</button>':''}</div>
+  let h=`<div class="section-title">培训管理 <small>公告2026年第34号 4.9 海关业务与贸易安全培训</small>${w?'<button class="btn sm" onclick="addTr()">+ 新增培训</button>':''}</div>
   <div class="card" style="padding:0">${list.length?`<table><thead><tr><th>培训主题</th><th>日期</th><th>参训对象</th><th>人数</th><th>通过率</th><th>状态</th><th>操作</th></tr></thead><tbody>
     ${list.map(t=>`<tr><td><b>${esc(t.topic)}</b></td><td>${esc(t.date)}</td><td>${esc(t.aud)}</td><td>${t.people}</td><td>${esc(t.passrate)}</td>
       <td>${t.status==='已完成'?'<span class="tag t-ok">已完成</span>':t.status==='进行中'?'<span class="tag t-info">进行中</span>':'<span class="tag t-mid">计划中</span>'}</td>
@@ -578,9 +578,9 @@ VIEWS.settings=async()=>{
   }
   h+=`<div class="section-title">关于</div>
   <div class="card" style="max-width:520px"><div class="kv">
-    <div class="k">产品</div><div>喜事达AEO认证管理平台 v1.0</div>
-    <div class="k">依据标准</div><div>海关总署公告2022年第106号</div>
-    <div class="k">信用管理</div><div>海关总署令第251号</div>
+    <div class="k">产品</div><div>喜事达AEO认证管理平台 v1.1</div>
+    <div class="k">依据标准</div><div>《海关高级认证企业标准》（海关总署公告2026年第34号，2026/4/1施行）</div>
+    <div class="k">信用管理</div><div>海关总署令第282号</div>
     <div class="k">技术架构</div><div>FastAPI + SQLite + 多角色权限</div>
   </div></div>`;
   $('#content').innerHTML=h;
