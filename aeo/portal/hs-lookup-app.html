@@ -63,7 +63,7 @@
 
   <main>
     <div class="cs-note cs-note-warn no-print" style="margin-bottom:14px">
-      ⚠ 本工具为<strong>报关前速查辅助</strong>：常用商品给出详细申报信息（标「详」），其余给出 HS 品目<strong>归类指引</strong>（标「品目」）帮你缩小范围。<strong>完整 8500+ 编码、权威申报要素与税率请以海关申报系统为准</strong>，可点右侧「官方查询」直达。税率/监管为示例值，随政策调整。
+      ✅ 本工具已接入<strong>喜事达全量税则库</strong>：输入商品名/HS编码后点「查」或回车，<strong>在线查询全部 HS 编码、规范申报要素与各档税率（最惠国/普通/暂定/增值税/消费税/出口退税/出口关税）、监管条件与检验检疫</strong>。输入时下方为本地常用库即时联想；在线查询结果以海关申报系统为准。
     </div>
 
     <div class="layout">
@@ -73,7 +73,7 @@
         <div class="cs-card-body">
           <label class="cs-label">输入 HS 编码 / 商品名 / 俗称 / 英文</label>
           <div class="searchbar">
-            <input id="q" class="cs-input" placeholder="如 计算机 / 龙虾 / lobster / 8517" oninput="doSearch()" onkeydown="if(event.key==='Enter')commitSearch()" />
+            <input id="q" class="cs-input" placeholder="输入后按「查」或回车 → 全量在线查询（如 8517 / 牛肉 / 锂电池）" oninput="doSearch()" onkeydown="if(event.key==='Enter')commitSearch()" />
             <button class="cs-btn cs-btn-primary" onclick="commitSearch()">查</button>
           </div>
 
@@ -472,7 +472,7 @@
     buildChTree();
     renderRecent();
     doSearch();
-    Cstar.stamp({ tool: "HS编码·申报要素速查", version: "v2.1.0", author: "老瑞" });
+    Cstar.stamp({ tool: "HS编码·申报要素速查", version: "v3.1.0", author: "老瑞" });
   }
   function setTab(m) {
     mode = m;
@@ -508,13 +508,15 @@
           <span class="cs-badge">第${r.code.slice(0,2)}章 ${CH[r.code.slice(0,2)]||""}</span></div>
       </div>`;
     }
+    const ce = ceText(r.ce);
+    const reg = r.reg ? String(r.reg) : "";
     return `<div class="ritem" data-i="${i}" onclick="pick(${i})">
-      <div class="code">${r.code} <span class="cs-badge cs-badge-ok" style="font-size:10px">详</span></div>
+      <div class="code">${r.code} <span class="cs-badge cs-badge-ok" style="font-size:10px">${r.full?'全量':'详'}</span></div>
       <div class="nm">${hl(r.name, raw)}</div>
       <div class="tags">
-        <span class="cs-badge cs-badge-info">${r.cat}</span>
-        ${r.reg && r.reg.indexOf("无")<0 ? '<span class="cs-badge cs-badge-warn">监管 '+Cstar.esc(r.reg.split("（")[0])+'</span>' : ''}
-        ${r.ce>0 ? '<span class="cs-badge cs-badge-danger">消费税'+r.ce+'%</span>' : ''}
+        <span class="cs-badge cs-badge-info">${r.full?'全量税则':r.cat}</span>
+        ${reg && reg.indexOf("无")<0 ? '<span class="cs-badge cs-badge-warn">监管 '+Cstar.esc(reg.split("（")[0])+'</span>' : ''}
+        ${ce ? '<span class="cs-badge cs-badge-danger">消费税'+Cstar.esc(ce)+'</span>' : ''}
       </div>
     </div>`;
   }
@@ -562,11 +564,72 @@
       <div class="chips">${hot}</div>
     </div>`;
   }
-  function quick(w) { document.getElementById("q").value = w; curCat="全部"; document.querySelectorAll("#cats .chip").forEach(el=>el.classList.toggle("on",el.dataset.c==="全部")); doSearch(); if (curList.length) pick(0); }
+  function quick(w) { document.getElementById("q").value = w; curCat="全部"; document.querySelectorAll("#cats .chip").forEach(el=>el.classList.toggle("on",el.dataset.c==="全部")); commitSearch(); }
+  /* 俗称 → 官方规范品名映射：全量库只按官方品名匹配，口语词（如「饺子」）需先转成官方名（「包馅面食」）才能命中。 */
+  const HS_ALIAS = {
+    // 1902.20 包馅面食（带馅面食类）
+    "饺子":"包馅面食","水饺":"包馅面食","蒸饺":"包馅面食","煎饺":"包馅面食","锅贴":"包馅面食",
+    "速冻饺子":"包馅面食","速冻水饺":"包馅面食","馄饨":"包馅面食","云吞":"包馅面食","抄手":"包馅面食",
+    "汤圆":"包馅面食","元宵":"包馅面食","饺子皮":"包馅面食",
+    // 1902 面食（面条类）
+    "方便面":"面食","泡面":"面食","拉面":"面食","挂面":"面食","面条":"面食","刀削面":"面食",
+    "意面":"面食","意大利面":"面食","通心粉":"面食","乌冬面":"面食","米粉":"面食","粉丝":"面食",
+    // 8507.60 锂离子蓄电池
+    "锂电池":"锂离子蓄电池","锂电":"锂离子蓄电池","锂离子电池":"锂离子蓄电池","动力电池":"锂离子蓄电池"
+  };
+  function aliasOf(raw){
+    const s=(raw||"").trim();
+    if(HS_ALIAS[s]) return {term:HS_ALIAS[s], mapped:true};
+    for(const k in HS_ALIAS){ if(k.length>=2 && s.indexOf(k)>=0) return {term:HS_ALIAS[k], mapped:true}; }
+    return {term:s, mapped:false};
+  }
+  /* 全量在线查询（喜事达税则库 findRateDeclByPage 代理 /api/hs/search） */
+  function apiToItem(rec){
+    const u=[rec.firstUnitName,rec.secondUnitName].filter(s=>s&&String(s).trim()).join(" / ");
+    return {
+      full:true, cat:"全量税则", code:rec.goodsCode||"", name:rec.goodsName||"", unit:u||"—",
+      mfn:rec.lowestInRate||"—", gen:rec.commInRate||"—", vat:rec.vatRate||"—",
+      rebate:rec.outRebatesRate||"—", temp:rec.tempInRate||"—", outTariff:rec.outTariffsRate||"—",
+      ce:rec.expenseRate||"—", reg:rec.customsSupervision||"无", ciq:rec.inspectionDesc||"—",
+      elem:(rec.declNotes||"").split(/[;；|]/).map(s=>s.replace(/^\s*\d+\s*[:：]\s*/,"").trim()).filter(Boolean),
+      note:rec.goodsDesc||""
+    };
+  }
+  async function apiSearch(raw){
+    const box=document.getElementById("results");
+    box.innerHTML='<div class="nohit"><div class="muted">⏳ 正在查询全量税则库…</div></div>';
+    const a=aliasOf(raw); const term=a.term;
+    const aliasNote=a.mapped?'<div class="cs-note cs-note-info" style="margin:0 0 8px">「'+Cstar.esc(raw)+'」已按官方规范品名「'+Cstar.esc(term)+'」查询。</div>':'';
+    try{
+      const resp=await fetch("/api/hs/search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({q:term,page:1,size:60})});
+      if(!resp.ok) throw new Error("HTTP "+resp.status);
+      const j=await resp.json();
+      const recs=(j&&j.data&&j.data.records)||[];
+      if(!recs.length){
+        doSearch();
+        const b=document.getElementById("results");
+        b.innerHTML='<div class="cs-note cs-note-info" style="margin:0 0 8px">全量税则库未匹配「'+Cstar.esc(raw)+'」（可改用规范品名或 HS 编码，如 8507）；以下为本地常用库结果。</div>'+b.innerHTML;
+        if(curList.length) pick(0);
+        return;
+      }
+      curList=recs.map(apiToItem);
+      const total=(j.data&&j.data.total!=null)?j.data.total:recs.length;
+      document.getElementById("hit").textContent=total;
+      const note=`<div class="muted" style="padding:8px 12px;border-bottom:1px solid var(--cs-line)">✅ 全量税则库命中 <b>${total}</b> 条${total>recs.length?'，显示前 '+recs.length+' 条（可细化关键词）':''} · 数据来源 喜事达税则库</div>`;
+      box.innerHTML=aliasNote+note+curList.map((r,i)=>itemRow(r,i,raw)).join("");
+      pick(0);
+    }catch(e){
+      doSearch();
+      const box2=document.getElementById("results");
+      box2.innerHTML='<div class="cs-note cs-note-warn" style="margin:0 0 8px">在线全量查询暂不可用（'+Cstar.esc(e.message)+'），下方为本地常用库结果，可稍后重试。</div>'+box2.innerHTML;
+      if(curList.length) pick(0);
+    }
+  }
   function commitSearch() {
     const raw = (document.getElementById("q").value || "").trim();
-    if (raw) { recent.add({ w: raw }); dedupeRecent(); renderRecent(); }
-    doSearch(); if (curList.length) pick(0);
+    if (!raw) { doSearch(); return; }
+    recent.add({ w: raw }); dedupeRecent(); renderRecent();
+    apiSearch(raw);
   }
   function dedupeRecent() {
     const seen = new Set(), keep = [];
@@ -640,38 +703,47 @@
     document.getElementById("docWrap").innerHTML = html;
     document.getElementById("docActions").style.display = "none";
   }
+  function showRate(v){ if(v===0)return '0%'; if(v===''||v==null||v==='—')return '—'; if(typeof v==='number')return v+'%'; return v; }
+  function ceText(v){ if(typeof v==='number')return v>0?v+'%':''; return (v&&v!=='—'&&v!=='0%')?v:''; }
   function render(r) {
     if (r.lite) return renderLite(r);
-    const elemHtml = r.elem.map(e=>`<li>${Cstar.esc(e)}</li>`).join("");
-    const rel = DB.filter(x => x.code.slice(0,2)===r.code.slice(0,2) && x.code!==r.code).slice(0,6);
-    const relHtml = rel.length ? `<div class="related"><div class="muted" style="margin-bottom:4px">同章相关（第${r.code.slice(0,2)}章 ${CH[r.code.slice(0,2)]||""}）：</div>` +
+    const ch = r.code.slice(0,2);
+    const elemHtml = (r.elem||[]).map(e=>`<li>${Cstar.esc(e)}</li>`).join("") || "<li>—</li>";
+    const rel = (!r.full) ? DB.filter(x => x.code.slice(0,2)===ch && x.code!==r.code).slice(0,6) : [];
+    const relHtml = rel.length ? `<div class="related"><div class="muted" style="margin-bottom:4px">同章相关（第${ch}章 ${CH[ch]||""}）：</div>` +
       rel.map(x=>`<a onclick="quick('${x.code}')">${x.code} ${Cstar.esc(x.name.slice(0,12))}</a>`).join("") + `</div>` : "";
+    const ce = ceText(r.ce);
+    const extra = r.full ? `
+          <tr><th>暂定进口税率</th><td>${Cstar.esc(showRate(r.temp))}</td></tr>
+          <tr><th>出口关税率</th><td>${Cstar.esc(showRate(r.outTariff))}</td></tr>` : "";
+    const src = r.full
+      ? "数据来源：喜事达全量税则库（findRateDeclByPage）· 实际以海关申报系统为准。"
+      : "税率/监管为速查库示例值，实际以海关申报系统及最新税则为准。";
     const html =
       `<div class="doc" id="doc">
         <h2>${Cstar.esc(r.name)}</h2>
         <div class="codeline">${r.code}</div>
-        <span class="cs-badge cs-badge-info">${r.cat}</span>
-        <span class="cs-badge">第${r.code.slice(0,2)}章 ${CH[r.code.slice(0,2)]||""}</span>
-        <span class="cs-badge">法定单位：${Cstar.esc(r.unit)}</span>
+        <span class="cs-badge ${r.full?'cs-badge-ok':'cs-badge-info'}">${r.full?'全量·权威':r.cat}</span>
+        <span class="cs-badge">第${ch}章 ${CH[ch]||""}</span>
+        <span class="cs-badge">法定单位：${Cstar.esc(r.unit||'—')}</span>
 
         <div class="rate-grid">
-          <div class="rate-box"><div class="v">${r.mfn}%</div><div class="k">最惠国关税</div></div>
-          <div class="rate-box"><div class="v">${r.gen}%</div><div class="k">普通关税</div></div>
-          <div class="rate-box"><div class="v">${r.vat}%</div><div class="k">进口增值税</div></div>
-          <div class="rate-box"><div class="v ${r.rebate>0?'':'warn'}">${r.rebate}%</div><div class="k">出口退税率</div></div>
+          <div class="rate-box"><div class="v">${showRate(r.mfn)}</div><div class="k">最惠国关税</div></div>
+          <div class="rate-box"><div class="v">${showRate(r.gen)}</div><div class="k">普通关税</div></div>
+          <div class="rate-box"><div class="v">${showRate(r.vat)}</div><div class="k">进口增值税</div></div>
+          <div class="rate-box"><div class="v">${showRate(r.rebate)}</div><div class="k">出口退税率</div></div>
         </div>
 
         <table>
-          <tr><th>申报要素</th><td><div class="elem">规范申报顺序：<ol>${elemHtml}</ol></div></td></tr>
+          <tr><th>申报要素</th><td><div class="elem">规范申报顺序：<ol>${elemHtml}</ol></div></td></tr>${extra}
           <tr><th>监管条件</th><td>${Cstar.esc(r.reg||'无')}</td></tr>
           <tr><th>检验检疫</th><td>${Cstar.esc(r.ciq||'—')}</td></tr>
-          <tr><th>消费税</th><td>${r.ce>0?('<strong style="color:var(--cs-danger)">'+r.ce+'%</strong>'):'无'}</td></tr>
-          <tr><th>报关提示</th><td>${Cstar.esc(r.note||'—')}</td></tr>
+          <tr><th>消费税</th><td>${ce?('<strong style="color:var(--cs-danger)">'+Cstar.esc(ce)+'</strong>'):'无'}</td></tr>
+          <tr><th>${r.full?'商品描述':'报关提示'}</th><td>${Cstar.esc(r.note||'—')}</td></tr>
         </table>
         ${relHtml}
         <div class="muted" style="margin-top:14px;border-top:1px dashed var(--cs-line);padding-top:8px">
-          ${Cstar.stampLine()} · 生成 ${Cstar.nowStr()}<br>
-          税率/监管为速查库示例值，实际以海关申报系统及最新税则为准。
+          ${Cstar.stampLine()} · 生成 ${Cstar.nowStr()}<br>${src}
         </div>
       </div>`;
     document.getElementById("docWrap").innerHTML = html;
