@@ -116,6 +116,11 @@ DEFAULT_TOOLS = [
          owner_dept="关务部", icon="HS",
          color="linear-gradient(135deg,#0e7490,#06b6d4)", bar="linear-gradient(90deg,#0e7490,#06b6d4)",
          visibility="both", status="online", entry_kind="embed", entry_path="/hs-lookup-app.html?embed=1", sort_order=20),
+    dict(slug="trade-docs", name="发票·装箱单生成器", category="单证",
+         summary="外贸单证一键生成：一次录入抬头与货物明细，同时生成商业发票 Commercial Invoice、形式发票 Proforma Invoice、装箱单 Packing List（中英双语）。自动汇总数量/金额/件数/净重毛重/体积CBM、金额英文大写，支持唛头、贸易术语、付款与银行信息；历史台账、示例数据、本地暂存，打印/PDF/Word 单据与货物明细 Excel 导出。",
+         owner_dept="单证部", icon="单证",
+         color="linear-gradient(135deg,#5b21b6,#8b5cf6)", bar="linear-gradient(90deg,#5b21b6,#8b5cf6)",
+         visibility="both", status="online", entry_kind="embed", entry_path="/trade-docs-app.html?embed=1", sort_order=30),
 ]
 
 

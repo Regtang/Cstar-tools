@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>发票·装箱单生成器 · 喜事达</title>
+  <link rel="stylesheet" href="/cstar-ui.css" />
+  <script src="/cstar-tool.js"></script>
+  <style>
+    main { max-width: 1240px; margin: 18px auto; padding: 0 18px 48px; }
+    .layout { display: grid; grid-template-columns: 470px 1fr; gap: 18px; align-items: start; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .fld label { font-size: 12px; color: var(--cs-muted); display:block; margin-bottom:2px; }
+    .fld { margin-bottom: 8px; }
+    textarea.cs-input { min-height: 54px; resize: vertical; }
+    .items { overflow-x: auto; border:1px solid var(--cs-line); border-radius:10px; margin-top:8px; }
+    .items table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 12.5px; }
+    .items th, .items td { border:1px solid var(--cs-line); padding:3px; }
+    .items th { background:#f1f6f8; font-size:11.5px; white-space:nowrap; padding:5px 4px; }
+    .items input { border:none; width:100%; padding:5px 4px; font-size:12.5px; background:transparent; }
+    .items input:focus { outline:1px solid var(--cs-teal); background:#fff; }
+    .items .del { color:var(--cs-danger); cursor:pointer; text-align:center; font-weight:700; }
+    .docTabs { display:flex; gap:6px; margin-bottom:12px; }
+    .docTabs .t { flex:1; text-align:center; padding:9px 4px; border:1px solid #cfd6e0; border-radius:9px; cursor:pointer; background:#fff; color:var(--cs-muted); font-size:13.5px; }
+    .docTabs .t.on { border-color:var(--cs-teal); background:#e6f3f6; color:var(--cs-teal-dark); font-weight:800; }
+    /* 单据样式 */
+    .doc { background:#fff; border:1px solid var(--cs-line); border-radius:10px; padding:26px 30px; color:#1a1a1a; font-size:13px; }
+    .doc .title { text-align:center; font-size:21px; font-weight:800; letter-spacing:1px; margin:0 0 2px; }
+    .doc .titlecn { text-align:center; font-size:14px; color:#444; margin-bottom:16px; }
+    .doc .seller { font-weight:700; font-size:15px; }
+    .doc .hdr { display:grid; grid-template-columns:1fr 1fr; gap:0 24px; margin-bottom:10px; }
+    .doc .box { border:1px solid #333; padding:6px 8px; margin-bottom:-1px; }
+    .doc .lbl { font-size:10.5px; color:#666; text-transform:uppercase; }
+    .doc table.goods { border-collapse:collapse; width:100%; margin-top:8px; font-size:12px; }
+    .doc table.goods th, .doc table.goods td { border:1px solid #333; padding:5px 6px; }
+    .doc table.goods th { background:#f0f0f0; font-size:11px; }
+    .doc table.goods td.r, .doc table.goods th.r { text-align:right; }
+    .doc table.goods td.c, .doc table.goods th.c { text-align:center; }
+    .doc .words { margin-top:8px; font-weight:700; }
+    .doc .foot { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:34px; }
+    .doc .sign { border-top:1px solid #333; padding-top:4px; font-size:11px; color:#555; }
+    .doc .meta { margin-top:18px; font-size:10.5px; color:#888; border-top:1px dashed #ccc; padding-top:6px; }
+    @media (max-width: 980px) { .layout { grid-template-columns:1fr; } }
+    @media print { .panel,.cs-header,.no-print,.docTabs { display:none !important; } .doc{border:0;padding:0;} body.cstar-ui{background:#fff;} main,.layout{display:block;margin:0;max-width:none;} }
+  </style>
+</head>
+<body class="cstar-ui">
+  <header class="cs-header">
+    <h1>发票 · 装箱单生成器</h1>
+    <p>商业发票 Commercial Invoice / 形式发票 Proforma / 装箱单 Packing List · 一次录入 · 中英双语 · 一键打印导出</p>
+  </header>
+
+  <main>
+    <div class="layout">
+      <!-- 左：录入 -->
+      <section class="cs-card panel no-print">
+        <h2>录入</h2>
+        <div class="cs-card-body">
+          <div class="fld"><label>出口商 / Exporter（名称+地址）*</label>
+            <textarea id="shipper" class="cs-input" placeholder="XISHIDA INTL LOGISTICS CO., LTD.&#10;No.1 ... Shenzhen, China"></textarea></div>
+          <div class="fld"><label>收货人 / Consignee（名称+地址）*</label>
+            <textarea id="consignee" class="cs-input" placeholder="ABC TRADING LLC&#10;... USA"></textarea></div>
+          <div class="fld"><label>通知方 / Notify Party（同收货人可留空）</label>
+            <textarea id="notify" class="cs-input" placeholder="SAME AS CONSIGNEE"></textarea></div>
+
+          <div class="grid2">
+            <div class="fld"><label>发票号 Invoice No.*</label><input id="invNo" class="cs-input" placeholder="XSD-20260608"></div>
+            <div class="fld"><label>日期 Date*</label><input id="invDate" class="cs-input" type="date"></div>
+            <div class="fld"><label>合同号 Contract / S.C. No.</label><input id="contractNo" class="cs-input" placeholder="SC-2026-001"></div>
+            <div class="fld"><label>币种 Currency</label>
+              <select id="currency" class="cs-select" onchange="renderAll()">
+                <option value="USD">USD 美元</option><option value="EUR">EUR 欧元</option>
+                <option value="CNY">CNY 人民币</option><option value="GBP">GBP 英镑</option>
+                <option value="JPY">JPY 日元</option><option value="HKD">HKD 港币</option></select></div>
+            <div class="fld"><label>贸易术语 Incoterms</label>
+              <select id="incoterm" class="cs-select" onchange="renderAll()">
+                <option>FOB</option><option>CFR</option><option>CIF</option><option>EXW</option>
+                <option>FCA</option><option>CPT</option><option>CIP</option><option>DAP</option><option>DDP</option></select></div>
+            <div class="fld"><label>术语地点 Place（港口/城市）</label><input id="incoplace" class="cs-input" placeholder="SHENZHEN"></div>
+            <div class="fld"><label>起运港 Port of Loading</label><input id="pol" class="cs-input" placeholder="SHENZHEN, CHINA"></div>
+            <div class="fld"><label>目的港 Port of Discharge</label><input id="pod" class="cs-input" placeholder="LOS ANGELES, USA"></div>
+            <div class="fld"><label>目的国 Destination</label><input id="dest" class="cs-input" placeholder="USA"></div>
+            <div class="fld"><label>运输方式 By</label><input id="transport" class="cs-input" placeholder="BY SEA"></div>
+            <div class="fld"><label>付款方式 Payment</label><input id="payment" class="cs-input" placeholder="T/T 30% deposit, 70% before shipment"></div>
+            <div class="fld"><label>唛头 Shipping Marks</label><input id="marks" class="cs-input" placeholder="N/M"></div>
+          </div>
+
+          <div style="font-weight:800;color:var(--cs-teal-dark);margin:14px 0 4px">货物明细 Goods</div>
+          <div class="items">
+            <table>
+              <thead><tr>
+                <th>品名(中)</th><th>Description(EN)</th><th>HS</th>
+                <th>数量Qty</th><th>单位</th><th>单价Price</th>
+                <th>件数Pkgs</th><th>包装</th><th>净重NW</th><th>毛重GW</th><th>体积CBM</th><th></th>
+              </tr></thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+          <div class="cs-actions" style="margin-top:8px">
+            <button class="cs-btn cs-btn-soft" onclick="addRow()">+ 添加行</button>
+            <span class="cs-muted" id="sumline" style="font-size:12px;align-self:center;color:var(--cs-muted)"></span>
+          </div>
+
+          <div class="grid2" style="margin-top:10px">
+            <div class="fld"><label>银行信息 Bank（PI/发票用,选填）</label><input id="bank" class="cs-input" placeholder="Bank / A/C No. / SWIFT"></div>
+            <div class="fld"><label>报价有效期 Validity（PI用）</label><input id="validity" class="cs-input" placeholder="30 days"></div>
+          </div>
+          <div class="fld"><label>备注 Remarks</label><input id="remark" class="cs-input" placeholder="Country of Origin: CHINA"></div>
+
+          <div id="err" class="cs-error-text" style="margin-top:6px"></div>
+          <div class="cs-actions" style="margin-top:10px">
+            <button class="cs-btn cs-btn-soft" onclick="fillDemo()">填入示例</button>
+            <button class="cs-btn cs-btn-ghost" onclick="saveRec()">存入台账</button>
+            <button class="cs-btn cs-btn-ghost" onclick="clearForm()">清空</button>
+          </div>
+          <div style="font-weight:800;color:var(--cs-teal-dark);margin:14px 0 6px">历史台账</div>
+          <div id="hist" class="cs-muted" style="font-size:12.5px"></div>
+        </div>
+      </section>
+
+      <!-- 右：预览 -->
+      <section>
+        <div class="docTabs no-print">
+          <div class="t on" id="tCI" onclick="setDoc('CI')">商业发票 CI</div>
+          <div class="t" id="tPI" onclick="setDoc('PI')">形式发票 PI</div>
+          <div class="t" id="tPL" onclick="setDoc('PL')">装箱单 PL</div>
+        </div>
+        <div id="docWrap"></div>
+        <div class="cs-actions no-print" style="margin-top:12px">
+          <button class="cs-btn cs-btn-primary" onclick="window.print()">打印当前单据</button>
+          <button class="cs-btn cs-btn-ghost" onclick="Cstar.exportPDF('doc', docFile('pdf'))">PDF</button>
+          <button class="cs-btn cs-btn-ghost" onclick="Cstar.exportWord('doc', docFile('doc'))">Word</button>
+          <button class="cs-btn cs-btn-ghost" onclick="exportItems()">货物明细Excel</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+  const $ = id => document.getElementById(id);
+  const FIELDS = ["shipper","consignee","notify","invNo","invDate","contractNo","currency","incoterm","incoplace",
+    "pol","pod","dest","transport","payment","marks","bank","validity","remark"];
+  let items = [];
+  let docType = "CI";
+  const recs = Cstar.records("trade_docs", 300);
+
+  const CUR = {
+    USD:{w:"US DOLLARS",c:"CENTS",s:"$"}, EUR:{w:"EUROS",c:"CENTS",s:"€"},
+    CNY:{w:"CHINESE YUAN (RMB)",c:"FEN",s:"¥"}, GBP:{w:"POUNDS STERLING",c:"PENCE",s:"£"},
+    JPY:{w:"JAPANESE YEN",c:"",s:"¥"}, HKD:{w:"HONG KONG DOLLARS",c:"CENTS",s:"HK$"}
+  };
+
+  /* ---------- 货物行 ---------- */
+  function rowHtml(it, i) {
+    return `<tr data-i="${i}">
+      <td><input value="${esc(it.cn)}" oninput="upd(${i},'cn',this.value)"></td>
+      <td><input value="${esc(it.en)}" oninput="upd(${i},'en',this.value)"></td>
+      <td><input value="${esc(it.hs)}" oninput="upd(${i},'hs',this.value)" style="width:84px"></td>
+      <td><input value="${it.qty}" oninput="upd(${i},'qty',this.value)" style="width:62px" inputmode="decimal"></td>
+      <td><input value="${esc(it.unit)}" oninput="upd(${i},'unit',this.value)" style="width:56px"></td>
+      <td><input value="${it.price}" oninput="upd(${i},'price',this.value)" style="width:70px" inputmode="decimal"></td>
+      <td><input value="${it.pkg}" oninput="upd(${i},'pkg',this.value)" style="width:56px" inputmode="decimal"></td>
+      <td><input value="${esc(it.pkgtype)}" oninput="upd(${i},'pkgtype',this.value)" style="width:66px"></td>
+      <td><input value="${it.nw}" oninput="upd(${i},'nw',this.value)" style="width:62px" inputmode="decimal"></td>
+      <td><input value="${it.gw}" oninput="upd(${i},'gw',this.value)" style="width:62px" inputmode="decimal"></td>
+      <td><input value="${it.cbm}" oninput="upd(${i},'cbm',this.value)" style="width:62px" inputmode="decimal"></td>
+      <td class="del" onclick="delRow(${i})" title="删除">×</td>
+    </tr>`;
+  }
+  function drawRows() { $("rows").innerHTML = items.map((it,i)=>rowHtml(it,i)).join(""); updSum(); }
+  function addRow() { items.push({cn:"",en:"",hs:"",qty:"",unit:"PCS",price:"",pkg:"",pkgtype:"CTN",nw:"",gw:"",cbm:""}); drawRows(); }
+  function delRow(i) { items.splice(i,1); if(!items.length) addRow(); else { drawRows(); renderAll(); } persist(); }
+  function upd(i,k,v) { items[i][k]=v; updSum(); renderAll(); persist(); }
+  function num(x){ const n=parseFloat(x); return isNaN(n)?0:n; }
+  function totals() {
+    let t={qty:0,amount:0,pkg:0,nw:0,gw:0,cbm:0};
+    items.forEach(it=>{ t.qty+=num(it.qty); t.amount+=num(it.qty)*num(it.price); t.pkg+=num(it.pkg); t.nw+=num(it.nw); t.gw+=num(it.gw); t.cbm+=num(it.cbm); });
+    return t;
+  }
+  function updSum(){ const t=totals(); const c=$("currency").value;
+    $("sumline").textContent = `合计 ${items.length} 行 · 金额 ${CUR[c].s}${fmt(t.amount)} · 件数 ${t.pkg} · 净重 ${fmt(t.nw)} · 毛重 ${fmt(t.gw)} · CBM ${fmt(t.cbm,3)}`; }
+
+  const esc = s => Cstar.esc(s);
+  function fmt(n, d){ d = d==null?2:d; return (Math.round(n*Math.pow(10,d))/Math.pow(10,d)).toLocaleString("en-US",{minimumFractionDigits:d, maximumFractionDigits:d}); }
+
+  /* ---------- 金额大写（英文） ---------- */
+  function words(n){
+    const ones=["","ONE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT","NINE","TEN","ELEVEN","TWELVE","THIRTEEN","FOURTEEN","FIFTEEN","SIXTEEN","SEVENTEEN","EIGHTEEN","NINETEEN"];
+    const tens=["","","TWENTY","THIRTY","FORTY","FIFTY","SIXTY","SEVENTY","EIGHTY","NINETY"];
+    function below1000(x){ let s="";
+      if(x>=100){ s+=ones[Math.floor(x/100)]+" HUNDRED"; x%=100; if(x) s+=" AND "; }
+      if(x>=20){ s+=tens[Math.floor(x/10)]; x%=10; if(x) s+="-"+ones[x]; }
+      else if(x>0) s+=ones[x];
+      return s; }
+    if(n===0) return "ZERO";
+    const units=["","THOUSAND","MILLION","BILLION"]; let parts=[],i=0;
+    while(n>0){ const c=n%1000; if(c) parts.unshift(below1000(c)+(units[i]?" "+units[i]:"")); n=Math.floor(n/1000); i++; }
+    return parts.join(" ");
+  }
+  function amountWords(total, cur){
+    const c=CUR[cur]; const intp=Math.floor(total); const cents=Math.round((total-intp)*100);
+    let s="SAY "+c.w+" "+words(intp);
+    if(c.c && cents>0) s+=" AND "+words(cents)+" "+c.c;
+    return s+" ONLY.";
+  }
+
+  /* ---------- 数据读取 ---------- */
+  function data(){ const o={}; FIELDS.forEach(f=>o[f]=$(f).value.trim()); o.items=items; o.t=totals(); return o; }
+  function persist(){ const o={}; FIELDS.forEach(f=>o[f]=$(f).value); Cstar.store.save("trade_form",{f:o,items}); }
+  function nl(s){ return esc(s).replace(/\n/g,"<br>"); }
+
+  /* ---------- 单据渲染 ---------- */
+  function partyBox(d){
+    return `<div class="hdr">
+      <div>
+        <div class="box"><div class="lbl">出口商 / Exporter</div><div class="seller">${nl(d.shipper)||"—"}</div></div>
+        <div class="box"><div class="lbl">收货人 / Consignee</div>${nl(d.consignee)||"—"}</div>
+        <div class="box"><div class="lbl">通知方 / Notify Party</div>${nl(d.notify)||"SAME AS CONSIGNEE"}</div>
+      </div>
+      <div>
+        <div class="box"><div class="lbl">发票号 / Invoice No.</div>${esc(d.invNo)||"—"}</div>
+        <div class="box"><div class="lbl">日期 / Date</div>${esc(d.invDate)||"—"}</div>
+        <div class="box"><div class="lbl">合同号 / Contract No.</div>${esc(d.contractNo)||"—"}</div>
+        <div class="box"><div class="lbl">贸易术语 / Terms</div>${esc(d.incoterm)} ${esc(d.incoplace)}</div>
+        <div class="box"><div class="lbl">起运港→目的港 / POL→POD</div>${esc(d.pol)||"—"} → ${esc(d.pod)||"—"}</div>
+        <div class="box"><div class="lbl">运输 / By &nbsp;·&nbsp; 目的国 / Dest.</div>${esc(d.transport)||"—"} · ${esc(d.dest)||"—"}</div>
+      </div>
+    </div>`;
+  }
+  function invoiceTable(d){
+    const c=d.currency, sym=CUR[c].s;
+    const body=d.items.map((it,i)=>`<tr>
+      <td class="c">${i+1}</td>
+      <td>${esc(it.en)||esc(it.cn)}${it.cn&&it.en?'<br><span style="color:#777">'+esc(it.cn)+'</span>':''}</td>
+      <td class="c">${esc(it.hs)}</td>
+      <td class="r">${it.qty?fmt(num(it.qty),num(it.qty)%1?2:0):""} ${esc(it.unit)}</td>
+      <td class="r">${it.price?sym+fmt(num(it.price)):""}</td>
+      <td class="r">${(num(it.qty)&&num(it.price))?sym+fmt(num(it.qty)*num(it.price)):""}</td>
+    </tr>`).join("");
+    return `<table class="goods">
+      <thead><tr><th class="c">#</th><th>品名 Description of Goods</th><th class="c">HS Code</th>
+        <th class="r">数量 Qty</th><th class="r">单价 Unit Price (${c})</th><th class="r">金额 Amount (${c})</th></tr></thead>
+      <tbody>${body}</tbody>
+      <tfoot><tr><th colspan="5" class="r">总计 TOTAL (${esc(d.incoterm)} ${esc(d.dest)})</th><th class="r">${sym}${fmt(d.t.amount)}</th></tr></tfoot>
+    </table>`;
+  }
+  function packTable(d){
+    const body=d.items.map((it,i)=>`<tr>
+      <td class="c">${i+1}</td>
+      <td>${esc(it.en)||esc(it.cn)}${it.cn&&it.en?'<br><span style="color:#777">'+esc(it.cn)+'</span>':''}</td>
+      <td class="c">${esc(it.hs)}</td>
+      <td class="r">${it.qty?fmt(num(it.qty),num(it.qty)%1?2:0)+' '+esc(it.unit):""}</td>
+      <td class="r">${it.pkg?fmt(num(it.pkg),0)+' '+esc(it.pkgtype):""}</td>
+      <td class="r">${it.nw?fmt(num(it.nw)):""}</td>
+      <td class="r">${it.gw?fmt(num(it.gw)):""}</td>
+      <td class="r">${it.cbm?fmt(num(it.cbm),3):""}</td>
+    </tr>`).join("");
+    return `<table class="goods">
+      <thead><tr><th class="c">#</th><th>品名 Description</th><th class="c">HS Code</th>
+        <th class="r">数量 Qty</th><th class="r">件数 Packages</th><th class="r">净重 N.W.(kg)</th><th class="r">毛重 G.W.(kg)</th><th class="r">体积 CBM</th></tr></thead>
+      <tbody>${body}</tbody>
+      <tfoot><tr><th colspan="3" class="r">总计 TOTAL</th>
+        <th class="r">${fmt(d.t.qty, d.t.qty%1?2:0)}</th>
+        <th class="r">${fmt(d.t.pkg,0)}</th><th class="r">${fmt(d.t.nw)}</th><th class="r">${fmt(d.t.gw)}</th><th class="r">${fmt(d.t.cbm,3)}</th></tr></tfoot>
+    </table>`;
+  }
+  function footSign(d, who){
+    return `<div class="foot">
+      <div><div class="lbl" style="font-size:10.5px;color:#666">备注 / Remarks</div>${nl(d.remark)||"—"}
+        ${d.payment?'<div style="margin-top:6px"><b>付款 Payment:</b> '+esc(d.payment)+'</div>':''}
+        ${(who!=='PL'&&d.bank)?'<div style="margin-top:4px"><b>Bank:</b> '+esc(d.bank)+'</div>':''}
+        ${(who==='PI'&&d.validity)?'<div style="margin-top:4px"><b>Validity:</b> '+esc(d.validity)+'</div>':''}
+      </div>
+      <div style="text-align:right"><div class="sign" style="margin-top:40px;display:inline-block;width:200px;text-align:center">
+        盖章/签字 Authorized Signature</div></div>
+    </div>`;
+  }
+  function metaLine(){ return `<div class="meta">${Cstar.stampLine()} · 生成 ${Cstar.nowStr()}</div>`; }
+
+  function renderCI(d, proforma){
+    return `<div class="doc" id="doc">
+      <div class="title">${proforma?"PROFORMA INVOICE":"COMMERCIAL INVOICE"}</div>
+      <div class="titlecn">${proforma?"形 式 发 票":"商 业 发 票"}　·　唛头 Marks: ${esc(d.marks)||"N/M"}</div>
+      ${partyBox(d)}
+      ${invoiceTable(d)}
+      <div class="words">金额大写 / ${amountWords(d.t.amount, d.currency)}</div>
+      ${footSign(d, proforma?'PI':'CI')}
+      ${metaLine()}
+    </div>`;
+  }
+  function renderPL(d){
+    return `<div class="doc" id="doc">
+      <div class="title">PACKING LIST</div>
+      <div class="titlecn">装 箱 单　·　唛头 Marks: ${esc(d.marks)||"N/M"}</div>
+      ${partyBox(d)}
+      ${packTable(d)}
+      <div class="words">合计 TOTAL: ${fmt(d.t.pkg,0)} packages, N.W. ${fmt(d.t.nw)} kg, G.W. ${fmt(d.t.gw)} kg, ${fmt(d.t.cbm,3)} CBM.</div>
+      ${footSign(d,'PL')}
+      ${metaLine()}
+    </div>`;
+  }
+  function renderAll(){
+    const d=data();
+    let html;
+    if(docType==="CI") html=renderCI(d,false);
+    else if(docType==="PI") html=renderCI(d,true);
+    else html=renderPL(d);
+    $("docWrap").innerHTML=html;
+    updSum();
+  }
+  function setDoc(t){ docType=t;
+    ["CI","PI","PL"].forEach(x=>$("t"+x).classList.toggle("on",x===t));
+    renderAll();
+  }
+  function docFile(ext){ const n=$("invNo").value.trim()||"单据"; const m={CI:"商业发票",PI:"形式发票",PL:"装箱单"}; return n+"-"+m[docType]+"."+ext; }
+
+  /* ---------- 台账 / 示例 / 导出 ---------- */
+  function validate(){
+    const need=[["shipper","出口商"],["consignee","收货人"],["invNo","发票号"]];
+    for(const [id,nm] of need){ if(!$(id).value.trim()){ $("err").textContent="请填写："+nm; $(id).focus(); return false; } }
+    if(!items.some(it=>it.en||it.cn)){ $("err").textContent="请至少录入一行货物"; return false; }
+    $("err").textContent=""; return true;
+  }
+  function saveRec(){ if(!validate())return; const d=data();
+    recs.add({invNo:d.invNo, date:d.invDate, consignee:(d.consignee||"").split("\n")[0], amount:d.t.amount, currency:d.currency, _full:{f:Object.fromEntries(FIELDS.map(f=>[f,$(f).value])), items}});
+    drawHist(); alert("已存入台账："+d.invNo);
+  }
+  function drawHist(){
+    const l=recs.all();
+    if(!l.length){ $("hist").textContent="（暂无）"; return; }
+    $("hist").innerHTML=l.slice(0,12).map((r,i)=>`<div style="padding:5px 0;border-bottom:1px solid var(--cs-line);display:flex;justify-content:space-between;gap:8px">
+      <span style="cursor:pointer;color:var(--cs-teal-dark)" onclick="loadRec(${i})">${esc(r.invNo)} · ${esc(r.consignee||"")}</span>
+      <span style="color:var(--cs-muted);white-space:nowrap">${CUR[r.currency]?CUR[r.currency].s:""}${fmt(r.amount||0)}　<a onclick="delHist(${i})" style="color:var(--cs-danger);cursor:pointer">删</a></span>
+    </div>`).join("");
+  }
+  function loadRec(i){ const r=recs.get(i); if(!r||!r._full)return; FIELDS.forEach(f=>{ if($(f)) $(f).value=r._full.f[f]||""; }); items=(r._full.items||[]).map(x=>Object.assign({},x)); if(!items.length)addRow(); drawRows(); renderAll(); persist(); }
+  function delHist(i){ recs.remove(i); drawHist(); }
+  function clearForm(){ FIELDS.forEach(f=>{ if($(f)&&f!=="currency"&&f!=="incoterm") $(f).value=""; }); items=[]; addRow(); renderAll(); persist(); }
+  function exportItems(){
+    const d=data(); const cols=["#","品名CN","Description","HS","数量","单位","单价","金额","件数","包装","净重NW","毛重GW","CBM"];
+    const rows=d.items.map((it,i)=>[i+1,it.cn,it.en,it.hs,it.qty,it.unit,it.price,(num(it.qty)*num(it.price))||"",it.pkg,it.pkgtype,it.nw,it.gw,it.cbm]);
+    rows.push(["","总计TOTAL","","",d.t.qty,"","",d.t.amount,d.t.pkg,"",d.t.nw,d.t.gw,d.t.cbm]);
+    Cstar.exportExcelData(cols, rows, (d.invNo||"货物明细")+".xls");
+  }
+  function fillDemo(){
+    const v={shipper:"XISHIDA INTL LOGISTICS CO., LTD.\nNo.1 Qianhai Rd, Nanshan, Shenzhen, China\nTEL: +86-755-8888-8888",
+      consignee:"ABC TRADING LLC\n100 Market St, Los Angeles, CA 90001, USA\nTEL: +1-213-000-0000",
+      notify:"SAME AS CONSIGNEE", invNo:"XSD-"+Cstar.today().replace(/-/g,""), invDate:Cstar.today(),
+      contractNo:"SC-2026-0608", currency:"USD", incoterm:"FOB", incoplace:"SHENZHEN",
+      pol:"SHENZHEN, CHINA", pod:"LOS ANGELES, USA", dest:"USA", transport:"BY SEA",
+      payment:"T/T 30% deposit, 70% against B/L copy", marks:"ABC\nLOS ANGELES\nC/NO.1-200\nMADE IN CHINA",
+      bank:"Bank of China SZ / A/C 1234567890 / SWIFT BKCHCNBJ45A", validity:"30 days", remark:"Country of Origin: CHINA"};
+    Object.keys(v).forEach(k=>{ if($(k)) $(k).value=v[k]; });
+    items=[
+      {cn:"不锈钢保温杯",en:"Stainless Steel Vacuum Flask 500ml",hs:"9617001100",qty:"5000",unit:"PCS",price:"3.20",pkg:"200",pkgtype:"CTN",nw:"1800",gw:"2050",cbm:"12.5"},
+      {cn:"硅胶厨房用具套装",en:"Silicone Kitchenware Set",hs:"3924100000",qty:"3000",unit:"SET",price:"2.50",pkg:"150",pkgtype:"CTN",nw:"900",gw:"1050",cbm:"8.2"}
+    ];
+    drawRows(); renderAll(); persist();
+  }
+
+  /* ---------- 初始化 ---------- */
+  function init(){
+    const saved=Cstar.store.load("trade_form",null);
+    if(saved && saved.items && saved.items.length){ FIELDS.forEach(f=>{ if($(f)&&saved.f[f]!=null) $(f).value=saved.f[f]; }); items=saved.items; }
+    else { if(!$("invDate").value) $("invDate").value=Cstar.today(); items=[]; addRow(); }
+    FIELDS.forEach(f=>{ const el=$(f); if(el){ el.addEventListener("input",()=>{renderAll();persist();}); el.addEventListener("change",()=>{renderAll();persist();}); } });
+    drawRows(); drawHist(); renderAll();
+    Cstar.stamp({tool:"发票·装箱单生成器", version:"v1.0.0", author:"老瑞"});
+  }
+  init();
+  </script>
+</body>
+</html>
