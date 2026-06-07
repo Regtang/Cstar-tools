@@ -112,7 +112,7 @@ DEFAULT_TOOLS = [
          color="linear-gradient(135deg,#b45309,#f59e0b)", bar="linear-gradient(90deg,#b45309,#f59e0b)",
          visibility="both", status="online", entry_kind="embed", entry_path="/duty-calc-app.html?embed=1", sort_order=35),
     dict(slug="hs-lookup", name="HS编码·申报要素速查", category="关务",
-         summary="报关前速查：按 HS 编码或商品名检索常用商品的归类、规范申报要素、监管条件、检验检疫类别，以及最惠国/普通关税、进口增值税、出口退税与消费税率；附监管证件代码对照，支持打印/PDF/Word 申报参考单与速查库导出。示例数据，实际以海关申报系统为准。",
+         summary="报关前速查：收录 90+ 高频商品，支持按 HS 编码 / 商品名 / 俗称 / 英文检索与按 HS 章浏览，查不到时给出引导。展示归类、规范申报要素、监管条件、检验检疫类别，及最惠国/普通关税、进口增值税、出口退税与消费税率；关键词高亮、搜索历史、同章相关推荐、监管证件代码对照，支持打印/PDF/Word 申报参考单与速查库导出。示例数据，实际以海关申报系统为准。",
          owner_dept="关务部", icon="HS",
          color="linear-gradient(135deg,#0e7490,#06b6d4)", bar="linear-gradient(90deg,#0e7490,#06b6d4)",
          visibility="both", status="online", entry_kind="embed", entry_path="/hs-lookup-app.html?embed=1", sort_order=20),
