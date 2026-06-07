@@ -472,7 +472,7 @@
     buildChTree();
     renderRecent();
     doSearch();
-    Cstar.stamp({ tool: "HS编码·申报要素速查", version: "v3.1.0", author: "老瑞" });
+    Cstar.stamp({ tool: "HS编码·申报要素速查", version: "v3.2.0", author: "老瑞" });
   }
   function setTab(m) {
     mode = m;
@@ -565,7 +565,7 @@
     </div>`;
   }
   function quick(w) { document.getElementById("q").value = w; curCat="全部"; document.querySelectorAll("#cats .chip").forEach(el=>el.classList.toggle("on",el.dataset.c==="全部")); commitSearch(); }
-  /* 俗称 → 官方规范品名映射：全量库只按官方品名匹配，口语词（如「饺子」）需先转成官方名（「包馅面食」）才能命中。 */
+  /* 俗称 → 官方规范品名映射：全量库只按官方品名做子串匹配，口语词（如「饺子」）需先转成官方名（「包馅面食」）才能命中。 */
   const HS_ALIAS = {
     // 1902.20 包馅面食（带馅面食类）
     "饺子":"包馅面食","水饺":"包馅面食","蒸饺":"包馅面食","煎饺":"包馅面食","锅贴":"包馅面食",
@@ -574,14 +574,57 @@
     // 1902 面食（面条类）
     "方便面":"面食","泡面":"面食","拉面":"面食","挂面":"面食","面条":"面食","刀削面":"面食",
     "意面":"面食","意大利面":"面食","通心粉":"面食","乌冬面":"面食","米粉":"面食","粉丝":"面食",
+    // 0306 水产（俗称→官方名）
+    "小龙虾":"螯虾","淡水龙虾":"螯虾","克氏原螯虾":"螯虾","大闸蟹":"蟹","基围虾":"虾","明虾":"对虾","皮皮虾":"虾蛄",
     // 8507.60 锂离子蓄电池
     "锂电池":"锂离子蓄电池","锂电":"锂离子蓄电池","锂离子电池":"锂离子蓄电池","动力电池":"锂离子蓄电池"
   };
+  /* 修饰词（跨品类通用）：常见于口语/商品名，但官方品名里不一定带，导致子串匹配落空；查不到时逐级剥离再试。
+     说明：本工具用于"找到对应税号候选"，故剥离修饰词以扩大召回；材质/状态等会影响精确归类，命中后请按申报要素与规范品名核对。 */
+  const HS_QUALIFIERS = [
+    // 食品/水产状态
+    "淡水","海水","速冻","急冻","冷冻","冷藏","保鲜","新鲜","鲜活","鲜","活","干制","干","脱水","盐渍","腌制","腌","烟熏","熏","即食","熟","半熟","生","整只","整","半","带壳","去壳","去皮","去骨","无核","有核",
+    // 贸易/包装/品级
+    "进口","出口","国产","原装","袋装","罐装","瓶装","盒装","桶装","散装","成品","半成品","深加工","加工","精制","粗制","优质","特级","一级","二级","高档","普通","新款","新型","环保","一次性",
+    // 人群/性别/尺码
+    "儿童","婴儿","成人","男式","女式","男士","女士","中性","通用",
+    // 电子/功能
+    "便携式","便携","手提","台式","无线","有线","蓝牙","智能","数码","全自动","半自动","自动","电动","手动","充电","可充电","多功能","迷你","微型","小型","大型","中型","高速","高清",
+    // 用途/场景
+    "工业用","工业","家用","商用","车用","车载","医用","户外","桌面","壁挂",
+    // 常见材质（影响归类，剥离仅用于扩大召回）
+    "不锈钢","塑料","塑胶","纯棉","真皮","人造革","玻璃","陶瓷","金属","铝合金","木质","实木","竹制","硅胶","橡胶","纸质",
+    // 其他常见前缀
+    "无","非","含","加","超","纯"
+  ];
+  function stripQuals(s){
+    let prev=null, cur=(s||"").trim();
+    while(cur!==prev){ prev=cur;
+      for(const q of HS_QUALIFIERS){
+        if(cur.length>q.length && cur.startsWith(q)) cur=cur.slice(q.length).trim();
+        if(cur.length>q.length && cur.endsWith(q))   cur=cur.slice(0,-q.length).trim();
+      }
+    }
+    return cur;
+  }
   function aliasOf(raw){
     const s=(raw||"").trim();
     if(HS_ALIAS[s]) return {term:HS_ALIAS[s], mapped:true};
     for(const k in HS_ALIAS){ if(k.length>=2 && s.indexOf(k)>=0) return {term:HS_ALIAS[k], mapped:true}; }
     return {term:s, mapped:false};
+  }
+  /* 生成有序候选词：精确同义词 → 原词 → 去修饰词(再过同义词) → 核心词(末2/3字)。逐个试，第一个有结果的胜出。 */
+  function hsCandidates(raw){
+    const s=(raw||"").trim(); const list=[];
+    const push=t=>{ t=(t||"").trim(); if(t && t.length>=2 && !list.includes(t)) list.push(t); };
+    push(aliasOf(s).term);                 // 同义词命中则用官方名，否则=原词
+    push(s);                               // 原词本身
+    const st=stripQuals(s);
+    if(st && st!==s){ push(aliasOf(st).term); push(st); }   // 去修饰词后再试
+    const base=st||s;                      // 核心词兜底（不做分词，取词尾名词）
+    if(base.length>3) push(base.slice(-3));
+    if(base.length>2) push(base.slice(-2));
+    return list.slice(0,6);
   }
   /* 全量在线查询（喜事达税则库 findRateDeclByPage 代理 /api/hs/search） */
   function apiToItem(rec){
@@ -595,35 +638,43 @@
       note:rec.goodsDesc||""
     };
   }
+  async function hsQuery(term){
+    const resp=await fetch("/api/hs/search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({q:term,page:1,size:60})});
+    if(!resp.ok) throw new Error("HTTP "+resp.status);
+    return await resp.json();
+  }
   async function apiSearch(raw){
     const box=document.getElementById("results");
     box.innerHTML='<div class="nohit"><div class="muted">⏳ 正在查询全量税则库…</div></div>';
-    const a=aliasOf(raw); const term=a.term;
-    const aliasNote=a.mapped?'<div class="cs-note cs-note-info" style="margin:0 0 8px">「'+Cstar.esc(raw)+'」已按官方规范品名「'+Cstar.esc(term)+'」查询。</div>':'';
-    try{
-      const resp=await fetch("/api/hs/search",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({q:term,page:1,size:60})});
-      if(!resp.ok) throw new Error("HTTP "+resp.status);
-      const j=await resp.json();
+    const cands=hsCandidates(raw);
+    let hit=null, hterm=null, netErr=null;
+    for(const t of cands){
+      let j;
+      try{ j=await hsQuery(t); }
+      catch(e){ netErr=e; break; }          // 网络/服务异常：停止逐级重试，转本地兜底
       const recs=(j&&j.data&&j.data.records)||[];
-      if(!recs.length){
-        doSearch();
-        const b=document.getElementById("results");
-        b.innerHTML='<div class="cs-note cs-note-info" style="margin:0 0 8px">全量税则库未匹配「'+Cstar.esc(raw)+'」（可改用规范品名或 HS 编码，如 8507）；以下为本地常用库结果。</div>'+b.innerHTML;
-        if(curList.length) pick(0);
-        return;
-      }
-      curList=recs.map(apiToItem);
-      const total=(j.data&&j.data.total!=null)?j.data.total:recs.length;
-      document.getElementById("hit").textContent=total;
-      const note=`<div class="muted" style="padding:8px 12px;border-bottom:1px solid var(--cs-line)">✅ 全量税则库命中 <b>${total}</b> 条${total>recs.length?'，显示前 '+recs.length+' 条（可细化关键词）':''} · 数据来源 喜事达税则库</div>`;
-      box.innerHTML=aliasNote+note+curList.map((r,i)=>itemRow(r,i,raw)).join("");
-      pick(0);
-    }catch(e){
-      doSearch();
-      const box2=document.getElementById("results");
-      box2.innerHTML='<div class="cs-note cs-note-warn" style="margin:0 0 8px">在线全量查询暂不可用（'+Cstar.esc(e.message)+'），下方为本地常用库结果，可稍后重试。</div>'+box2.innerHTML;
-      if(curList.length) pick(0);
+      if(recs.length){ hit=j; hterm=t; break; }
     }
+    if(!hit){
+      doSearch();
+      const b=document.getElementById("results");
+      const msg=netErr
+        ? '<div class="cs-note cs-note-warn" style="margin:0 0 8px">在线全量查询暂不可用（'+Cstar.esc(netErr.message)+'），下方为本地常用库结果，可稍后重试。</div>'
+        : '<div class="cs-note cs-note-info" style="margin:0 0 8px">全量税则库未匹配「'+Cstar.esc(raw)+'」（已尝试同义词与核心词）。可改用规范品名或 HS 编码（如 8507）；以下为本地常用库结果。</div>';
+      b.innerHTML=msg+b.innerHTML;
+      if(curList.length) pick(0);
+      return;
+    }
+    curList=hit.data.records.map(apiToItem);
+    const recs=hit.data.records;
+    const total=(hit.data&&hit.data.total!=null)?hit.data.total:recs.length;
+    document.getElementById("hit").textContent=total;
+    const mapNote=(hterm!==raw)
+      ? '<div class="cs-note cs-note-info" style="margin:0 0 8px">「'+Cstar.esc(raw)+'」未直接命中，已按官方规范品名/核心词「'+Cstar.esc(hterm)+'」查询；如需更精确请用规范品名或 HS 编码。</div>'
+      : '';
+    const note=`<div class="muted" style="padding:8px 12px;border-bottom:1px solid var(--cs-line)">✅ 全量税则库命中 <b>${total}</b> 条${total>recs.length?'，显示前 '+recs.length+' 条（可细化关键词）':''} · 数据来源 喜事达税则库</div>`;
+    box.innerHTML=mapNote+note+curList.map((r,i)=>itemRow(r,i,raw)).join("");
+    pick(0);
   }
   function commitSearch() {
     const raw = (document.getElementById("q").value || "").trim();
