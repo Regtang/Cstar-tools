@@ -10,13 +10,13 @@
       new URLSearchParams(location.search).get("embed") === "1");
   </script>
   <style>
-    :root { --bg:#f5f8fa; --card:#fff; --primary:#007892; --primary-d:#005f73; --text:#1f2a37; --muted:#5b6b7a; --danger:#e31d1c; --warn:#f29900; --ok:#168821; --line:#e6ebf1; }
+    :root { --bg:#f5f5f5; --card:#fff; --primary:#e84368; --primary-d:#c72d53; --teal:#007892; --text:#212121; --muted:#667085; --danger:#e31d1c; --warn:#ff5d00; --ok:#168821; --line:#d3dce6; }
     * { box-sizing: border-box; }
     html.embed-mode header { display:none; }
     html.embed-mode body { background:#fff; }
     html.embed-mode main { margin-top:14px; }
     body { margin:0; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",Arial,sans-serif; background:var(--bg); color:var(--text); }
-    header { background:linear-gradient(135deg,#005f73,#007892); color:white; padding:28px 36px; }
+    header { background:linear-gradient(135deg,#252f45,#303c58); color:white; padding:28px 36px; border-bottom:3px solid #e84368; }
     header h1 { margin:0 0 8px; font-size:28px; }
     header p { margin:0; opacity:.92; }
     main { max-width:1180px; margin:24px auto; padding:0 18px 40px; display:grid; grid-template-columns: 420px 1fr; gap:18px; }

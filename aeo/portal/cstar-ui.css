@@ -1,38 +1,49 @@
 /* ============================================================
-   Cstar UI — 喜事达工具平台 统一前端样式标准 v1.0
+   Cstar UI — 喜事达工具平台 统一前端样式标准 v2.0
+   设计基准：「Cstar 装箱软件」——深蓝导航 + 玫红主操作色 + 青色辅助强调
+            + 柔和投影卡片 + 8px 圆角 + Inter 字体。
    用法：在工具 HTML 的 <head> 引入即可自动统一配色/字体/组件：
      <link rel="stylesheet" href="/cstar-ui.css">
-   组件类名统一加 cs- 前缀，避免与你已有样式冲突。
+   组件类名统一加 cs- 前缀；类名与旧版完全兼容，引入即换新。
    线上地址：https://bot.regs.com/cstar-ui.css
    ============================================================ */
 
 :root {
-  /* —— 品牌主色 —— */
-  --cs-teal:        #007892;   /* 主色（按钮、链接、强调） */
+  /* —— 主操作色：玫红（按钮主色 / 主要 CTA，源自装箱软件 accent）—— */
+  --cs-rose:        #e84368;
+  --cs-rose-dark:   #c72d53;
+  --cs-red:         #e84368;   /* 兼容旧变量名 */
+  --cs-red-dark:    #c72d53;
+
+  /* —— 辅助强调：青色（标题强调 / 链接 / 边框点缀 / 状态）—— */
+  --cs-teal:        #007892;
   --cs-teal-dark:   #005f73;
   --cs-teal-light:  #0a9bbd;
-  --cs-red:         #e54c5e;   /* 强调/警示按钮、点缀 */
-  --cs-red-dark:    #c72d53;
-  --cs-navy:        #252f45;   /* 顶栏 / 页脚 / 深色块 */
+  --cs-blue:        #4da0da;
+
+  /* —— 深色：导航 / 页头 / 深色块 —— */
+  --cs-navy:        #252f45;
+  --cs-navy-soft:   #303c58;
 
   /* —— 中性色 —— */
-  --cs-ink:    #1f2a37;        /* 正文 */
-  --cs-muted:  #5b6b7a;        /* 次要文字 */
-  --cs-line:   #e6ebf1;        /* 边框/分割线 */
+  --cs-ink:    #212121;        /* 正文 */
+  --cs-muted:  #667085;        /* 次要文字 */
+  --cs-line:   #d3dce6;        /* 边框/分割线 */
   --cs-bg:     #ffffff;        /* 卡片背景 */
-  --cs-soft:   #f5f8fa;        /* 页面背景/浅块 */
+  --cs-soft:   #f5f7fb;        /* 浅块/表头/区块底 */
+  --cs-page:   #f5f5f5;        /* 页面背景 */
 
   /* —— 语义色 —— */
   --cs-ok:     #168821;
-  --cs-warn:   #f29900;
+  --cs-warn:   #ff5d00;
   --cs-danger: #e31d1c;
 
   /* —— 形状 / 阴影 / 字体 —— */
-  --cs-radius:    14px;
-  --cs-radius-sm: 10px;
+  --cs-radius:    8px;
+  --cs-radius-sm: 6px;
   --cs-shadow:    0 16px 40px rgba(37,47,69,.12);
-  --cs-shadow-sm: 0 8px 24px rgba(15,30,80,.06);
-  --cs-font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+  --cs-shadow-sm: 0 8px 24px rgba(37,47,69,.08);
+  --cs-font: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
 }
 
 /* ---------- 基础（引入即生效） ---------- */
@@ -40,7 +51,7 @@
   margin: 0;
   font-family: var(--cs-font);
   color: var(--cs-ink);
-  background: var(--cs-soft);
+  background: var(--cs-page);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
@@ -53,71 +64,77 @@
 .cs-grid-2 { display: grid; grid-template-columns: 420px 1fr; gap: 18px; }
 .cs-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-/* ---------- 顶部页头（工具标题条） ---------- */
+/* ---------- 顶部页头（工具标题条）：深蓝 + 玫红强调线 ---------- */
 .cs-header {
-  background: linear-gradient(135deg, var(--cs-teal-dark), var(--cs-teal));
-  color: #fff; padding: 26px 32px;
+  background: linear-gradient(135deg, var(--cs-navy), var(--cs-navy-soft));
+  color: #fff; padding: 24px 32px;
+  border-bottom: 3px solid var(--cs-rose);
 }
-.cs-header h1 { margin: 0 0 6px; font-size: 26px; font-weight: 800; letter-spacing: .5px; }
-.cs-header p  { margin: 0; opacity: .92; font-size: 14px; }
+.cs-header h1 { margin: 0 0 6px; font-size: 25px; font-weight: 800; letter-spacing: .3px; }
+.cs-header p  { margin: 0; color: #d8e2ee; font-size: 14px; }
 
-/* ---------- 卡片 ---------- */
+/* ---------- 卡片（柔和投影，呼应装箱软件 panel） ---------- */
 .cs-card {
   background: var(--cs-bg); border: 1px solid var(--cs-line);
-  border-radius: var(--cs-radius); box-shadow: var(--cs-shadow-sm); overflow: hidden;
+  border-radius: var(--cs-radius); box-shadow: var(--cs-shadow); overflow: hidden;
 }
 .cs-card > h2 {
-  margin: 0; padding: 16px 20px; border-bottom: 1px solid var(--cs-line);
-  font-size: 17px; font-weight: 800;
+  margin: 0; padding: 15px 20px; border-bottom: 1px solid var(--cs-line);
+  font-size: 17px; font-weight: 800; color: var(--cs-navy);
 }
 .cs-card-body { padding: 18px 20px; }
 
 /* ---------- 表单 ---------- */
-.cs-label { display: block; font-size: 13px; color: var(--cs-muted); margin: 12px 0 6px; font-weight: 600; }
+.cs-label { display: block; font-size: 13px; color: var(--cs-muted); margin: 12px 0 6px; font-weight: 700; }
 .cs-input, .cs-select, .cs-textarea {
-  width: 100%; padding: 10px 12px; font-size: 14px; font-family: inherit;
-  border: 1px solid #cfd6e0; border-radius: var(--cs-radius-sm);
+  width: 100%; padding: 9px 11px; font-size: 14px; font-family: inherit;
+  border: 1px solid var(--cs-line); border-radius: var(--cs-radius-sm);
   background: #fff; color: var(--cs-ink); outline: none; transition: .15s;
 }
 .cs-textarea { min-height: 72px; resize: vertical; }
 .cs-input:focus, .cs-select:focus, .cs-textarea:focus {
-  border-color: var(--cs-teal); box-shadow: 0 0 0 3px rgba(0,120,146,.14);
+  border-color: var(--cs-teal); box-shadow: 0 0 0 3px rgba(0,120,146,.18);
 }
 
 /* ---------- 按钮 ---------- */
 .cs-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-  border: 0; border-radius: var(--cs-radius-sm); padding: 11px 18px;
+  border: 1px solid transparent; border-radius: var(--cs-radius-sm); padding: 10px 17px;
   font: inherit; font-weight: 700; cursor: pointer; transition: .15s; white-space: nowrap;
+  min-height: 40px;
 }
-.cs-btn-primary { background: var(--cs-teal); color: #fff; }
-.cs-btn-primary:hover { background: var(--cs-teal-dark); }
-.cs-btn-accent { background: var(--cs-red); color: #fff; }
-.cs-btn-accent:hover { background: var(--cs-red-dark); }
-.cs-btn-soft { background: #e6f3f6; color: var(--cs-teal-dark); }
-.cs-btn-soft:hover { background: #d6ebef; }
-.cs-btn-ghost { background: #f2f4f8; color: #334; }
-.cs-btn-ghost:hover { background: #e7ebf1; }
+/* 主操作 = 玫红（装箱软件 .primary） */
+.cs-btn-primary { background: var(--cs-rose); color: #fff; }
+.cs-btn-primary:hover { background: var(--cs-rose-dark); }
+/* 次操作 = 青色 */
+.cs-btn-accent { background: var(--cs-teal); color: #fff; }
+.cs-btn-accent:hover { background: var(--cs-teal-dark); }
+/* 浅色按钮 = 中性浅块 */
+.cs-btn-soft { background: var(--cs-soft); color: var(--cs-navy); border-color: var(--cs-line); }
+.cs-btn-soft:hover { background: #e9eef5; }
+/* 幽灵按钮 = 白底描边（装箱软件 .ghost） */
+.cs-btn-ghost { background: #fff; color: var(--cs-navy); border-color: var(--cs-line); }
+.cs-btn-ghost:hover { background: var(--cs-soft); }
 .cs-btn-block { width: 100%; }
 .cs-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
 
 /* ---------- 徽章 ---------- */
 .cs-badge { display: inline-flex; align-items: center; padding: 4px 11px; border-radius: 99px; font-size: 12px; font-weight: 700; }
 .cs-badge-ok     { background: #e7f6e9; color: var(--cs-ok); }
-.cs-badge-warn   { background: #fff3d6; color: #9a6100; }
+.cs-badge-warn   { background: #ffe9d6; color: #9a3b00; }
 .cs-badge-danger { background: #fde8e6; color: var(--cs-danger); }
 .cs-badge-info   { background: #e6f3f6; color: var(--cs-teal-dark); }
 
 /* ---------- 提示条 ---------- */
 .cs-note { padding: 12px 14px; border-radius: var(--cs-radius-sm); font-size: 14px; }
 .cs-note-info   { background: #eef7f9; color: var(--cs-teal-dark); border: 1px solid #d6ebef; }
-.cs-note-warn   { background: #fff7e6; color: #9a6100; border: 1px solid #ffe2a8; }
-.cs-note-danger { background: #fdecef; color: var(--cs-red-dark); border: 1px solid #f8c9d2; }
+.cs-note-warn   { background: #fff3e8; color: #9a3b00; border: 1px solid #ffd9b8; }
+.cs-note-danger { background: #fdecef; color: var(--cs-rose-dark); border: 1px solid #f8c9d2; }
 
 /* ---------- 表格 ---------- */
 .cs-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .cs-table th, .cs-table td { padding: 10px 12px; border-bottom: 1px solid var(--cs-line); text-align: left; }
-.cs-table th { background: var(--cs-soft); font-weight: 700; color: var(--cs-muted); }
+.cs-table th { background: var(--cs-soft); font-weight: 800; color: var(--cs-muted); }
 .cs-table tr:hover td { background: #fafcfd; }
 
 /* ---------- 错误提示（表单校验） ---------- */
