@@ -48,11 +48,7 @@
         <div id="targetRow" style="display:none">
           <label class="cs-label">要更新的工具 *</label>
           <select id="target" class="cs-select" onchange="syncName()">
-            <option value="">— 请选择现有工具 —</option>
-            <option>AEO 认证管理平台</option>
-            <option>Cstar 装箱软件</option>
-            <option>危化判定（MSDS/UN）</option>
-            <option>出口海关研判助手</option>
+            <option value="">— 加载中… —</option>
           </select>
         </div>
 
@@ -167,8 +163,29 @@ async function submitTool() {
   }
 }
 
-/* 深链：?kind=update&target=工具名 → 预选"更新现有工具" */
-(function initFromUrl() {
+/* 动态加载"要更新的工具"列表：从工具目录注册表拉取全部在线工具，避免写死的旧列表漏掉新工具 */
+async function loadTargets() {
+  const sel = document.getElementById('target');
+  try {
+    const r = await fetch('/api/catalog');
+    const j = await r.json();
+    const tools = (j && j.tools) || [];
+    sel.innerHTML = '<option value="">— 请选择现有工具 —</option>';
+    tools.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t.name; o.textContent = t.name;
+      if (t.slug) o.dataset.slug = t.slug;
+      sel.appendChild(o);
+    });
+    if (!tools.length) sel.innerHTML = '<option value="">（暂无可更新的在线工具）</option>';
+  } catch (e) {
+    sel.innerHTML = '<option value="">（工具目录加载失败，请刷新重试）</option>';
+  }
+}
+
+/* 深链：?kind=update&target=工具名 → 预选"更新现有工具"（在工具列表加载完成后应用） */
+(async function initFromUrl() {
+  await loadTargets();
   const q = new URLSearchParams(location.search);
   if (q.get('kind') === 'update' || q.get('update') === '1') {
     const r = document.querySelector('input[name="kind"][value="update"]');
