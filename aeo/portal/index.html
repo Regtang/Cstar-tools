@@ -259,8 +259,10 @@ document.getElementById('yr').textContent=new Date().getFullYear();
 
 /* 内嵌工具弹窗 */
 function openTool(src,title){
+  // 缓存击穿：弹窗 iframe 加载平台页面（如 submit.html）时附加时间戳，避免浏览器用旧缓存导致内容过时
+  const bust = src + (src.indexOf('?')>=0 ? '&' : '?') + '_=' + Date.now();
   document.getElementById('tmodalTitle').textContent=title||'工具';
-  document.getElementById('tmodalFrame').src=src;
+  document.getElementById('tmodalFrame').src=bust;
   document.getElementById('tmodal').classList.add('is-open');
   document.getElementById('tmodal').setAttribute('aria-hidden','false');
   document.body.style.overflow='hidden';
