@@ -134,3 +134,6 @@ tr:hover td{background:rgba(59,130,246,.05)}
 .toast.show{opacity:1}
 .toast.err{background:var(--bad);color:#fff}
 @media(max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}}
+
+/* ===== v1.16 平台嵌入模式（?embed=1）：隐藏侧栏品牌区，避免双标题 ===== */
+html.embed-mode .side .brand{display:none}

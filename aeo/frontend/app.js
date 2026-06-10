@@ -32,12 +32,14 @@ let _resetToken='';
 function show(id,on){const e=$('#'+id);if(e)e.style.display=on?'':'none';}
 function setAuthMode(m){
   _authMode=m;
-  const T={
+  // 修复：原写法 {…}[m]||T.login 在 m 非法时引用尚未初始化的 T（TDZ 报错）
+  const TT={
     login:['喜事达工具平台 · 登录','登录后使用 AEO 合规平台与装箱软件等工具','登 录'],
     register:['注册外部账号','注册即创建外部客户账号，可使用装箱软件等工具','注 册'],
     forgot:['找回密码','输入你的用户名或注册邮箱，我们会把重置链接发到邮箱','发送重置邮件'],
     reset:['设置新密码','请输入新密码完成重置','重置密码'],
-  }[m]||T.login;
+  };
+  const T=TT[m]||TT.login;
   $('#liTitle').textContent=T[0];$('#liDesc').textContent=T[1];$('#liBtn').textContent=T[2];
   show('liUserRow', m!=='reset');
   show('liNameRow', m==='register');
@@ -58,6 +60,7 @@ function afterAuth(){
   enterApp();
 }
 async function doLogin(){
+  $('#liErr').style.color='';   // 修复：找回密码成功（绿色）后再报错仍显示绿色
   const u=$('#liUser').value.trim(), p=$('#liPass').value;
   if(!u||!p){$('#liErr').textContent='请输入用户名和密码';return;}
   $('#liBtn').disabled=true;
@@ -82,6 +85,7 @@ async function doRegister(){
   $('#liBtn').disabled=false;
 }
 async function doForgot(){
+  $('#liErr').style.color='';
   const acc=$('#liUser').value.trim();
   if(!acc){$('#liErr').textContent='请输入用户名或邮箱';return;}
   $('#liBtn').disabled=true;
@@ -93,6 +97,7 @@ async function doForgot(){
   $('#liBtn').disabled=false;
 }
 async function doReset(){
+  $('#liErr').style.color='';
   const p=$('#liPass').value;
   if(p.length<6){$('#liErr').textContent='新密码至少6位';return;}
   $('#liBtn').disabled=true;
@@ -723,7 +728,8 @@ async function saveFinYear(){
 function loadFinYear(id){
   const f=CACHE.finance.find(x=>x.id===id);if(!f)return;
   $('#fc_ftype').value=f.ftype||'非生产型';$('#fc_tax').value=f.tax||'A级';
-  FIN_IN.forEach(([k])=>{const el=$('#fc_'+k);if(el)el.value=f[k]!=null&&f[k]!==0?f[k]:(k==='y'?f.y:'');});
+  // 修复：合法的 0 值（如利息支出 0）载入时被清空
+  FIN_IN.forEach(([k])=>{const el=$('#fc_'+k);if(el)el.value=f[k]!=null?f[k]:(k==='y'?f.y:'');});
   $('#fc_y').value=f.y||'';
   toast('已载入 '+f.y+' 年度数据');if(f.assets)calcFin();
 }
@@ -845,7 +851,7 @@ VIEWS.rectify=async()=>{
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap"><b>${esc(r.code)}</b> ${riskTag(r.risk)}
         <span class="tag t-gray">关联 ${esc(r.std)}</span><span class="mini" style="margin-left:auto">来源：${esc(r.src)} · 期限 ${esc(r.due)}</span></div>
       <div style="margin-bottom:10px">${esc(r.issue)}</div>
-      <div class="steps">${names.map((n,k)=>{const cls=k<step?'done':k===step-1?'cur':'';return `<div class="st ${cls}"><div class="c">${k<step-1||(step===3&&k===2)?'✓':k+1}</div>${n}</div>`;}).join('')}</div>
+      <div class="steps">${names.map((n,k)=>{const isDone=k<step-1||(step===3&&k===2);const cls=isDone?'done':k===step-1?'cur':'';return `<div class="st ${cls}"><div class="c">${isDone?'✓':k+1}</div>${n}</div>`;}).join('')}</div>
       <div style="display:flex;align-items:center;gap:8px"><span class="mini">责任：${esc(r.dept)} · ${esc(r.owner)}</span>
         ${step<3?(w?`<button class="btn sm" style="margin-left:auto" onclick="advRec(${r.id})">推进到下一步</button>`:'<span class="tag t-mid" style="margin-left:auto">进行中</span>'):'<span class="tag t-ok" style="margin-left:auto">已关闭</span>'}
         ${actBtns('rectify',`editRec(${r.id})`,`crudDelete('rectify',${r.id})`)}</div></div>`;});
@@ -865,9 +871,11 @@ const DECL_FIELDS=[
 VIEWS.customs=async()=>{
   await reload('decls');const w=canW('customs');const list=CACHE.decls;
   const err=list.filter(d=>d.err!=='正常').length;
+  // 修复：差错率描述与颜色此前写死「低于预警线」，超线时仍显示正常
+  const errRate=list.length?err/list.length*100:0;
   let h=`<div class="grid kpis" style="grid-template-columns:repeat(4,1fr)">
     ${kpi(list.length,'报关单记录','进口 '+list.filter(d=>d.type==='进口').length+' / 出口 '+list.filter(d=>d.type==='出口').length,'info','⎙')}
-    ${kpi((list.length?err/list.length*100:0).toFixed(1)+'%','样本差错率','低于预警线 0.5%','ok','◷')}
+    ${kpi(errRate.toFixed(1)+'%','样本差错率',errRate<=0.5?'低于预警线 0.5%':'超过预警线 0.5%，建议排查差错并整改',errRate<=0.5?'ok':'bad','◷')}
     ${kpi(err,'差错单','建议建整改','mid','⚠')}
     ${kpi('3 年+','单证留存','自办结之日起','ok','⏱')}</div>
   <div class="section-title" style="margin-top:18px">报关单证记录 <small>关务模块 · 自动归档保存3年以上</small>${w?'<button class="btn sm" onclick="addDecl()">+ 新增报关单</button>':''}</div>

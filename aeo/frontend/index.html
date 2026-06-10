@@ -4,7 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>喜事达AEO认证管理平台</title>
-<link rel="stylesheet" href="styles.css?v=1.15">
+<link rel="stylesheet" href="/cstar-ui.css">
+<link rel="stylesheet" href="styles.css?v=1.16">
+<script>
+  // 平台弹窗嵌入模式：?embed=1 时隐藏侧栏品牌区，避免与平台弹窗标题重复
+  document.documentElement.classList.toggle(
+    "embed-mode",
+    new URLSearchParams(location.search).get("embed") === "1"
+  );
+</script>
 </head>
 <body>
 
@@ -68,7 +76,7 @@
       </div>
     </div>
     <div class="content" id="content"></div>
-    <div class="footer">喜事达AEO认证管理平台 <span id="appVer"></span> · 依据《海关高级认证企业标准》（海关总署公告2026年第34号，2026/4/1施行）与《海关注册登记和备案企业信用管理办法》（海关总署令第282号）</div>
+    <div class="footer">喜事达AEO认证管理平台 <span id="appVer"></span> · 作者：关务部 / Nick · 依据《海关高级认证企业标准》（海关总署公告2026年第34号，2026/4/1施行）与《海关注册登记和备案企业信用管理办法》（海关总署令第282号）</div>
   </div>
 </div>
 
@@ -78,7 +86,7 @@
 </div></div>
 <div class="toast" id="toast"></div>
 
-<script src="version.js?v=1.15"></script>
-<script src="app.js?v=1.15"></script>
+<script src="version.js?v=1.16"></script>
+<script src="app.js?v=1.16"></script>
 </body>
 </html>
