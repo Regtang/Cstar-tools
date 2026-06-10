@@ -94,6 +94,18 @@ def _ensure_columns():
         "users": [("email", "VARCHAR DEFAULT ''")],
         "submissions": [("kind", "VARCHAR DEFAULT 'new'"), ("target", "VARCHAR DEFAULT ''")],
         "tools": [("current_version_id", "INTEGER DEFAULT 0")],
+        # v2026.2 升级：标准逐字原文 + 财务9项指标测算
+        "standards": [("origin", "TEXT DEFAULT ''")],
+        "finance": [
+            ("ftype", "VARCHAR DEFAULT ''"), ("assets", "FLOAT DEFAULT 0"),
+            ("liab", "FLOAT DEFAULT 0"), ("cash", "FLOAT DEFAULT 0"),
+            ("cura", "FLOAT DEFAULT 0"), ("curl", "FLOAT DEFAULT 0"),
+            ("ocf", "FLOAT DEFAULT 0"), ("revenue", "FLOAT DEFAULT 0"),
+            ("cost", "FLOAT DEFAULT 0"), ("opprofit", "FLOAT DEFAULT 0"),
+            ("netprofit", "FLOAT DEFAULT 0"), ("totalprofit", "FLOAT DEFAULT 0"),
+            ("interest", "FLOAT DEFAULT 0"), ("metrics", "JSON"),
+            ("verdict", "VARCHAR DEFAULT ''"),
+        ],
     }
     with ENGINE.begin() as conn:
         for table, cols in wanted.items():
@@ -108,7 +120,7 @@ def _ensure_columns():
 # 工具注册表初始数据（迁移现有 4 个工具）
 DEFAULT_TOOLS = [
     dict(slug="aeo", name="AEO 认证管理平台", category="合规",
-         summary="海关高级认证企业（AEO）合规管理系统：32 项标准自评、内部审计、整改闭环、关务/物流/财务记录、贸易安全与商业伙伴评估，多角色登录。",
+         summary="海关高级认证企业（AEO）合规管理系统（公告2026年第34号）：45 项标准自评（含官方逐字原文逐条对照）、财务9项指标自动测算、差距分析与应备材料清单、认证驾驶舱（雷达图/倒计时/估算总分/汇报版报告）、内部审计、整改闭环、关务/物流/财务记录、贸易安全与商业伙伴评估，多角色登录。",
          owner_dept="关务部", icon="AEO",
          color="linear-gradient(135deg,#007892,#0a9bbd)", bar="linear-gradient(90deg,#007892,#0a9bbd)",
          visibility="internal", status="online", entry_kind="link", entry_path="/aeo/", sort_order=10),

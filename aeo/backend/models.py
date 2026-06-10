@@ -20,17 +20,18 @@ class User(Base):
 
 
 class Standard(Base):
-    """海关高级认证企业标准 —— 32 项自评条款。"""
+    """海关高级认证企业标准 —— 2026版 45 项自评条款（42核心+3附加）。"""
     __tablename__ = "standards"
     id = Column(Integer, primary_key=True)
     code = Column(String, default="")                  # 条款号，如 1.1
-    cat = Column(String, default="")                   # 内部控制/财务状况/守法规范/贸易安全
+    cat = Column(String, default="")                   # 内部控制/财务状况/守法规范/贸易安全/附加标准
     name = Column(String, default="")
     req = Column(Text, default="")
     dept = Column(String, default="")
     status = Column(String, default="待评估")          # 待评估/达标/基本达标/不达标
     note = Column(Text, default="")
     evidence = Column(JSON, default=list)              # 证明材料清单
+    origin = Column(Text, default="")                  # 官方逐字原文（公告2026年第34号附件，逐条录入）
 
 
 class Decl(Base):
@@ -62,14 +63,33 @@ class Container(Base):
 
 
 class Finance(Base):
-    """年度财务状况。"""
+    """年度财务状况（2026版 9 项指标测算：偿债4 + 盈利5）。
+
+    金额字段统一以「万元」录入。rate/rev/profit 为旧版兼容字段，
+    通过财务测算保存时自动回填（rate=资产负债率）。"""
     __tablename__ = "finance"
     id = Column(Integer, primary_key=True)
     y = Column(String, default="")
-    rate = Column(Float, default=0.0)                  # 资产负债率 %
+    rate = Column(Float, default=0.0)                  # 资产负债率 %（兼容旧版/趋势图）
     rev = Column(String, default="")
     profit = Column(String, default="")
     tax = Column(String, default="A级")
+    # —— 2026版测算输入（万元）——
+    ftype = Column(String, default="")                 # 生产型 / 非生产型
+    assets = Column(Float, default=0.0)                # 资产总额
+    liab = Column(Float, default=0.0)                  # 负债总额
+    cash = Column(Float, default=0.0)                  # 货币资金
+    cura = Column(Float, default=0.0)                  # 流动资产
+    curl = Column(Float, default=0.0)                  # 流动负债
+    ocf = Column(Float, default=0.0)                   # 经营活动现金流量净额
+    revenue = Column(Float, default=0.0)               # 营业收入
+    cost = Column(Float, default=0.0)                  # 营业成本
+    opprofit = Column(Float, default=0.0)              # 营业利润
+    netprofit = Column(Float, default=0.0)             # 净利润
+    totalprofit = Column(Float, default=0.0)           # 利润总额
+    interest = Column(Float, default=0.0)              # 利息支出（总资产报酬率用，可0）
+    metrics = Column(JSON, default=dict)               # 9项指标测算结果快照
+    verdict = Column(String, default="")               # 达标/基本达标/不达标
 
 
 class Partner(Base):
@@ -218,10 +238,13 @@ class Submission(Base):
 
 # 实体名 -> (模型类, 归属权限模块, 可写字段)
 ENTITY_FIELDS = {
-    "standards":  ["code", "cat", "name", "req", "dept", "status", "note", "evidence"],
+    "standards":  ["code", "cat", "name", "req", "dept", "status", "note", "evidence", "origin"],
     "decls":      ["no", "type", "date", "hs", "goods", "value", "cur", "status", "err"],
     "containers": ["no", "type", "seal", "goods", "chk", "photo", "status"],
-    "finance":    ["y", "rate", "rev", "profit", "tax"],
+    "finance":    ["y", "rate", "rev", "profit", "tax",
+                   "ftype", "assets", "liab", "cash", "cura", "curl", "ocf",
+                   "revenue", "cost", "opprofit", "netprofit", "totalprofit",
+                   "interest", "metrics", "verdict"],
     "partners":   ["name", "type", "role", "risk", "aeo", "sec", "expire"],
     "docfiles":   ["name", "cat", "ver", "date", "owner", "keep"],
     "trainings":  ["topic", "date", "aud", "people", "passrate", "status"],

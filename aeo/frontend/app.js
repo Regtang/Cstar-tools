@@ -117,6 +117,7 @@ function logout(){doLogout();}
 /* ---------- 导航（按权限） ---------- */
 const NAV=[
   ['认证总览',[['dashboard','▥','认证驾驶舱'],['selfassess','✓','标准自评（2026版）','standards'],
+    ['gap','◧','差距分析与证据','standards'],['fincalc','∑','财务指标测算','finance'],
     ['audit','⊚','内部审计','audit'],['rectify','⟳','整改跟踪','rectify']]],
   ['业务记录系统',[['customs','⎙','关务单证管理','customs'],['logistics','⇄','物流与集装箱','logistics'],
     ['finance','¥','财务状况记录','finance']]],
@@ -156,6 +157,7 @@ async function enterApp(){
 
 /* ---------- 路由 ---------- */
 const TITLES={dashboard:['认证驾驶舱','首页 / 认证总览'],selfassess:['标准自评（2026版）','认证总览 / 标准自评'],
+  gap:['差距分析与证据清单','认证总览 / 差距分析'],fincalc:['财务指标测算（9项）','认证总览 / 财务测算'],
   audit:['内部审计','认证总览 / 内部审计'],rectify:['整改跟踪','认证总览 / 整改跟踪'],
   customs:['关务单证管理','业务记录系统 / 关务'],logistics:['物流与集装箱','业务记录系统 / 物流'],
   finance:['财务状况记录','业务记录系统 / 财务'],security:['贸易安全管理','贸易安全 / 安全管控'],
@@ -223,10 +225,65 @@ function kpi(num,lbl,sub,color,ic){return `<div class="card kpi"><h3><span style
 function donut(p){const c=p>=85?'#22c55e':p>=60?'#f59e0b':'#e54c5e';
   return `<div class="donut" style="background:conic-gradient(${c} ${p*3.6}deg,#22325a 0)"><div class="inner"><b>${p}%</b><span>综合达标</span></div></div>`;}
 
+/* 四模块雷达图（SVG） */
+function radarSVG(cats,size=210){
+  const cx=size/2,cy=size/2,R=size/2-26,n=cats.length;
+  const pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/n;return [cx+r*Math.cos(a),cy+r*Math.sin(a)];};
+  let grid='';[0.25,0.5,0.75,1].forEach(f=>{
+    grid+='<polygon points="'+cats.map((_,i)=>pt(i,R*f).map(v=>v.toFixed(1)).join(',')).join(' ')+
+      `" fill="none" stroke="var(--line)" stroke-width="1" opacity="${f===1?0.9:0.5}"/>`;});
+  let axes='',labels='';
+  cats.forEach((c,i)=>{const [x,y]=pt(i,R);axes+=`<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--line)" stroke-width="1" opacity=".6"/>`;
+    const [lx,ly]=pt(i,R+16);
+    labels+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="var(--muted)">${esc(c.cat)} ${c.rate}%</text>`;});
+  const poly=cats.map((c,i)=>pt(i,R*Math.max(0.03,c.rate/100)).map(v=>v.toFixed(1)).join(',')).join(' ');
+  return `<svg viewBox="0 0 ${size} ${size}" style="width:100%;max-width:${size+30}px">${grid}${axes}
+    <polygon points="${poly}" fill="rgba(232,67,104,.22)" stroke="#e84368" stroke-width="2"/>
+    ${cats.map((c,i)=>{const [x,y]=pt(i,R*Math.max(0.03,c.rate/100));return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="#e84368"/>`;}).join('')}
+    ${labels}</svg>`;
+}
+/* 认证目标日期（本地保存） */
+function getTarget(){return localStorage.getItem('aeo_target_date')||'';}
+function setTargetDate(){
+  const v=prompt('设置认证目标日期（如海关现场认证/取证目标日），格式 YYYY-MM-DD：',getTarget()||'2026-12-31');
+  if(v===null)return;
+  if(v&&!/^\d{4}-\d{2}-\d{2}$/.test(v.trim())){toast('日期格式应为 YYYY-MM-DD',true);return;}
+  if(v)localStorage.setItem('aeo_target_date',v.trim());else localStorage.removeItem('aeo_target_date');
+  go('dashboard');
+}
+function milestonePlan(days){ // 按剩余天数倒排五阶段
+  const names=['差距分析与材料准备','制度落地与内审','财务指标测算达标','模拟认证与整改闭环','海关现场认证'];
+  return names.map((n,i)=>({n,pct:Math.round((i+1)/names.length*100)}));
+}
+/* 34号公告口径估算总分（达标=满分、基本达标按60%折算；附加最多+2；通过线95） */
+function estScore(d){
+  const base=d.total?(d.ok+d.mid*0.6)/d.total*100:0;
+  return {base:Math.round(base*10)/10, bonus:Math.min(2,d.bonusGot||0),
+          total:Math.round((base+Math.min(2,d.bonusGot||0))*10)/10};
+}
 VIEWS.dashboard=async()=>{
   const d=await api('/dashboard');
+  try{await reload('finance');}catch(e){CACHE.finance=CACHE.finance||[];}
+  const finLatest=(CACHE.finance||[]).slice().sort((a,b)=>String(a.y).localeCompare(String(b.y))).pop();
+  const finVerdict=finLatest&&finLatest.verdict?finLatest.verdict:'';
   $('#pillOverall').textContent=d.overall+'%';
-  let h=`<div class="grid kpis">
+  const sc=estScore(d);
+  const tgt=getTarget();
+  let cd='';
+  if(tgt){
+    const days=Math.ceil((new Date(tgt+'T23:59:59')-new Date())/86400000);
+    const cls=days<0?'t-bad':days<=30?'t-mid':'t-ok';
+    cd=`<div style="text-align:center;margin:6px 0 10px"><div class="num" style="font-size:38px;color:${days<0?'var(--bad)':days<=30?'var(--warn)':'var(--ok)'}">${days<0?'已超期 '+(-days):days}</div>
+        <div class="mini">${days<0?'天 · 目标日 '+tgt+' 已过':'天后到达目标日 '+tgt}</div></div>
+      <div class="steps" style="margin-top:4px">${milestonePlan(days).map((m,i)=>{
+        const done=d.overall>=m.pct;return `<div class="st ${done?'done':(i===0||d.overall>=Math.round(i/5*100)?'cur':'')}"><div class="c">${done?'✓':i+1}</div>${m.n}</div>`;}).join('')}</div>`;
+  }else{
+    cd='<div class="empty" style="padding:18px">未设置认证目标日期</div>';
+  }
+  let h=`<div class="toolbar" style="justify-content:flex-end;margin-bottom:4px">
+    <button class="btn ghost sm" onclick="setTargetDate()">⏱ 设置目标日期</button>
+    <button class="btn sm" onclick="exportBoardReport()">📄 导出汇报版报告</button></div>
+  <div class="grid kpis">
     ${kpi(d.total,'纳入自评标准','2026版 · 4大类核心'+(d.bonusTotal?' + 附加'+d.bonusTotal+'项':''),'info','▥')}
     ${kpi(d.ok,'达标项',d.total?Math.round(d.ok/d.total*100)+'%':'0%','ok','✓')}
     ${kpi(d.mid,'基本达标项','通过上限 ≤3 项','mid','◐')}
@@ -236,16 +293,23 @@ VIEWS.dashboard=async()=>{
   <div class="row" style="margin-top:16px">
     <div class="card" style="width:300px;display:flex;flex-direction:column;align-items:center">
       <h3>认证综合达标度</h3>${donut(d.overall)}
-      <div style="margin-top:14px;text-align:center"><span class="tag ${d.pass?'t-ok':'t-bad'}">${d.pass?'满足通过条件':'尚未满足通过条件'}</span>
-      <div class="mini" style="margin-top:8px">通过条件：无不达标/待评项 且 基本达标 ≤ 3</div></div>
+      <div style="margin-top:12px;text-align:center"><span class="tag ${d.pass?'t-ok':'t-bad'}">${d.pass?'满足通过条件':'尚未满足通过条件'}</span>
+      <div style="margin-top:10px;font-size:13px">估算总分 <b style="font-size:18px;color:${sc.total>=95?'var(--ok)':'var(--warn)'}">${sc.total}</b> / 通过线 95
+        <span class="mini">（基准 ${sc.base} + 附加 ${sc.bonus}）</span></div>
+      <div class="mini" style="margin-top:6px">通过条件：无不达标/待评项 且 基本达标 ≤3；总分为估算值，以海关认定为准</div></div>
     </div>
-    <div class="card flex1"><h3>四大类标准达标情况</h3>
-      ${d.cats.map(c=>`<div style="margin:14px 0"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
-        <span>${c.cat} <span class="mini">（${c.ok}/${c.total} 项达标）</span></span><b>${c.rate}%</b></div>
+    <div class="card" style="width:300px;display:flex;flex-direction:column;align-items:center">
+      <h3>四大模块雷达</h3>${radarSVG(d.cats)}
+      <div class="mini" style="margin-top:4px">外圈=100% 达标</div>
+    </div>
+    <div class="card flex1"><h3>认证里程碑 · 倒计时</h3>${cd}
+      <div style="border-top:1px solid var(--line);margin-top:10px;padding-top:10px">
+      ${d.cats.map(c=>`<div style="margin:9px 0"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+        <span>${c.cat} <span class="mini">（${c.ok}/${c.total}）</span></span><b>${c.rate}%</b></div>
         <div class="bar"><i style="width:${c.rate}%;background:${c.rate>=85?'#22c55e':c.rate>=60?'#f59e0b':'#e84368'}"></i></div></div>`).join('')}
-      <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:10px;display:flex;justify-content:space-between;align-items:center">
-        <span>附加标准（加分项）<span class="mini">已获得 ${d.bonusGot||0}/${d.bonusTotal||0} 项 · 每项+1，高级认证最多+2</span></span>
-        <b style="color:var(--brand2);font-size:16px">+${Math.min(2,d.bonusGot||0)} 分</b></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+        <span class="mini">附加标准已获 ${d.bonusGot||0}/${d.bonusTotal||0} 项（每项+1，最多+2）</span>
+        <b style="color:var(--brand2)">+${Math.min(2,d.bonusGot||0)} 分</b></div></div>
     </div>
   </div>
   <div class="row" style="margin-top:16px">
@@ -260,19 +324,107 @@ VIEWS.dashboard=async()=>{
       <tr><td>商业伙伴-待评估</td><td style="text-align:right"><b style="color:var(--warn)">${d.counts.partnersPending}</b> 家</td></tr>
       <tr><td>制度文件</td><td style="text-align:right"><b>${d.counts.docs}</b> 份</td></tr>
       <tr><td>资产负债率（最新）</td><td style="text-align:right"><b>${d.latestFinance?d.latestFinance.rate+'%':'—'}</b></td></tr>
+      <tr><td>财务9项指标判定（最新年度）</td><td style="text-align:right">${finVerdict?statTag(finVerdict):'<span class="mini">未测算 → <a style="color:var(--brand2);cursor:pointer" onclick="go(\'fincalc\')">去测算</a></span>'}</td></tr>
     </tbody></table></div>
   </div>`;
   $('#content').innerHTML=h;
 };
+/* 驾驶舱：导出汇报版报告（打印/PDF） */
+async function exportBoardReport(){
+  const d=await api('/dashboard');
+  try{await reload('standards');}catch(e){}
+  try{await reload('finance');}catch(e){}
+  const sc=estScore(d);const tgt=getTarget();
+  const finLatest=(CACHE.finance||[]).slice().sort((a,b)=>String(a.y).localeCompare(String(b.y))).pop();
+  const gaps=(CACHE.standards||[]).filter(s=>s.cat!=='附加标准'&&['不达标','基本达标','待评估'].includes(s.status))
+    .sort((a,b)=>({'不达标':0,'待评估':1,'基本达标':2}[a.status]-{'不达标':0,'待评估':1,'基本达标':2}[b.status]));
+  const html=`<html><head><meta charset="utf-8"><title>AEO认证进度汇报</title><style>
+    body{font-family:"Microsoft YaHei",sans-serif;color:#1f2a37;padding:30px}h1{font-size:20px;margin:0 0 4px}
+    h2{font-size:15px;margin:20px 0 8px;border-left:4px solid #e84368;padding-left:8px}
+    .sum{color:#555;font-size:13px;margin:3px 0}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+    th,td{border:1px solid #999;padding:5px 8px;text-align:left;vertical-align:top}thead th{background:#252f45;color:#fff}
+    .big{font-size:26px;font-weight:800}.ft{margin-top:18px;color:#888;font-size:11px}
+    .grid{display:flex;gap:14px;margin-top:8px}.box{flex:1;border:1px solid #ccc;border-radius:6px;padding:10px;text-align:center}</style></head><body>
+    <h1>喜事达 AEO 高级认证 · 进度汇报</h1>
+    <div class="sum">依据：海关总署公告2026年第34号 · 生成时间：${new Date().toLocaleString('zh-CN',{hour12:false})}${tgt?' · 目标日期：'+tgt:''}</div>
+    <div class="grid">
+      <div class="box"><div class="big">${d.overall}%</div>综合达标度</div>
+      <div class="box"><div class="big">${sc.total}</div>估算总分（通过线95）</div>
+      <div class="box"><div class="big">${d.ok}/${d.total}</div>核心条款达标</div>
+      <div class="box"><div class="big">+${sc.bonus}</div>附加标准加分</div>
+      <div class="box"><div class="big">${d.openRectify.length}</div>整改进行中</div></div>
+    <h2>四大模块达标情况</h2>
+    <table><thead><tr><th>模块</th><th>达标/总数</th><th>达标率</th></tr></thead><tbody>
+      ${d.cats.map(c=>`<tr><td>${c.cat}</td><td>${c.ok}/${c.total}</td><td>${c.rate}%</td></tr>`).join('')}</tbody></table>
+    <h2>财务9项指标（最新年度）</h2>
+    ${finLatest&&finLatest.verdict?`<table><thead><tr><th>年度</th><th>企业类型</th><th>偿债符合</th><th>盈利符合</th><th>判定</th></tr></thead><tbody>
+      <tr><td>${esc(finLatest.y)}</td><td>${esc(finLatest.ftype||'-')}</td>
+      <td>${finLatest.metrics&&finLatest.metrics.debtOK!=null?finLatest.metrics.debtOK+'/4':'-'}</td>
+      <td>${finLatest.metrics&&finLatest.metrics.profOK!=null?finLatest.metrics.profOK+'/5':'-'}</td>
+      <td>${esc(finLatest.verdict)}</td></tr></tbody></table>`:'<div class="sum">尚未进行财务指标测算。</div>'}
+    <h2>差距与风险（${gaps.length} 项）</h2>
+    ${gaps.length?`<table><thead><tr><th>条款</th><th>标准</th><th>状态</th><th>问题说明</th><th>责任部门</th></tr></thead><tbody>
+      ${gaps.map(s=>`<tr><td>${esc(s.code)}</td><td>${esc(s.name)}</td><td>${esc(s.status)}</td><td>${esc(s.note||'')}</td><td>${esc(s.dept)}</td></tr>`).join('')}</tbody></table>`:
+      '<div class="sum">核心条款全部达标。</div>'}
+    <div class="ft">${(window.APP_VERSION||'')} · 喜事达AEO认证管理平台 · 总分为系统估算，最终以海关认定为准。</div>
+    </body></html>`;
+  const w=window.open('','_blank'); if(!w){alert('请允许弹出窗口以导出报告');return;}
+  w.document.write(html); w.document.close(); w.focus(); setTimeout(()=>{try{w.print();}catch(e){}},400);
+}
 
 /* ---- 标准自评 ---- */
 const SA_FIELDS=[
   {key:'code',label:'条款号',required:true},{key:'cat',label:'类别',type:'select',options:CATS},
   {key:'name',label:'标准名称',required:true},{key:'dept',label:'责任部门'},
   {key:'req',label:'标准要求',type:'textarea',full:true},
+  {key:'origin',label:'官方逐字原文（公告2026年第34号附件，可逐条粘贴录入）',type:'textarea',full:true},
   {key:'status',label:'自评状态',type:'select',options:['待评估','达标','基本达标','不达标']},
   {key:'note',label:'问题说明',type:'textarea',full:true},
   {key:'evidence',label:'证明材料（每行一项）',type:'textarea',array:true,full:true}];
+
+/* 应备证据材料参考库（按条款号；差距分析与条款详情使用） */
+const EVID_LIB={
+ '1.1':['组织架构图（标注关务岗位）','关务部门/岗位职责说明书','关务人员任命文件'],
+ '1.2':['法定代表人/关务负责人培训记录','高管海关法规学习证明','守法承诺书'],
+ '1.3':['进出口单证制作规程','单证复核记录（双复核）','单证与货物相符抽查记录'],
+ '1.4':['单证归档管理办法','归档台账（≥3年）','档案室/电子档案系统截图'],
+ '1.5':['信息系统功能清单','ERP/关务系统操作手册','业务全流程系统留痕示例'],
+ '1.6':['财务/关务/物流模块运行截图','模块间数据联动说明','系统权限分配表'],
+ '1.7':['数据备份策略文件','数据保存期限设置证明','历史数据可调取演示记录'],
+ '1.8':['内部审计制度','年度内审计划','内审报告与工作底稿'],
+ '1.9':['问题整改台账（闭环）','纠错改进流程文件','主动披露记录（如有）'],
+ '1.10':['商品归类管理规程','归类要素库/归类台账','疑难归类咨询记录'],
+ '1.11':['价格申报管理规程','特许权使用费排查记录','关联交易价格说明（如有）'],
+ '1.12':['原产地管理规程','原产地证书台账','享惠申报核查记录'],
+ '1.13':['禁限/两用物项合规审查制度','管制商品筛查记录','出口管制专岗任命文件','两用物项许可证（如有）'],
+ '2.1':['经审计年度财务报告','会计师事务所审计报告','账实相符核查记录'],
+ '2.2':['资产负债表','资产负债率测算表'],'2.3':['货币资金明细','现金比率测算表'],
+ '2.4':['现金流量表','经营现金流负债比测算表'],'2.5':['流动资产/负债明细','流动比率测算表'],
+ '2.6':['利润表（净利润）'],'2.7':['营业利润率测算表'],'2.8':['毛利率测算表'],
+ '2.9':['经营活动现金流量净额证明'],'2.10':['总资产报酬率测算表'],
+ '2.11':['财务9项指标综合测算报告（本平台财务测算可生成）'],
+ '2.12':['纳税信用等级证明（A/B级）','完税凭证样例','无欠税证明'],
+ '3.1':['海关企业信用查询截图','无走私违规声明','近2年行政处罚情况说明'],
+ '3.2':['年度报关差错率统计表','差错原因分析与纠正记录'],
+ '3.3':['违规处置流程文件','违规整改闭环记录'],
+ '3.4':['关联主体清单（法人/关务/财务负责人/报关人员/分支机构/代理等）','关联主体信用查询记录','员工无违法承诺书'],
+ '3.5':['信用中国/执行信息公开网查询截图','企业信用报告'],
+ '3.6':['行政处罚台账（次数/金额）','欠税查询证明'],
+ '4.1':['海关联络人备案/任命文件','关企沟通记录（会议纪要等）'],
+ '4.2':['门禁/监控/围墙等安防设施照片','安防设施巡查维护记录','来访登记台账'],
+ '4.3':['入职背景调查记录','离职权限回收单','敏感岗位人员管理制度'],
+ '4.4':['货物收发存管理规程','出入库台账（可追溯）','装卸交接记录'],
+ '4.5':['集装箱七点检查表（带照片）','铅封管理台账','箱体异常处置记录'],
+ '4.6':['运输工具检查记录','车辆/驾驶员管理台账','异常上报记录'],
+ '4.7':['商业伙伴安全评估问卷','伙伴安全协议/条款','AEO资质证明（伙伴）','定期复评记录'],
+ '4.8':['信息安全管理制度','账号权限矩阵','数据备份与恢复演练记录','防病毒/防入侵措施证明'],
+ '4.9':['年度培训计划','培训签到与考核记录','新员工安全培训记录'],
+ '4.10':['贸易安全应急预案','应急演练记录','突发事件处置报告（如有）'],
+ '4.11':['可疑货物报告流程','异常报告记录（如有）','员工报告渠道公示'],
+ '5.1':['国家级绿色工厂/绿色供应链证书'],'5.2':['专精特新“小巨人”证书'],
+ '5.3':['其他附加情形证明材料（以公告附件为准）'],
+};
+function evidLib(code){return EVID_LIB[code]||[];}
 VIEWS.selfassess=async()=>{
   await reload('standards');
   const w=canW('standards');
@@ -288,12 +440,33 @@ VIEWS.selfassess=async()=>{
 function renderSA(){
   const cat=$('#fCat')?.value||'',stt=$('#fStat')?.value||'',kw=($('#fKw')?.value||'').trim();
   const rows=CACHE.standards.filter(s=>(!cat||s.cat===cat)&&(!stt||s.status===stt)&&(!kw||s.name.includes(kw)||s.code.includes(kw)));
-  let h=`<table><thead><tr><th>条款号</th><th>类别</th><th>标准名称</th><th>要求</th><th>责任部门</th><th>状态</th><th>材料</th><th>操作</th></tr></thead><tbody>`;
+  let h=`<table><thead><tr><th>条款号</th><th>类别</th><th>标准名称</th><th>要求</th><th>原文</th><th>责任部门</th><th>状态</th><th>材料</th><th>操作</th></tr></thead><tbody>`;
   rows.forEach(s=>h+=`<tr><td><b>${esc(s.code)}</b></td><td><span class="tag t-info">${esc(s.cat)}</span></td>
-    <td>${esc(s.name)}</td><td class="mini" style="max-width:230px">${esc(s.req)}</td><td>${esc(s.dept)}</td>
-    <td>${statTag(s.status)}</td><td>${(s.evidence||[]).length} 份</td>
+    <td><a style="cursor:pointer;color:var(--brand2)" onclick="viewSA(${s.id})">${esc(s.name)}</a></td><td class="mini" style="max-width:210px">${esc(s.req)}</td>
+    <td>${s.origin?'<span class="tag t-ok">已录</span>':'<span class="tag t-gray">待录</span>'}</td><td>${esc(s.dept)}</td>
+    <td>${statTag(s.status)}</td><td>${(s.evidence||[]).length}/${evidLib(s.code).length||'-'}</td>
     <td>${actBtns('standards',`editSA(${s.id})`,`crudDelete('standards',${s.id})`)}</td></tr>`);
   h+='</tbody></table>';$('#saTable').innerHTML=h;
+}
+/* 条款详情：标准要求 + 官方原文 + 应备材料对照 */
+function viewSA(id){
+  const s=CACHE.standards.find(x=>x.id===id);if(!s)return;
+  const lib=evidLib(s.code);const have=s.evidence||[];
+  const h=`<div class="kv" style="grid-template-columns:90px 1fr">
+    <div class="k">类别</div><div><span class="tag t-info">${esc(s.cat)}</span> · 责任部门：${esc(s.dept)}</div>
+    <div class="k">自评状态</div><div>${statTag(s.status)} ${s.note?'<span class="mini">'+esc(s.note)+'</span>':''}</div>
+    <div class="k">标准要求</div><div>${esc(s.req)}</div>
+    <div class="k">官方原文</div><div>${s.origin?esc(s.origin).replace(/\n/g,'<br>'):
+      '<span class="mini">待录入 —— 以海关总署公告2026年第34号附件为准，可在「编辑」中逐条粘贴官方原文。</span>'}</div></div>
+   <div style="margin-top:12px"><b style="font-size:13px">应备材料对照</b>
+   <table style="margin-top:6px"><thead><tr><th>参考应备材料</th><th style="width:90px">状态</th></tr></thead><tbody>
+   ${lib.length?lib.map(m=>{const got=have.some(e=>e&&(e.includes(m.slice(0,4))||m.includes(e.slice(0,4))));
+     return `<tr><td class="mini">${esc(m)}</td><td>${got?'<span class="tag t-ok">已备</span>':'<span class="tag t-mid">待备</span>'}</td></tr>`;}).join(''):
+     '<tr><td colspan="2" class="mini">该条款暂无参考清单</td></tr>'}
+   ${have.length?`<tr><td class="mini" colspan="2">已登记材料：${have.map(esc).join('、')}</td></tr>`:''}
+   </tbody></table></div>
+   <div style="text-align:right;margin-top:10px">${canW('standards')?`<button class="btn sm" onclick="closeModal();editSA(${s.id})">编辑该条款</button>`:''}</div>`;
+  openModal(`${s.code} ${s.name}`,h);
 }
 function addSA(){openForm('新增标准项',SA_FIELDS,{cat:'内部控制',status:'待评估'},v=>api('/standards','POST',v));}
 function editSA(id){const s=CACHE.standards.find(x=>x.id===id);openForm('编辑标准项 '+s.code,SA_FIELDS,s,v=>api('/standards/'+id,'PUT',v));}
@@ -321,12 +494,292 @@ function exportSAReport(){
   const w=window.open('','_blank'); if(!w){alert('请允许弹出窗口以导出报告');return;}
   w.document.write(html); w.document.close(); w.focus(); setTimeout(()=>{try{w.print();}catch(e){}},400);
 }
+/* ===== 差距分析与证据清单 ===== */
+const GAP_W={'不达标':3,'待评估':2,'基本达标':1,'达标':0};
+VIEWS.gap=async()=>{
+  await reload('standards');
+  const core=CACHE.standards.filter(s=>s.cat!=='附加标准');
+  const bad=core.filter(s=>s.status==='不达标').length,pend=core.filter(s=>s.status==='待评估').length,
+        mid=core.filter(s=>s.status==='基本达标').length;
+  let lack=0;core.forEach(s=>{const lib=evidLib(s.code);const n=(s.evidence||[]).length;if(lib.length&&n<lib.length)lack+=lib.length-n;});
+  let h=`<div class="grid kpis" style="grid-template-columns:repeat(4,1fr)">
+    ${kpi(bad,'不达标（高差距）','优先整改','bad','✕')}
+    ${kpi(pend,'待评估','尽快完成自评','warn','◌')}
+    ${kpi(mid,'基本达标','通过上限 ≤3 项','mid','◐')}
+    ${kpi(lack,'材料缺口（参考）','对照应备清单估算','info','▤')}</div>
+  <div class="toolbar" style="margin-top:16px">
+    <select id="gCat" onchange="renderGap()"><option value="">全部类别</option>${CATS.filter(c=>c!=='附加标准').map(c=>`<option>${c}</option>`).join('')}</select>
+    <select id="gLv" onchange="renderGap()"><option value="">全部差距</option><option>仅看有差距</option><option>不达标</option><option>待评估</option><option>基本达标</option></select>
+    <span style="flex:1"></span>
+    <button class="btn ghost" onclick="exportGapReport()">📄 导出差距分析</button>
+    ${canW('rectify')?'<button class="btn" onclick="genAllRect()">⟳ 一键生成全部整改项</button>':''}</div>
+  <div class="card" style="padding:0;overflow:hidden"><div id="gapTable"></div></div>
+  <div class="alert info" style="margin-top:12px"><span class="ai">ℹ</span><div>「应备材料」为按公告2026年第34号要求整理的<b>参考清单</b>，已备判断按名称近似匹配，最终以海关现场认证认定为准。</div></div>`;
+  $('#content').innerHTML=h;renderGap();
+};
+function gapAdvice(s){
+  if(s.status==='不达标')return '立即整改：'+(s.note||'对照标准要求落实制度与记录');
+  if(s.status==='待评估')return '完成自评：收集应备材料后评估状态';
+  if(s.status==='基本达标')return '补强：'+(s.note||'消除剩余差距，争取达标');
+  const lib=evidLib(s.code),n=(s.evidence||[]).length;
+  return lib.length&&n<lib.length?'材料补全：对照应备清单补齐证明材料':'保持：定期复核材料有效性';
+}
+function renderGap(){
+  const cat=$('#gCat')?.value||'',lv=$('#gLv')?.value||'';
+  let rows=CACHE.standards.filter(s=>s.cat!=='附加标准'&&(!cat||s.cat===cat));
+  if(lv==='仅看有差距')rows=rows.filter(s=>s.status!=='达标');
+  else if(lv)rows=rows.filter(s=>s.status===lv);
+  rows=rows.slice().sort((a,b)=>(GAP_W[b.status]||0)-(GAP_W[a.status]||0)||a.code.localeCompare(b.code,'zh'));
+  let h=`<table><thead><tr><th>条款</th><th>标准</th><th>状态</th><th>材料(已备/应备)</th><th>差距与建议</th><th>操作</th></tr></thead><tbody>`;
+  rows.forEach(s=>{const lib=evidLib(s.code),n=(s.evidence||[]).length;
+    const gapLv=GAP_W[s.status]||0;
+    h+=`<tr><td><b>${esc(s.code)}</b><br><span class="mini">${esc(s.cat)}</span></td>
+    <td><a style="cursor:pointer;color:var(--brand2)" onclick="viewSA(${s.id})">${esc(s.name)}</a></td>
+    <td>${statTag(s.status)}</td>
+    <td>${lib.length?`<b style="color:${n>=lib.length?'var(--ok)':'var(--warn)'}">${n}</b>/${lib.length}`:n+'/-'}</td>
+    <td class="mini" style="max-width:280px">${esc(gapAdvice(s))}</td>
+    <td>${gapLv>0&&canW('rectify')?`<button class="ib" onclick="genRect(${s.id})">生成整改</button>`:(gapLv>0?'<span class="mini">差距</span>':'<span class="tag t-ok">无差距</span>')}</td></tr>`;});
+  h+='</tbody></table>';if(!rows.length)h='<div class="empty">无符合条件的条款</div>';
+  $('#gapTable').innerHTML=h;
+}
+function _dueDate(days){const d=new Date(Date.now()+days*86400000);return d.toISOString().slice(0,10);}
+async function genRect(id){
+  const s=CACHE.standards.find(x=>x.id===id);if(!s)return;
+  try{
+    await reload('rectify');
+    if(CACHE.rectify.some(r=>(r.step||1)<3&&r.std&&r.std.startsWith(s.code))){toast('该条款已有进行中的整改项',true);return;}
+    await api('/rectify','POST',{code:'R-GAP-'+s.code,src:'差距分析',std:s.code+' '+s.name,
+      issue:s.note||('差距分析：'+s.status+'，对照标准要求整改'),dept:s.dept,owner:'',
+      due:_dueDate(s.status==='不达标'?15:30),step:1,risk:s.status==='不达标'?'高':'中'});
+    toast('已生成整改项');refreshBadge();
+  }catch(e){toast(e.message,true);}
+}
+async function genAllRect(){
+  const targets=CACHE.standards.filter(s=>s.cat!=='附加标准'&&['不达标','基本达标','待评估'].includes(s.status));
+  if(!targets.length){toast('当前没有差距条款');return;}
+  if(!confirm(`将为 ${targets.length} 个差距条款生成整改项（已有进行中整改的条款跳过），确认？`))return;
+  await reload('rectify');let n=0;
+  for(const s of targets){
+    if(CACHE.rectify.some(r=>(r.step||1)<3&&r.std&&r.std.startsWith(s.code)))continue;
+    try{await api('/rectify','POST',{code:'R-GAP-'+s.code,src:'差距分析',std:s.code+' '+s.name,
+      issue:s.note||('差距分析：'+s.status+'，对照标准要求整改'),dept:s.dept,owner:'',
+      due:_dueDate(s.status==='不达标'?15:30),step:1,risk:s.status==='不达标'?'高':'中'});n++;}catch(e){}
+  }
+  toast(`已生成 ${n} 个整改项`);refreshBadge();go('gap');
+}
+function exportGapReport(){
+  const core=(CACHE.standards||[]).filter(s=>s.cat!=='附加标准');
+  const rows=core.slice().sort((a,b)=>(GAP_W[b.status]||0)-(GAP_W[a.status]||0)||a.code.localeCompare(b.code,'zh'));
+  const html=`<html><head><meta charset="utf-8"><title>AEO差距分析报告</title><style>
+    body{font-family:"Microsoft YaHei",sans-serif;color:#1f2a37;padding:30px}h1{font-size:20px;margin:0 0 4px}
+    .sum{color:#555;font-size:13px;margin:3px 0}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:14px}
+    th,td{border:1px solid #999;padding:5px 8px;text-align:left;vertical-align:top}thead th{background:#252f45;color:#fff}
+    .ft{margin-top:18px;color:#888;font-size:11px}</style></head><body>
+    <h1>喜事达 AEO 高级认证 · 差距分析与证据清单</h1>
+    <div class="sum">依据：海关总署公告2026年第34号 · 生成时间：${new Date().toLocaleString('zh-CN',{hour12:false})}</div>
+    <div class="sum">不达标 <b>${core.filter(s=>s.status==='不达标').length}</b> · 待评估 <b>${core.filter(s=>s.status==='待评估').length}</b> · 基本达标 <b>${core.filter(s=>s.status==='基本达标').length}</b> · 达标 <b>${core.filter(s=>s.status==='达标').length}</b></div>
+    <table><thead><tr><th>条款</th><th>标准</th><th>状态</th><th>已备/应备材料</th><th>应备材料参考清单</th><th>差距与建议</th></tr></thead><tbody>
+    ${rows.map(s=>{const lib=evidLib(s.code);return `<tr><td>${esc(s.code)}</td><td>${esc(s.name)}</td><td>${esc(s.status)}</td>
+      <td>${(s.evidence||[]).length}/${lib.length||'-'}</td><td>${lib.map(esc).join('；')}</td><td>${esc(gapAdvice(s))}</td></tr>`;}).join('')}
+    </tbody></table>
+    <div class="ft">${(window.APP_VERSION||'')} · 喜事达AEO认证管理平台 · 应备材料为参考清单，以海关认定为准。</div></body></html>`;
+  const w=window.open('','_blank');if(!w){alert('请允许弹出窗口以导出报告');return;}
+  w.document.write(html);w.document.close();w.focus();setTimeout(()=>{try{w.print();}catch(e){}},400);
+}
+
+/* ===== 财务指标测算（2026版 9 项：偿债4 + 盈利5） ===== */
+const FIN_TH_DEF={dbrProd:95,dbrNon:95,cashRatio:20,ocfLiab:10,curRatio:1.0};
+function finTh(){try{return Object.assign({},FIN_TH_DEF,JSON.parse(localStorage.getItem('aeo_fin_th')||'{}'));}catch(e){return {...FIN_TH_DEF};}}
+function saveFinTh(){
+  const t={};['dbrProd','dbrNon','cashRatio','ocfLiab','curRatio'].forEach(k=>{t[k]=parseFloat($('#th_'+k).value)||FIN_TH_DEF[k];});
+  localStorage.setItem('aeo_fin_th',JSON.stringify(t));toast('阈值已保存（本机）');calcFin();
+}
+function finCompute(v,th){
+  const pct=(a,b)=>b? a/b*100 : null;
+  const ind=[];
+  const dbr=pct(v.liab,v.assets);
+  const dbrTh=v.ftype==='生产型'?th.dbrProd:th.dbrNon;
+  ind.push({grp:'偿债',code:'2.2',name:'资产负债率',val:dbr,unit:'%',rule:'≤ '+dbrTh+'%',pass:dbr!=null&&dbr<=dbrTh});
+  // 分母为0（无负债/无流动负债）视为符合：无偿债压力
+  const cr=pct(v.cash,v.curl);
+  ind.push({grp:'偿债',code:'2.3',name:'现金比率',val:cr,unit:'%',rule:'≥ '+th.cashRatio+'%',pass:cr!=null?cr>=th.cashRatio:v.curl===0});
+  const ol=pct(v.ocf,v.liab);
+  ind.push({grp:'偿债',code:'2.4',name:'经营现金流负债比',val:ol,unit:'%',rule:'≥ '+th.ocfLiab+'%',pass:ol!=null?ol>=th.ocfLiab:(v.liab===0&&v.ocf>=0)});
+  const lr=v.curl?v.cura/v.curl:null;
+  ind.push({grp:'偿债',code:'2.5',name:'流动比率',val:lr,unit:'',rule:'≥ '+th.curRatio,pass:lr!=null?lr>=th.curRatio:v.curl===0});
+  ind.push({grp:'盈利',code:'2.6',name:'净利润',val:v.netprofit,unit:'万元',rule:'> 0',pass:v.netprofit>0});
+  const opr=pct(v.opprofit,v.revenue);
+  ind.push({grp:'盈利',code:'2.7',name:'营业利润率',val:opr,unit:'%',rule:'> 0',pass:opr!=null&&opr>0});
+  const gm=v.revenue?(v.revenue-v.cost)/v.revenue*100:null;
+  ind.push({grp:'盈利',code:'2.8',name:'毛利率',val:gm,unit:'%',rule:'> 0',pass:gm!=null&&gm>0});
+  ind.push({grp:'盈利',code:'2.9',name:'经营性现金流',val:v.ocf,unit:'万元',rule:'> 0',pass:v.ocf>0});
+  const roa=v.assets?((v.totalprofit||v.netprofit)+(v.interest||0))/v.assets*100:null;
+  ind.push({grp:'盈利',code:'2.10',name:'总资产报酬率',val:roa,unit:'%',rule:'> 0',pass:roa!=null&&roa>0});
+  const debtOK=ind.filter(i=>i.grp==='偿债'&&i.pass).length;
+  const profOK=ind.filter(i=>i.grp==='盈利'&&i.pass).length;
+  const verdict=(debtOK>=2&&profOK>=2)?'达标':(debtOK>=1&&profOK>=1)?'基本达标':'不达标';
+  return {ind,debtOK,profOK,verdict,dbr:dbr!=null?Math.round(dbr*10)/10:0};
+}
+const FIN_IN=[['y','年度','2025'],['assets','资产总额','number'],['liab','负债总额','number'],
+  ['cash','货币资金','number'],['cura','流动资产','number'],['curl','流动负债','number'],
+  ['ocf','经营活动现金流量净额','number'],['revenue','营业收入','number'],['cost','营业成本','number'],
+  ['opprofit','营业利润','number'],['netprofit','净利润','number'],['totalprofit','利润总额','number'],
+  ['interest','利息支出（可0）','number']];
+function finVals(){
+  const v={ftype:$('#fc_ftype').value,y:$('#fc_y').value.trim(),tax:$('#fc_tax').value};
+  FIN_IN.slice(1).forEach(([k])=>{v[k]=parseFloat($('#fc_'+k).value)||0;});
+  return v;
+}
+VIEWS.fincalc=async()=>{
+  await reload('finance');
+  const th=finTh();const w=canW('finance');
+  const hist=CACHE.finance.slice().sort((a,b)=>String(b.y).localeCompare(String(a.y)));
+  let h=`<div class="alert info"><span class="ai">∑</span><div>按公告2026年第34号财务状况标准测算：<b>偿债4项中≥2项 且 盈利5项中≥2项</b>符合 → 达标；各仅1项符合 → 基本达标。金额单位：<b>万元</b>。</div></div>
+  <div class="row">
+   <div class="card" style="flex:1.4;min-width:340px"><h3>① 录入财报数据（万元）</h3>
+    <div class="form2">
+      <div class="fld"><label>企业类型</label><select id="fc_ftype"><option>非生产型</option><option>生产型</option></select></div>
+      <div class="fld"><label>纳税信用等级</label><select id="fc_tax"><option>A级</option><option>B级</option><option>M级</option><option>C级</option><option>D级</option></select></div>
+      ${FIN_IN.map(([k,lbl,t])=>`<div class="fld"><label>${lbl}</label><input id="fc_${k}" type="${t==='number'?'number':'text'}" placeholder="${t==='number'?'0':t}"></div>`).join('')}
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+      <button class="btn" onclick="calcFin()">∑ 测算 9 项指标</button>
+      <button class="btn ghost" onclick="fillFinSample()">示例数据</button>
+      ${w?'<button class="btn ghost" id="fcSaveBtn" onclick="saveFinYear()" disabled>保存为年度记录</button>':''}
+    </div></div>
+   <div class="card" style="width:280px"><h3>判定阈值（可按官方说明校准）</h3>
+    <div class="form2" style="grid-template-columns:1fr">
+      <div class="fld"><label>资产负债率上限-生产型 %</label><input id="th_dbrProd" type="number" value="${th.dbrProd}"></div>
+      <div class="fld"><label>资产负债率上限-非生产型 %</label><input id="th_dbrNon" type="number" value="${th.dbrNon}"></div>
+      <div class="fld"><label>现金比率下限 %</label><input id="th_cashRatio" type="number" value="${th.cashRatio}"></div>
+      <div class="fld"><label>经营现金流负债比下限 %</label><input id="th_ocfLiab" type="number" value="${th.ocfLiab}"></div>
+      <div class="fld"><label>流动比率下限</label><input id="th_curRatio" type="number" step="0.1" value="${th.curRatio}"></div>
+    </div>
+    <button class="btn ghost sm" onclick="saveFinTh()">保存阈值</button>
+    <div class="mini" style="margin-top:8px">默认值为参考口径；盈利5项按官方"相关指标符合要求(>0)"判定。请对照《海关企业认证标准》说明校准后使用，以海关认定为准。</div></div>
+  </div>
+  <div id="fcResult"></div>
+  <div class="section-title">历史测算 / 年度财务记录</div>
+  <div class="card" style="padding:0">${hist.length?`<table><thead><tr><th>年度</th><th>类型</th><th>资产负债率</th><th>偿债符合</th><th>盈利符合</th><th>判定</th><th>操作</th></tr></thead><tbody>
+    ${hist.map(f=>`<tr><td><b>${esc(f.y)}</b></td><td>${esc(f.ftype||'-')}</td><td>${f.rate?f.rate+'%':'-'}</td>
+      <td>${f.metrics&&f.metrics.debtOK!=null?f.metrics.debtOK+'/4':'-'}</td><td>${f.metrics&&f.metrics.profOK!=null?f.metrics.profOK+'/5':'-'}</td>
+      <td>${f.verdict?statTag(f.verdict):'<span class="tag t-gray">未测算</span>'}</td>
+      <td><span class="act"><button class="ib" onclick="loadFinYear(${f.id})">载入</button>${w?`<button class="ib danger" onclick="crudDelete('finance',${f.id})">删除</button>`:''}</span></td></tr>`).join('')}
+    </tbody></table>`:'<div class="empty">暂无记录，测算后点「保存为年度记录」</div>'}</div>`;
+  $('#content').innerHTML=h;
+};
+let _finResult=null;
+function calcFin(){
+  const v=finVals();
+  const errs=[];
+  if(!v.y)errs.push('年度');
+  if(v.assets<=0)errs.push('资产总额需>0');
+  if(v.curl<0||v.liab<0)errs.push('负债不可为负');
+  if(errs.length){toast('请检查：'+errs.join('、'),true);return;}
+  if(!v.curl)toast('流动负债为0：现金比率/流动比率将无法计算',true);
+  const r=finCompute(v,finTh());_finResult={v,r};
+  const sb=$('#fcSaveBtn');if(sb)sb.disabled=false;
+  const grpRow=g=>r.ind.filter(i=>i.grp===g).map(i=>`<tr><td>${i.code}</td><td>${i.name}</td>
+    <td style="text-align:right"><b>${i.val==null?'—':(Math.round(i.val*100)/100)}</b> ${i.unit}</td>
+    <td>${i.rule}</td><td>${i.pass?'<span class="tag t-ok">符合</span>':'<span class="tag t-bad">不符合</span>'}</td></tr>`).join('');
+  $('#fcResult').innerHTML=`<div class="section-title">② 测算结果 — ${esc(v.y)} 年度（${esc(v.ftype)}）
+     <small>偿债 ${r.debtOK}/4 · 盈利 ${r.profOK}/5</small>
+     <span style="margin-left:auto">${statTag(r.verdict)}</span></div>
+   <div class="row">
+    <div class="card flex1" style="padding:0"><table><thead><tr><th>条款</th><th>偿债能力指标</th><th style="text-align:right">测算值</th><th>判定规则</th><th>结果</th></tr></thead>
+      <tbody>${grpRow('偿债')}</tbody></table></div>
+    <div class="card flex1" style="padding:0"><table><thead><tr><th>条款</th><th>盈利能力指标</th><th style="text-align:right">测算值</th><th>判定规则</th><th>结果</th></tr></thead>
+      <tbody>${grpRow('盈利')}</tbody></table></div></div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+     ${canW('standards')?'<button class="btn" onclick="writeBackSA()">✓ 回写标准自评（2.2–2.11）</button>':''}
+     <button class="btn ghost" onclick="exportFinReport()">📄 导出测算报告</button></div>
+   <div class="alert ${r.verdict==='达标'?'info':'warn'}" style="margin-top:10px"><span class="ai">${r.verdict==='达标'?'✓':'⚠'}</span>
+     <div>判定：<b>${r.verdict}</b> —— 偿债能力 ${r.debtOK}/4 项符合、盈利能力 ${r.profOK}/5 项符合。${r.verdict!=='达标'?'建议优先补强不符合项，或在差距分析中生成整改任务。':''}</div></div>`;
+  window.scrollTo({top:$('#fcResult').offsetTop-80,behavior:'smooth'});
+}
+function fillFinSample(){
+  const demo={ftype:'生产型',y:'2025',tax:'A级',assets:58200,liab:32600,cash:8600,cura:28400,curl:19800,
+    ocf:4350,revenue:60200,cost:48900,opprofit:6120,netprofit:5240,totalprofit:6200,interest:480};
+  $('#fc_ftype').value=demo.ftype;$('#fc_tax').value=demo.tax;
+  FIN_IN.forEach(([k])=>{const el=$('#fc_'+k);if(el)el.value=demo[k]!=null?demo[k]:'';});
+  $('#fc_y').value=demo.y;
+  toast('已填入示例数据（华兴精密示例口径）');calcFin();
+}
+async function saveFinYear(){
+  if(!_finResult){toast('请先测算',true);return;}
+  const {v,r}=_finResult;
+  const payload={...v,rate:r.dbr,rev:v.revenue?(v.revenue/10000).toFixed(2)+'亿':'',
+    profit:v.netprofit?v.netprofit+'万':'',metrics:{debtOK:r.debtOK,profOK:r.profOK,
+      ind:r.ind.map(i=>({code:i.code,name:i.name,val:i.val==null?null:Math.round(i.val*100)/100,pass:i.pass}))},
+    verdict:r.verdict};
+  try{
+    await reload('finance');
+    const exist=CACHE.finance.find(f=>String(f.y)===String(v.y));
+    if(exist){ if(!confirm(v.y+' 年度已有记录，覆盖更新？'))return; await api('/finance/'+exist.id,'PUT',payload); }
+    else await api('/finance','POST',payload);
+    toast('已保存年度记录');go('fincalc');
+  }catch(e){toast(e.message,true);}
+}
+function loadFinYear(id){
+  const f=CACHE.finance.find(x=>x.id===id);if(!f)return;
+  $('#fc_ftype').value=f.ftype||'非生产型';$('#fc_tax').value=f.tax||'A级';
+  FIN_IN.forEach(([k])=>{const el=$('#fc_'+k);if(el)el.value=f[k]!=null&&f[k]!==0?f[k]:(k==='y'?f.y:'');});
+  $('#fc_y').value=f.y||'';
+  toast('已载入 '+f.y+' 年度数据');if(f.assets)calcFin();
+}
+async function writeBackSA(){
+  if(!_finResult){toast('请先测算',true);return;}
+  const {r}=_finResult;
+  if(!confirm('将按测算结果回写标准自评 2.2–2.10 各指标状态及 2.11 综合判定，确认？'))return;
+  try{
+    await reload('standards');
+    let n=0;
+    for(const i of r.ind){
+      const s=CACHE.standards.find(x=>x.code===i.code);
+      if(s){await api('/standards/'+s.id,'PUT',{status:i.pass?'达标':'不达标',
+        note:(i.pass?'':'测算不符合：')+i.name+'='+(i.val==null?'—':Math.round(i.val*100)/100)+i.unit+'（规则 '+i.rule+'）'});n++;}
+    }
+    const s11=CACHE.standards.find(x=>x.code==='2.11');
+    if(s11){await api('/standards/'+s11.id,'PUT',{status:r.verdict,
+      note:'财务测算：偿债 '+r.debtOK+'/4 · 盈利 '+r.profOK+'/5 → '+r.verdict});n++;}
+    toast('已回写 '+n+' 个条款');refreshBadge();
+  }catch(e){toast(e.message,true);}
+}
+function exportFinReport(){
+  if(!_finResult){toast('请先测算',true);return;}
+  const {v,r}=_finResult;const th=finTh();
+  const html=`<html><head><meta charset="utf-8"><title>AEO财务指标测算报告</title><style>
+    body{font-family:"Microsoft YaHei",sans-serif;color:#1f2a37;padding:30px}h1{font-size:20px;margin:0 0 4px}
+    h2{font-size:14px;margin:16px 0 6px;border-left:4px solid #e84368;padding-left:8px}
+    .sum{color:#555;font-size:13px;margin:3px 0}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+    th,td{border:1px solid #999;padding:5px 8px;text-align:left}thead th{background:#252f45;color:#fff}
+    .v{font-size:16px;font-weight:800}.ft{margin-top:18px;color:#888;font-size:11px}</style></head><body>
+    <h1>喜事达 AEO 高级认证 · 财务指标测算报告（${esc(v.y)} 年度）</h1>
+    <div class="sum">依据：海关总署公告2026年第34号 财务状况标准（9项指标） · 企业类型：${esc(v.ftype)} · 生成时间：${new Date().toLocaleString('zh-CN',{hour12:false})}</div>
+    <div class="sum">综合判定：<span class="v">${r.verdict}</span>（偿债 ${r.debtOK}/4 · 盈利 ${r.profOK}/5；规则：偿债≥2且盈利≥2为达标，各仅1项为基本达标）</div>
+    <h2>测算明细</h2>
+    <table><thead><tr><th>条款</th><th>指标</th><th>测算值</th><th>判定规则</th><th>结果</th></tr></thead><tbody>
+    ${r.ind.map(i=>`<tr><td>${i.code}</td><td>${i.name}</td><td>${i.val==null?'—':(Math.round(i.val*100)/100)+' '+i.unit}</td><td>${i.rule}</td><td>${i.pass?'符合':'不符合'}</td></tr>`).join('')}
+    </tbody></table>
+    <h2>录入基础数据（万元）</h2>
+    <table><tbody>${FIN_IN.slice(1).map(([k,lbl])=>`<tr><td>${lbl}</td><td style="text-align:right">${v[k]}</td></tr>`).join('')}</tbody></table>
+    <div class="ft">阈值口径：资产负债率上限 生产型${th.dbrProd}%/非生产型${th.dbrNon}%、现金比率≥${th.cashRatio}%、经营现金流负债比≥${th.ocfLiab}%、流动比率≥${th.curRatio}。本报告由系统按可配置阈值自动测算，最终以海关认定为准。${(window.APP_VERSION||'')}</div>
+    </body></html>`;
+  const w=window.open('','_blank');if(!w){alert('请允许弹出窗口以导出报告');return;}
+  w.document.write(html);w.document.close();w.focus();setTimeout(()=>{try{w.print();}catch(e){}},400);
+}
+
 /* 功能③：法规与政策库 */
 VIEWS.regs=async()=>{
   const items=[
-    ['海关总署公告2026年第34号','《海关高级认证企业标准》《海关认证企业标准》（2026/4/1施行，废止2022年第106号、114号）','http://www.customs.gov.cn/customs/2026-03/31/article_2026033118200739179.html'],
+    ['海关总署公告2026年第34号','《海关高级认证企业标准》《海关认证企业标准》（2026/4/1施行，废止2022年第106号、114号）','http://www.customs.gov.cn/customs/2026-03/31/article_2026033114511949415.html'],
     ['海关总署令第282号','《海关注册登记和备案企业信用管理办法》（2026/4/1施行）',''],
     ['SAFE标准框架（2025版）','世界海关组织《全球贸易安全与便利标准框架》，AEO制度国际互认依据','']
+  ];
+  const atts=[
+    ['附件1 《海关企业认证标准》说明','http://www.customs.gov.cn/customs/attachDir/2026/04/1.%E3%80%8A%E6%B5%B7%E5%85%B3%E4%BC%81%E4%B8%9A%E8%AE%A4%E8%AF%81%E6%A0%87%E5%87%86%E3%80%8B%E8%AF%B4%E6%98%8E.doc'],
+    ['附件2 《海关高级认证企业标准》（通用标准—进出口收发货人）★ 本平台依据','http://www.customs.gov.cn/customs/attachDir/2026/04/2.%E3%80%8A%E6%B5%B7%E5%85%B3%E9%AB%98%E7%BA%A7%E8%AE%A4%E8%AF%81%E4%BC%81%E4%B8%9A%E6%A0%87%E5%87%86%E3%80%8B%EF%BC%88%E9%80%9A%E7%94%A8%E6%A0%87%E5%87%86%E2%80%94%E8%BF%9B%E5%87%BA%E5%8F%A3%E6%94%B6%E5%8F%91%E8%B4%A7%E4%BA%BA%EF%BC%89.doc'],
+    ['附件4 《海关高级认证企业标准》（单项标准）','http://www.customs.gov.cn/customs/attachDir/2026/04/4.%E3%80%8A%E6%B5%B7%E5%85%B3%E9%AB%98%E7%BA%A7%E8%AE%A4%E8%AF%81%E4%BC%81%E4%B8%9A%E6%A0%87%E5%87%86%E3%80%8B%EF%BC%88%E5%8D%95%E9%A1%B9%E6%A0%87%E5%87%86%EF%BC%89.doc'],
   ];
   let h=`<div class="section-title">法规与政策库 <small>AEO 认证依据与最新动态</small></div>
   <div class="card"><h3>2026版标准修订要点（公告第34号）</h3>
@@ -343,7 +796,11 @@ VIEWS.regs=async()=>{
    <table><thead><tr><th>文号</th><th>名称</th><th>链接</th></tr></thead><tbody>
    ${items.map(it=>`<tr><td><b>${esc(it[0])}</b></td><td>${esc(it[1])}</td><td>${it[2]?`<a href="${it[2]}" target="_blank" rel="noopener" style="color:var(--brand2)">官方原文 ↗</a>`:'—'}</td></tr>`).join('')}
    </tbody></table>
-   <div class="alert info" style="margin-top:12px"><span class="ai">ℹ</span><div>标准逐条原文以海关总署公告附件为准；本平台标准框架已按公告第34号更新。</div></div>
+   <div style="margin-top:14px"><b style="font-size:13px">官方附件下载（海关总署）</b>
+   <table style="margin-top:6px"><tbody>
+   ${atts.map(a=>`<tr><td>${esc(a[0])}</td><td style="text-align:right"><a href="${a[1]}" target="_blank" rel="noopener" style="color:var(--brand2)">下载 .doc ↗</a></td></tr>`).join('')}
+   </tbody></table></div>
+   <div class="alert info" style="margin-top:12px"><span class="ai">ℹ</span><div>标准逐条原文以海关总署公告附件为准；可下载附件2后，在「标准自评 → 编辑」中将官方原文逐条粘贴到各条款的「官方逐字原文」字段，详情页与海关现场口径即可逐字对齐。</div></div>
   </div>`;
   $('#content').innerHTML=h;
 };
@@ -469,7 +926,8 @@ VIEWS.finance=async()=>{
   await reload('finance');const w=canW('finance');
   const list=CACHE.finance.slice().sort((a,b)=>String(a.y).localeCompare(String(b.y)));
   const max=Math.max(1,...list.map(f=>f.rate));
-  let h=`<div class="section-title">财务状况记录 <small>公告2026年第34号 · 9项指标（偿债4+盈利5）· 生产型/非生产型差异化</small>${w?'<button class="btn sm" onclick="addFin()">+ 新增年度</button>':''}</div>
+  let h=`<div class="section-title">财务状况记录 <small>公告2026年第34号 · 9项指标（偿债4+盈利5）· 生产型/非生产型差异化</small>
+    <button class="btn sm" style="margin-left:auto" onclick="go('fincalc')">∑ 9项指标自动测算</button>${w?'<button class="btn sm" onclick="addFin()">+ 新增年度</button>':''}</div>
   <div class="row"><div class="card flex1"><h3>资产负债率趋势（预警线 95%）</h3>
     <div style="display:flex;align-items:flex-end;gap:18px;height:180px;padding:10px 0">
     ${list.length?list.map(f=>`<div style="flex:1;text-align:center;display:flex;flex-direction:column;justify-content:flex-end;height:100%">
@@ -482,9 +940,11 @@ VIEWS.finance=async()=>{
       <div class="k">净利润</div><div>${esc(f.profit)}</div><div class="k">资产负债率</div><div><b style="color:${f.rate>95?'var(--bad)':'var(--ok)'}">${f.rate}%</b></div>
       <div class="k">纳税信用</div><div><span class="tag t-ok">${esc(f.tax)}</span></div></div>`;})():'<div class="mini">暂无数据</div>'}</div></div>
   <div class="section-title">年度财务记录</div>
-  <div class="card" style="padding:0">${list.length?`<table><thead><tr><th>年度</th><th>营业收入</th><th>净利润</th><th>资产负债率</th><th>纳税信用</th><th>操作</th></tr></thead><tbody>
+  <div class="card" style="padding:0">${list.length?`<table><thead><tr><th>年度</th><th>营业收入</th><th>净利润</th><th>资产负债率</th><th>纳税信用</th><th>9项指标判定</th><th>操作</th></tr></thead><tbody>
     ${list.map(f=>`<tr><td><b>${esc(f.y)}</b></td><td>${esc(f.rev)}</td><td>${esc(f.profit)}</td><td>${f.rate}%</td>
-      <td><span class="tag t-ok">${esc(f.tax)}</span></td><td>${actBtns('finance',`editFin(${f.id})`,`crudDelete('finance',${f.id})`)}</td></tr>`).join('')}
+      <td><span class="tag t-ok">${esc(f.tax)}</span></td>
+      <td>${f.verdict?statTag(f.verdict):'<span class="mini"><a style="color:var(--brand2);cursor:pointer" onclick="go(\'fincalc\')">未测算 →</a></span>'}</td>
+      <td>${actBtns('finance',`editFin(${f.id})`,`crudDelete('finance',${f.id})`)}</td></tr>`).join('')}
     </tbody></table>`:'<div class="empty">暂无财务记录</div>'}</div>`;
   $('#content').innerHTML=h;
 };

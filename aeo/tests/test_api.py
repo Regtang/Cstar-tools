@@ -24,13 +24,13 @@ def test_unauthenticated_blocked(client):
 
 def test_standards_seeded(client, admin_h):
     st = client.get("/api/standards", headers=admin_h).json()
-    assert len(st) == 32
+    assert len(st) == 45  # 2026版：42核心+3附加
     assert all(s["status"] == "待评估" for s in st)
 
 
 def test_dashboard_initial(client, admin_h):
     d = client.get("/api/dashboard", headers=admin_h).json()
-    assert d["total"] == 32 and d["pending"] == 32 and d["pass"] is False
+    assert d["total"] == 42 and d["pending"] == 42 and d["pass"] is False  # 附加标准不计入核心
 
 
 def test_load_sample_and_aggregate(client, admin_h):
@@ -125,4 +125,24 @@ def test_frontend_served(client):
 def test_clear_business(client, admin_h):
     assert client.post("/api/admin/clear", headers=admin_h).status_code == 200
     d = client.get("/api/dashboard", headers=admin_h).json()
-    assert d["counts"]["decls"] == 0 and d["pending"] == 32
+    assert d["counts"]["decls"] == 0 and d["pending"] == 42
+
+
+def test_finance_metrics_and_origin(client, admin_h):
+    """v2026.2：财务9项指标测算字段 + 标准官方原文字段。"""
+    r = client.post("/api/finance", headers=admin_h, json={
+        "y": "2099", "ftype": "生产型", "assets": 58200, "liab": 32600,
+        "cash": 8600, "cura": 28400, "curl": 19800, "ocf": 4350,
+        "revenue": 60200, "cost": 48900, "opprofit": 6120, "netprofit": 5240,
+        "totalprofit": 6200, "interest": 480, "rate": 56.0, "tax": "A级",
+        "metrics": {"debtOK": 4, "profOK": 5}, "verdict": "达标"})
+    assert r.status_code == 200
+    j = r.json()
+    assert j["verdict"] == "达标" and j["metrics"]["debtOK"] == 4
+    client.delete(f"/api/finance/{j['id']}", headers=admin_h)
+    st = client.get("/api/standards", headers=admin_h).json()
+    sid = st[0]["id"]
+    r = client.put(f"/api/standards/{sid}", headers=admin_h,
+                   json={"origin": "官方原文测试"})
+    assert r.status_code == 200 and r.json()["origin"] == "官方原文测试"
+    client.put(f"/api/standards/{sid}", headers=admin_h, json={"origin": ""})
