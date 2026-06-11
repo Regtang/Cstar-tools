@@ -121,7 +121,7 @@
     <a href="https://www.cstar.com" target="_blank" rel="noopener">喜事达官网</a>
   </div>
   <a class="tel" href="tel:4006281818">☎ 400-628-1818</a>
-  <a class="cta" href="/aeo/">进入 AEO 平台</a>
+  <a class="cta" id="navAcc" href="/account.html">登录 / 注册</a>
 </div></div>
 
 <!-- HERO -->
@@ -232,7 +232,7 @@ function renderCatalog(tools){
 }
 (function loadCatalog(){
   let headers={};
-  try{const tok=localStorage.getItem('aeo_token'); if(tok) headers={'Authorization':'Bearer '+tok};}catch(e){}
+  try{const tok=localStorage.getItem('cstar_token')||localStorage.getItem('aeo_token'); if(tok) headers={'Authorization':'Bearer '+tok};}catch(e){}
   fetch('/api/catalog',{headers,cache:'no-store'})
     .then(r=>r.json())
     .then(d=>renderCatalog(d.tools||[]))
@@ -245,9 +245,22 @@ document.getElementById('grid').addEventListener('click',e=>{
 });
 document.getElementById('yr').textContent=new Date().getFullYear();
 
+/* 通行证登录态：导航右上角显示账号名（点击进账号中心） */
+(function navAccount(){
+  let tok=''; try{tok=localStorage.getItem('cstar_token')||localStorage.getItem('aeo_token')||'';}catch(e){}
+  if(!tok) return;
+  fetch('/api/me',{headers:{'Authorization':'Bearer '+tok},cache:'no-store'})
+    .then(r=>r.ok?r.json():null).then(me=>{
+      if(!me) return;
+      const a=document.getElementById('navAcc');
+      a.textContent='👤 '+(me.name||me.username);
+      a.title='账号中心';
+    }).catch(()=>{});
+})();
+
 /* 管理员登录后，在首页显示待审核工具数量（仅管理员可见） */
 (function checkPending(){
-  let tok=''; try{tok=localStorage.getItem('aeo_token')||'';}catch(e){}
+  let tok=''; try{tok=localStorage.getItem('cstar_token')||localStorage.getItem('aeo_token')||'';}catch(e){}
   if(!tok) return;
   fetch('/api/admin/pending-count',{headers:{'Authorization':'Bearer '+tok},cache:'no-store'})
     .then(r=>r.ok?r.json():null).then(d=>{

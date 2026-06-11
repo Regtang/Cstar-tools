@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>喜事达通行证 · Cstar 账号</title>
+<link rel="stylesheet" href="/cstar-ui.css">
+<style>
+  body.cstar-ui{background:#f5f7fb;min-height:100vh;display:flex;flex-direction:column}
+  .acc-top{background:linear-gradient(120deg,#252f45 0%,#2e3a57 60%,#303c58 100%);color:#fff;
+    border-bottom:3px solid #e84368}
+  .acc-top .in{max-width:980px;margin:0 auto;padding:18px 24px;display:flex;align-items:center;gap:12px}
+  .acc-top .cstar{font-family:Arial,Helvetica,sans-serif;font-weight:900;font-size:22px;letter-spacing:1.5px;color:#fff}
+  .acc-top .cstar i{font-style:normal;color:#e84368}
+  .acc-top span.sub{color:#bfeaf3;font-size:13px}
+  .acc-top a.home{margin-left:auto;color:#cfe3ea;font-size:13px;text-decoration:none}
+  .acc-top a.home:hover{color:#fff}
+  .acc-main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:48px 16px 64px}
+  .acc-card{background:#fff;border-radius:8px;box-shadow:0 16px 40px rgba(37,47,69,.12);
+    width:100%;max-width:420px;padding:34px 34px 28px}
+  .acc-card h1{font-size:21px;color:#212121;margin:0 0 6px}
+  .acc-card p.desc{color:#667085;font-size:13.5px;margin:0 0 22px;line-height:1.6}
+  .f-row{margin-bottom:14px}
+  .f-row label{display:block;font-size:13px;color:#667085;font-weight:600;margin-bottom:6px}
+  .f-row input{width:100%;box-sizing:border-box;border:1px solid #d3dce6;border-radius:6px;
+    padding:11px 12px;font-size:14px;font-family:inherit;outline:none;transition:.15s}
+  .f-row input:focus{border-color:#007892;box-shadow:0 0 0 3px rgba(0,120,146,.12)}
+  .err{min-height:20px;font-size:13px;color:#e31d1c;margin:2px 0 8px}
+  .err.ok{color:#168821}
+  .btn-main{width:100%;border:0;border-radius:6px;background:#e84368;color:#fff;font-size:15px;
+    font-weight:700;padding:12px;cursor:pointer;font-family:inherit;transition:.15s}
+  .btn-main:hover{background:#c72d53}
+  .btn-main:disabled{opacity:.6;cursor:default}
+  .links{display:flex;justify-content:space-between;margin-top:16px;font-size:13px}
+  .links a{color:#007892;cursor:pointer;text-decoration:none;font-weight:600}
+  .links a:hover{text-decoration:underline}
+  .hint{margin-top:20px;padding:12px 14px;background:#f0f7f9;border:1px solid #cfe3ea;border-radius:6px;
+    font-size:12.5px;color:#456;line-height:1.7}
+  /* 已登录视图 */
+  .me-row{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+  .me-ava{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#e84368,#c72d53);
+    color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;flex:none}
+  .me-row b{font-size:17px;color:#212121}
+  .me-row .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;
+    background:#e6eef0;color:#005f73;margin-left:8px;vertical-align:1px}
+  .me-list{border-top:1px solid #eef1f5;margin-top:6px}
+  .me-list a{display:flex;align-items:center;gap:8px;padding:13px 2px;border-bottom:1px solid #eef1f5;
+    color:#212121;font-size:14px;text-decoration:none}
+  .me-list a:hover{color:#007892}
+  .me-list a span.go{margin-left:auto;color:#8a99ab}
+  .btn-quit{width:100%;margin-top:18px;border:1px solid #e3b7bd;background:#fff;color:#e54c5e;
+    border-radius:6px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+  .btn-quit:hover{background:#fdeef0}
+  .foot{text-align:center;color:#8a99ab;font-size:12px;padding:18px}
+</style>
+</head>
+<body class="cstar-ui">
+<div class="acc-top"><div class="in">
+  <span class="cstar">CST<i>A</i>R</span><span class="sub">喜事达通行证 · 一个账号，通行全部工具</span>
+  <a class="home" href="/">← 返回工具平台</a>
+</div></div>
+
+<div class="acc-main">
+  <!-- 未登录：登录/注册/找回/重置 -->
+  <div class="acc-card" id="authCard" style="display:none">
+    <h1 id="tTitle">登录</h1>
+    <p class="desc" id="tDesc">使用喜事达通行证登录，云端保存你的方案与记录。</p>
+    <div class="f-row" id="rUser"><label id="lUser">用户名</label><input id="iUser" autocomplete="username" placeholder="请输入用户名"></div>
+    <div class="f-row" id="rName" style="display:none"><label>姓名 / 称呼（选填）</label><input id="iName" placeholder="怎么称呼你"></div>
+    <div class="f-row" id="rEmail" style="display:none"><label>邮箱（用于找回密码）</label><input id="iEmail" type="email" autocomplete="email" placeholder="name@example.com"></div>
+    <div class="f-row" id="rPass"><label id="lPass">密码</label><input id="iPass" type="password" autocomplete="current-password" placeholder="请输入密码"></div>
+    <div class="err" id="msg"></div>
+    <button class="btn-main" id="btnGo">登 录</button>
+    <div class="links">
+      <a id="aToggle">注册新账号</a>
+      <a id="aForgot">忘记密码？</a>
+    </div>
+    <div class="hint" id="hint">注册即可使用装箱软件云端方案保存、多设备同步等功能。<br>喜事达内部员工请使用公司分配的账号登录；AEO 合规平台仅限内部员工访问。</div>
+  </div>
+
+  <!-- 已登录：账号中心 -->
+  <div class="acc-card" id="meCard" style="display:none">
+    <h1>我的账号</h1>
+    <p class="desc">喜事达通行证 · 登录状态在本平台所有工具间共享。</p>
+    <div class="me-row">
+      <div class="me-ava" id="meAva">C</div>
+      <div><b id="meName">—</b><span class="tag" id="meRole">—</span>
+        <div style="font-size:12.5px;color:#8a99ab;margin-top:3px" id="meSub">—</div></div>
+    </div>
+    <div class="me-list">
+      <a href="/">⊞ 工具平台首页<span class="go">→</span></a>
+      <a href="/packer/" id="lnkPacker">▦ 装箱软件（云端方案已解锁）<span class="go">→</span></a>
+      <a href="/aeo/" id="lnkAeo" style="display:none">⛨ AEO 认证管理平台（员工）<span class="go">→</span></a>
+      <a id="lnkPw" style="cursor:pointer">🔑 修改密码<span class="go">→</span></a>
+    </div>
+    <div id="pwBox" style="display:none;margin-top:14px">
+      <div class="f-row"><label>原密码</label><input id="pwOld" type="password"></div>
+      <div class="f-row"><label>新密码（至少6位）</label><input id="pwNew" type="password"></div>
+      <div class="err" id="pwMsg"></div>
+      <button class="btn-main" id="btnPw">确认修改</button>
+    </div>
+    <button class="btn-quit" id="btnQuit">退出登录</button>
+  </div>
+</div>
+<div class="foot">© 喜事达（Cstar）· 进出口物流供应链服务 · 全站 HTTPS 加密</div>
+
+<script src="/cstar-tool.js"></script>
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  var qs=new URLSearchParams(location.search);
+  var NEXT=(function(){var n=qs.get('next')||'';return /^\/[^/]/.test(n)?n:'';})();
+  var RESET=qs.get('reset')||'';
+  var mode='login';   // login | register | forgot | reset
+
+  function setMsg(t,ok){var m=$('msg');m.textContent=t||'';m.className='err'+(ok?' ok':'');}
+  function show(id,on){$(id).style.display=on?'':'none';}
+  function setMode(m){
+    mode=m;
+    var T={
+      login:['登录','使用喜事达通行证登录，云端保存你的方案与记录。','登 录'],
+      register:['注册喜事达通行证','一个账号通行平台全部工具，注册即解锁云端保存。','注 册'],
+      forgot:['找回密码','输入用户名或注册邮箱，我们把重置链接发到你的邮箱。','发送重置邮件'],
+      reset:['设置新密码','请输入新密码完成重置。','重置密码']
+    }[m];
+    $('tTitle').textContent=T[0];$('tDesc').textContent=T[1];$('btnGo').textContent=T[2];
+    show('rUser',m!=='reset');show('rName',m==='register');show('rEmail',m==='register');
+    show('rPass',m!=='forgot');show('hint',m==='login'||m==='register');
+    $('lUser').textContent=(m==='forgot')?'用户名或邮箱':'用户名';
+    $('lPass').textContent=(m==='reset')?'新密码（至少6位）':'密码';
+    $('iPass').autocomplete=(m==='login')?'current-password':'new-password';
+    $('aToggle').textContent=(m==='register')?'已有账号？去登录':'注册新账号';
+    $('aForgot').style.display=(m==='login')?'':'none';
+    setMsg('');
+  }
+  function done(user){
+    // 登录成功：有 next 回 next；员工默认回首页；客户默认回首页
+    if(NEXT){location.replace(NEXT);return;}
+    renderMe(user);
+  }
+  async function api(path,body){
+    var r=await fetch('/api'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    var d=await r.json().catch(function(){return{};});
+    if(!r.ok)throw new Error(d.detail||('请求失败 '+r.status));
+    return d;
+  }
+  async function go(){
+    var u=$('iUser').value.trim(),p=$('iPass').value;
+    $('btnGo').disabled=true;
+    try{
+      if(mode==='login'){
+        if(!u||!p)throw new Error('请输入用户名和密码');
+        var r=await api('/login',{username:u,password:p});
+        Cstar.auth.setToken(r.token);done(r.user);
+      }else if(mode==='register'){
+        var email=$('iEmail').value.trim();
+        if(u.length<3)throw new Error('用户名至少3个字符');
+        if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))throw new Error('请填写有效邮箱（用于找回密码）');
+        if(p.length<6)throw new Error('密码至少6位');
+        var r2=await api('/register',{username:u,password:p,name:$('iName').value.trim(),email:email});
+        Cstar.auth.setToken(r2.token);done(r2.user);
+      }else if(mode==='forgot'){
+        if(!u)throw new Error('请输入用户名或邮箱');
+        var r3=await api('/forgot-password',{account:u});
+        setMsg(r3.emailEnabled?'如果该账号存在，重置链接已发到其邮箱，请查收（注意垃圾箱）。':'邮件服务暂未配置，请联系平台管理员重置。',true);
+      }else if(mode==='reset'){
+        if(p.length<6)throw new Error('新密码至少6位');
+        await api('/reset-password',{token:RESET,password:p});
+        history.replaceState(null,'','/account.html'+(NEXT?'?next='+encodeURIComponent(NEXT):''));
+        setMode('login');setMsg('密码已重置，请用新密码登录。',true);
+      }
+    }catch(e){setMsg(e.message);}
+    $('btnGo').disabled=false;
+  }
+
+  function renderMe(me){
+    show('authCard',false);show('meCard',true);
+    $('meAva').textContent=(me.name||me.username||'C').charAt(0).toUpperCase();
+    $('meName').textContent=me.name||me.username;
+    $('meRole').textContent=me.roleName||me.role;
+    $('meSub').textContent='用户名 '+me.username+(me.email?' · '+me.email:'');
+    $('lnkAeo').style.display=me.isStaff?'':'none';
+  }
+  function renderAuth(){show('meCard',false);show('authCard',true);setMode(RESET?'reset':'login');}
+
+  $('btnGo').onclick=go;
+  $('aToggle').onclick=function(){setMode(mode==='register'?'login':'register');};
+  $('aForgot').onclick=function(){setMode('forgot');};
+  document.addEventListener('keydown',function(e){if(e.key==='Enter'&&$('authCard').style.display!=='none')go();});
+  $('btnQuit').onclick=function(){Cstar.auth.clear();renderAuth();};
+  $('lnkPw').onclick=function(){var b=$('pwBox');b.style.display=(b.style.display==='none')?'':'none';};
+  $('btnPw').onclick=async function(){
+    var o=$('pwOld').value,n=$('pwNew').value,m=$('pwMsg');
+    m.className='err';m.textContent='';
+    if(n.length<6){m.textContent='新密码至少6位';return;}
+    try{
+      var r=await fetch('/api/me/password',{method:'POST',
+        headers:Object.assign({'Content-Type':'application/json'},Cstar.auth.headers()),
+        body:JSON.stringify({old:o,new:n})});
+      var d=await r.json().catch(function(){return{};});
+      if(!r.ok)throw new Error(d.detail||'修改失败');
+      m.className='err ok';m.textContent='密码已修改。';$('pwOld').value='';$('pwNew').value='';
+    }catch(e){m.textContent=e.message;}
+  };
+
+  (async function init(){
+    if(RESET){renderAuth();return;}
+    var me=await Cstar.auth.me();
+    if(me){ if(NEXT){location.replace(NEXT);return;} renderMe(me); }
+    else renderAuth();
+  })();
+})();
+</script>
+</body>
+</html>

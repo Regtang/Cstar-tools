@@ -17,7 +17,7 @@
     // —— 品牌 / 导航 / 顶栏 / 状态 ——
     "喜事达 Cstar": { en: "Cstar", ko: "Cstar", th: "Cstar", ms: "Cstar", vi: "Cstar" },
     "装箱软件": { en: "Container Packer", ko: "컨테이너 적재", th: "ซอฟต์แวร์จัดตู้", ms: "Pemuat Kontena", vi: "Phần mềm xếp container" },
-    "版本 1.4.0": { en: "Version 1.4.0", ko: "버전 1.4.0", th: "เวอร์ชัน 1.4.0", ms: "Versi 1.4.0", vi: "Phiên bản 1.4.0" },
+    "版本 1.5.0": { en: "Version 1.5.0", ko: "버전 1.5.0", th: "เวอร์ชัน 1.5.0", ms: "Versi 1.5.0", vi: "Phiên bản 1.5.0" },
     "主导航": { en: "Main navigation", ko: "주 메뉴", th: "เมนูหลัก", ms: "Navigasi utama", vi: "Điều hướng chính" },
     "工作台": { en: "Workspace", ko: "작업대", th: "พื้นที่ทำงาน", ms: "Ruang kerja", vi: "Bàn làm việc" },
     "货物清单": { en: "Cargo list", ko: "화물 목록", th: "รายการสินค้า", ms: "Senarai kargo", vi: "Danh sách hàng" },

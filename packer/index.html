@@ -3,12 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <script>
-      /* 访问控制：需登录喜事达 AEO 账号后方可使用（同域共享登录态） */
+      /* 免登录即可使用全部装箱功能；登录喜事达通行证后解锁云端方案保存（见页内云端模块）。
+         token 失效时仅静默清理，不打断使用。 */
       (function(){try{
-        var t=localStorage.getItem('aeo_token');
-        if(!t){location.replace('/aeo/');return;}
+        var t=localStorage.getItem('cstar_token')||localStorage.getItem('aeo_token');
+        if(!t)return;
         fetch('/api/me',{headers:{Authorization:'Bearer '+t}}).then(function(r){
-          if(r.status===401){localStorage.removeItem('aeo_token');location.replace('/aeo/');}
+          if(r.status===401){localStorage.removeItem('cstar_token');localStorage.removeItem('aeo_token');}
         }).catch(function(){});
       }catch(e){}})();
     </script>
@@ -29,7 +30,7 @@
           <div>
             <h1>喜事达 Cstar</h1>
             <p>装箱软件</p>
-            <span class="version-badge">版本 1.4.0</span>
+            <span class="version-badge">版本 1.5.0</span>
           </div>
         </div>
 
@@ -67,7 +68,7 @@
             <p class="eyebrow">Cstar 装箱软件</p>
             <div class="title-line">
               <h2>喜事达（Cstar）装箱软件</h2>
-              <span class="version-badge top-version">版本 1.4.0</span>
+              <span class="version-badge top-version">版本 1.5.0</span>
             </div>
           </div>
           <div class="actions">
@@ -382,13 +383,18 @@
     </style>
     <script>
     (function(){
-      function tok(){return localStorage.getItem('aeo_token');}
+      var ACCOUNT='/account.html?next='+encodeURIComponent('/packer/');
+      function tok(){return localStorage.getItem('cstar_token')||localStorage.getItem('aeo_token');}
+      function clearTok(){localStorage.removeItem('cstar_token');localStorage.removeItem('aeo_token');}
+      function needLogin(){
+        if(confirm('云端保存需要登录喜事达通行证（免费注册）。\n本地使用不受影响。现在去登录？'))location.href=ACCOUNT;
+      }
       function E(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
       async function papi(path,method,body){
         var opt={method:method||'GET',headers:{Authorization:'Bearer '+tok()}};
         if(body!==undefined){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body);}
         var r=await fetch('/api'+path,opt);
-        if(r.status===401){localStorage.removeItem('aeo_token');location.replace('/aeo/');throw new Error('未登录');}
+        if(r.status===401){clearTok();needLogin();throw new Error('登录已过期');}
         var d=await r.json().catch(function(){return {};});
         if(!r.ok)throw new Error(d.detail||('请求失败 '+r.status));
         return d;
@@ -400,6 +406,7 @@
       document.getElementById('cloudX').onclick=function(){bg.classList.remove('show');};
       var bodyEl=document.getElementById('cloudBody');
       async function saveCloud(){
+        if(!tok()){needLogin();return;}
         try{
           var data=serializeProject();
           var def=(data&&data.project&&data.project.name)||'装箱方案';
@@ -410,6 +417,7 @@
         }catch(e){alert('保存失败：'+e.message);}
       }
       async function openCloud(){
+        if(!tok()){needLogin();return;}
         bodyEl.innerHTML='<div style="padding:26px;text-align:center;color:#8a99ab">加载中…</div>';
         bg.classList.add('show');
         try{
@@ -444,8 +452,17 @@
       }
       var sb=document.querySelector('.sidebar');
       if(sb){
-        var lo=document.createElement('button');lo.type='button';lo.className='cloud-logout';lo.textContent='退出登录';
-        lo.onclick=function(){localStorage.removeItem('aeo_token');location.replace('/aeo/');};
+        var lo=document.createElement('button');lo.type='button';lo.className='cloud-logout';
+        if(tok()){
+          lo.textContent='退出登录';
+          lo.onclick=function(){clearTok();location.reload();};
+          fetch('/api/me',{headers:{Authorization:'Bearer '+tok()}}).then(function(r){return r.ok?r.json():null;})
+            .then(function(me){if(me)lo.textContent='退出登录（'+(me.name||me.username)+'）';}).catch(function(){});
+        }else{
+          lo.textContent='登录 / 注册（解锁云端保存）';
+          lo.style.borderColor='#9ad0dc';lo.style.color='#007892';
+          lo.onclick=function(){location.href=ACCOUNT;};
+        }
         sb.appendChild(lo);
       }
     })();

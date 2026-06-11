@@ -44,6 +44,46 @@ if _cors:
 def health():
     return {"status": "ok", "service": "xishida-aeo", "version": "1.0"}
 
+
+# ============ HS 全量税则/申报要素 代理（供 HS 速查工具调用，无需登录） ============
+HS_RATE_API = os.environ.get("HS_RATE_API", "https://www.cstar.com/findRateDeclByPage")
+
+
+@app.post("/api/hs/search")
+def hs_search(body: dict = Body(default={})):
+    """代理喜事达全量税则/申报要素查询接口 findRateDeclByPage，规避跨域并统一入口。"""
+    import urllib.request
+    q = (body.get("q") or "").strip()
+    code = (body.get("goodsCode") or "").strip()
+    name = (body.get("goodsName") or "").strip()
+    try:
+        page = int(body.get("page") or body.get("current") or 1)
+        size = min(int(body.get("size") or 30), 100)
+    except (TypeError, ValueError):
+        page, size = 1, 30
+    kw = q or code or name
+    payload = {
+        "current": page, "size": size,
+        "records": [{
+            "goodsCode": code, "goodsName": name, "codeName": kw,
+            "querySource": 1, "searchType": "1&2", "searchTypeName": kw,
+        }],
+    }
+    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    ctx = ssl.create_default_context()
+    last = None
+    # 上游偶发握手/读取超时，重试 1 次（共 2 次）以平滑网络抖动
+    for _ in range(2):
+        req = urllib.request.Request(
+            HS_RATE_API, data=data, method="POST",
+            headers={"Content-Type": "application/json;charset=UTF-8", "Accept": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=12, context=ctx) as r:
+                return json.loads(r.read().decode("utf-8"))
+        except Exception as e:  # noqa: BLE001
+            last = e
+    raise HTTPException(502, f"全量税则服务调用失败：{last}")
+
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend")
 
 
@@ -176,7 +216,7 @@ def forgot_password(body: ForgotIn, db: Session = Depends(database.get_db)):
                 .first())
         if user and (user.email or "") and email_enabled():
             token = auth.make_reset_token(user.id)
-            link = f"{public_base()}/aeo/?reset={token}"
+            link = f"{public_base()}/account.html?reset={token}"
             html = ("<p>您好，</p>"
                     "<p>您在<b>喜事达工具平台</b>请求重置密码。请在 30 分钟内点击以下链接设置新密码："
                     f"</p><p><a href='{link}'>{link}</a></p>"
