@@ -65,7 +65,9 @@
 <script>
 /* ===== 标准功能用法示例（全部来自 cstar-tool.js） ===== */
 /* 必备：声明 工具名 / 版本号 / 作者姓名（页脚署名 + 打印单据带上） */
-Cstar.stamp({ tool:"工具名称", version:"v1.0.0", author:"你的姓名 / 部门" });
+Cstar.stamp({ tool:"工具名称", version:"v1.0.0", author:"你的姓名 / 部门",
+  // 发布新版本时必填：版本更新说明（页脚版本号可点击查看）
+  changelog:[{ version:"v1.0.0", date:"2026-01-01", notes:["首个版本"] }] });
 
 const FIELDS = ["f_name","f_qty","f_type","f_note"];
 const COLS = [["name","名称"],["qty","数量"],["type","类型"],["note","备注"],["no","单号"]];

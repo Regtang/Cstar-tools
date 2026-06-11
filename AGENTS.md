@@ -24,6 +24,7 @@
 - **导出** `Cstar.exportPDF(elId,file)`（A4分页）/`exportWord`/`exportExcel`/`exportExcelData`/`exportJSON`/`print`。
 - **照片水印** `Cstar.watermarkPhoto(file, 文字)`；引入库即自动处理 `?embed=1` 嵌入模式。
 - **署名（必备）** `Cstar.stamp({tool, version, author})`：页脚显示工具名+版本号+作者姓名。**每个工具必须声明作者姓名与版本号**，可用 `Cstar.stampLine()` 写进单据/导出。
+- **版本更新说明（发新版必备）**：发布新版本时软件内必须带更新说明——`Cstar.stamp` 支持 `changelog:[{version,date,notes:[…]}]` 参数（页脚版本号可点击弹出）；或在帮助/关于页列明版本号、日期与变更点。
 
 凡有输入的工具用 `bindForm` 自动暂存；凡产生记录的工具用 `records` 做台账并支持导出。参考实现见 `前端标准/tool-template.html`。
 

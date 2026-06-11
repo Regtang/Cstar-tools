@@ -209,16 +209,45 @@
     });
   }
 
-  /* ---------- 作者姓名 + 版本号（标准必备）：页脚署名 + 供单据引用 ---------- */
+  /* ---------- 作者姓名 + 版本号（标准必备）：页脚署名 + 版本更新说明 + 供单据引用 ---------- */
+  /* stamp({tool, version, author, changelog})
+     changelog（新版本发布时必备）：[{version:"v1.1.0", date:"2026-06-11", notes:["修复…","新增…"]}, …]
+     传入后页脚版本号变为可点击，弹出「版本更新说明」。 */
   function stamp(o) {
     o = o || {};
     const info = { tool: o.tool || (document.title || "工具").split("·")[0].trim(), version: o.version || "v1.0.0", author: o.author || "喜事达 · Cstar" };
+    info.changelog = Array.isArray(o.changelog) ? o.changelog : [];
     w.Cstar.info = info;
-    const txt = info.tool + "　" + info.version + "　·　作者 " + info.author + "　·　喜事达工具平台 CSTAR";
     let f = $("cs-stamp");
     if (!f) { f = document.createElement("div"); f.id = "cs-stamp"; f.className = "cs-footer"; f.style.textAlign = "center"; (document.body || document.documentElement).appendChild(f); }
-    f.textContent = txt;
+    if (info.changelog.length) {
+      f.innerHTML = esc(info.tool) + "　<a id=\"cs-stamp-ver\" href=\"javascript:void(0)\" style=\"color:inherit;text-decoration:underline dotted\" title=\"查看版本更新说明\">" + esc(info.version) + "</a>　·　作者 " + esc(info.author) + "　·　喜事达工具平台 CSTAR";
+      $("cs-stamp-ver").onclick = showChangelog;
+    } else {
+      f.textContent = info.tool + "　" + info.version + "　·　作者 " + info.author + "　·　喜事达工具平台 CSTAR";
+    }
     return info;
+  }
+  /* 弹出版本更新说明（页脚版本号点击触发，也可手动调用 Cstar.showChangelog()） */
+  function showChangelog() {
+    const i = w.Cstar.info || {}; const logs = i.changelog || [];
+    let bg = $("cs-changelog-bg");
+    if (!bg) {
+      bg = document.createElement("div"); bg.id = "cs-changelog-bg";
+      bg.style.cssText = "position:fixed;inset:0;background:rgba(20,28,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";
+      bg.addEventListener("click", function (e) { if (e.target === bg) bg.style.display = "none"; });
+      (document.body || document.documentElement).appendChild(bg);
+    }
+    const items = logs.map(function (en) { return typeof en === "string" ? { notes: [en] } : (en || {}); }).map(function (en) {
+      return "<div style=\"margin-bottom:12px\"><b>" + esc(en.version || i.version || "") + (en.date ? " · " + esc(en.date) : "") +
+        "</b><ul style=\"margin:6px 0 0;padding-left:20px\">" + (en.notes || []).map(function (n) { return "<li>" + esc(n) + "</li>"; }).join("") + "</ul></div>";
+    }).join("");
+    bg.innerHTML = "<div style=\"background:#fff;color:#212121;max-width:560px;width:100%;max-height:70vh;overflow:auto;border-radius:8px;padding:18px 20px;box-shadow:0 16px 40px rgba(37,47,69,.3)\">" +
+      "<div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:10px\"><b style=\"font-size:15px\">" + esc(i.tool || "") + " · 版本更新说明</b>" +
+      "<span id=\"cs-changelog-x\" style=\"cursor:pointer;font-size:18px;line-height:1\">×</span></div>" + (items || "<div>暂无更新说明</div>") + "</div>";
+    bg.querySelector("#cs-changelog-x").addEventListener("click", function () { bg.style.display = "none"; });
+    bg.firstChild.addEventListener("click", function (e) { e.stopPropagation(); });
+    bg.style.display = "flex";
   }
   /* 取署名一行（放进生成的单据/导出内容里） */
   function stampLine() {
@@ -230,6 +259,6 @@
     $, esc, download, store, Records, records: (k, cap) => new Records(k, cap),
     signature, validate, serial, today, nowStr, watermarkPhoto,
     print, exportJSON, exportWord, exportExcel, exportExcelData, exportPDF, loadScript,
-    stamp, stampLine, info: null
+    stamp, stampLine, showChangelog, info: null
   };
 })(window);
