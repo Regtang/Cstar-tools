@@ -6,6 +6,7 @@
 import os
 import re
 import ssl
+import hmac
 import json
 import uuid
 import shutil
@@ -87,8 +88,11 @@ def hs_search(body: dict = Body(default={})):
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend")
 
 
+TZ_CN = datetime.timezone(datetime.timedelta(hours=8))   # 北京时间（服务器/容器为 UTC）
+
+
 def now():
-    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return datetime.datetime.now(TZ_CN).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def to_dict(obj):
@@ -768,7 +772,7 @@ def approve_submission(sid: int, data: dict = Body(default={}),
         if db.query(models.Tool).filter(models.Tool.slug == slug).first():
             slug = slug + "-" + uuid.uuid4().hex[:4]
 
-    version = (s.version or "").strip() or datetime.datetime.now().strftime("v%Y%m%d-%H%M%S")
+    version = (s.version or "").strip() or datetime.datetime.now(TZ_CN).strftime("v%Y%m%d-%H%M%S")
     rel = f"tools/{slug}/{version}"
     if os.path.exists(os.path.join(database.DATA_DIR, rel)):
         rel = f"tools/{slug}/{version}-{uuid.uuid4().hex[:4]}"
@@ -925,7 +929,7 @@ async def create_need(request: Request,
         raise HTTPException(400, "请补充业务场景与期望效果（至少10个字），便于评估")
     ip = request.client.host if request.client else ""
     # 简单防滥提：同一 IP 10 分钟内最多 5 条
-    cutoff = (datetime.datetime.now() - datetime.timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
+    cutoff = (datetime.datetime.now(TZ_CN) - datetime.timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
     recent = db.query(models.Need).filter(models.Need.ip == ip,
                                           models.Need.created_at >= cutoff).count()
     if ip and recent >= 5:
@@ -984,8 +988,10 @@ async def create_need(request: Request,
                                    rel_path=f"needs/{n.id}/{safe}",
                                    size=len(data), mime=mime[:80], created_at=now()))
         db.commit()
-    # 提交人默认自动「同求」一票
+    # 提交人默认自动「同求」一票 + 生成编辑密钥（匿名提交人凭它补充说明）
+    edit_key = uuid.uuid4().hex
     db.add(models.NeedVote(need_id=n.id, voter=_voter_key(request, user), created_at=now()))
+    db.add(models.NeedKey(need_id=n.id, key=edit_key))
     db.commit()
     # 邮件通知维护者（沿用工具提交的通知配置）
     try:
@@ -1002,14 +1008,15 @@ async def create_need(request: Request,
             send_email(notify, f"【需求直通车】{n.kind}：{n.title}", html)
     except Exception as e:
         print(f"[NOTIFY][ERROR] need: {type(e).__name__}: {e}", flush=True)
-    return {"ok": True, "id": n.id,
-            "message": "需求已提交，进入公示墙并通知平台维护者评估。"}
+    return {"ok": True, "id": n.id, "editKey": edit_key,
+            "message": "需求已提交，进入公示墙，由平台信息部评估。"}
 
 
 @app.get("/api/needs")
 def list_needs(request: Request, db: Session = Depends(database.get_db),
                user=Depends(auth.optional_user)):
-    """公开公示墙：最新 200 条（隐藏项除外），不含联系方式。voted=当前访问者已同求的需求 id。"""
+    """公开公示墙：最新 200 条（隐藏项除外），不含联系方式。
+    voted=当前访问者已同求的需求 id；mine=登录用户自己提交的需求 id。"""
     rows = (db.query(models.Need).filter(models.Need.hidden == 0)
             .order_by(models.Need.id.desc()).limit(200).all())
     stat = {}
@@ -1019,8 +1026,38 @@ def list_needs(request: Request, db: Session = Depends(database.get_db),
     voter = _voter_key(request, user)
     voted = [v.need_id for v in
              db.query(models.NeedVote).filter(models.NeedVote.voter == voter).all()]
+    mine = []
+    if user:
+        mine = [x.id for x in db.query(models.Need)
+                .filter(models.Need.user_id == user.id, models.Need.hidden == 0).all()]
     return {"needs": [_need_public(n, db) for n in rows], "stats": stat,
-            "kinds": list(NEED_KINDS), "statuses": list(NEED_STATUSES), "voted": voted}
+            "kinds": list(NEED_KINDS), "statuses": list(NEED_STATUSES),
+            "voted": voted, "mine": mine}
+
+
+@app.post("/api/needs/{nid}/append")
+def append_need(nid: int, request: Request, text: str = Form(""), key: str = Form(""),
+                db: Session = Depends(database.get_db), user=Depends(auth.optional_user)):
+    """提交人给自己的需求追加补充说明（不改原文，保持公示透明）。
+    身份验证：登录用户匹配 user_id，或匿名提交人持有提交时返回的编辑密钥。"""
+    n = db.get(models.Need, nid)
+    if not n or n.hidden:
+        raise HTTPException(404, "需求不存在")
+    ok = bool(user and n.user_id and user.id == n.user_id)
+    if not ok and (key or "").strip():
+        k = db.query(models.NeedKey).filter(models.NeedKey.need_id == nid).first()
+        ok = bool(k and hmac.compare_digest(k.key, key.strip()))
+    if not ok:
+        raise HTTPException(403, "只有需求提交人可以补充（请在提交时的浏览器/账号操作）")
+    text = (text or "").strip()
+    if len(text) < 2:
+        raise HTTPException(400, "请输入补充内容")
+    if len(n.detail) + len(text) > 4000:
+        raise HTTPException(400, "补充内容过长")
+    n.detail = n.detail + f"\n\n【提交人补充 · {now()}】{text[:1000]}"
+    n.updated_at = now()
+    db.commit()
+    return {"ok": True}
 
 
 @app.post("/api/needs/{nid}/vote")
@@ -1095,6 +1132,7 @@ def admin_delete_need(nid: int, db: Session = Depends(database.get_db), user=Dep
         raise HTTPException(404, "需求不存在")
     db.query(models.NeedFile).filter(models.NeedFile.need_id == nid).delete()
     db.query(models.NeedVote).filter(models.NeedVote.need_id == nid).delete()
+    db.query(models.NeedKey).filter(models.NeedKey.need_id == nid).delete()
     db.delete(n)
     db.commit()
     shutil.rmtree(os.path.join(database.DATA_DIR, "needs", str(nid)), ignore_errors=True)

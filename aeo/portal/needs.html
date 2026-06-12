@@ -89,7 +89,8 @@
     <!-- 左：提交表单 -->
     <div class="cs-card"><div class="cs-card-body">
       <h2 style="margin:0 0 4px;font-size:17px">提出需求</h2>
-      <p style="margin:0 0 14px;font-size:12.5px;color:var(--cs-muted)">免登录即可提交；联系方式仅平台维护者可见，不会公开。</p>
+      <p style="margin:0 0 14px;font-size:12.5px;color:var(--cs-muted)">免登录即可提交；联系方式仅平台维护者可见，不会公开。<br>
+      提交后由<b>平台信息部</b>逐条评估，进度在公示墙公开；你随时可在自己的需求下「补充说明」。</p>
       <div class="nd-ok" id="okBox"></div>
       <label class="cs-label">需求类型</label>
       <select id="fKind" class="cs-select">
@@ -149,8 +150,12 @@
   var DATA=null;
   var FILES=[];    // 待上传附件 File[]
 
-  Cstar.stamp({tool:"需求直通车", version:"v1.1.0", author:"老瑞"});
+  Cstar.stamp({tool:"需求直通车", version:"v1.2.0", author:"老瑞"});
   Cstar.store.bindForm("needs-draft", ["fKind","fTool","fTitle","fDetail","fName","fContact"]);
+
+  /* 我提交的需求（匿名凭浏览器内保存的编辑密钥）：{id: key} */
+  function myKeys(){return Cstar.store.load('needs-mine',{})||{};}
+  function isMine(id){return (DATA&&(DATA.mine||[]).indexOf(id)>=0)||!!myKeys()[id];}
 
   /* ---------- 附件 ---------- */
   var EXT=['.png','.jpg','.jpeg','.gif','.webp','.pdf','.doc','.docx','.xls','.xlsx','.zip','.txt','.csv'];
@@ -244,11 +249,26 @@
         (n.tool?' · 相关工具：'+Cstar.esc(n.tool):'')+'</div>'+
         '<div class="detail">'+Cstar.esc(n.detail)+'</div>'+attsHtml(n)+
         (n.reply?'<div class="nd-reply"><b>平台回复：</b>'+Cstar.esc(n.reply)+'</div>':'')+
+        (isMine(n.id)?'<div style="margin-top:10px"><button class="cs-btn cs-btn-ghost" style="font-size:12.5px;padding:6px 12px" data-a="'+n.id+'">✎ 补充说明（我提交的）</button></div>':'')+
         '</div></div></div>';
     }).join('');
     Array.prototype.forEach.call(document.querySelectorAll('.nd-vote'),function(b){
       b.onclick=function(){vote(parseInt(b.getAttribute('data-v'),10),b);};
     });
+    Array.prototype.forEach.call(document.querySelectorAll('button[data-a]'),function(b){
+      b.onclick=function(){appendNeed(parseInt(b.getAttribute('data-a'),10));};
+    });
+  }
+  async function appendNeed(id){
+    var text=prompt('补充说明（会追加显示在需求下方，不会覆盖原文）：','');
+    if(text===null||!text.trim())return;
+    try{
+      var fd=new FormData();fd.append('text',text.trim());fd.append('key',myKeys()[id]||'');
+      var r=await fetch('/api/needs/'+id+'/append',{method:'POST',headers:Cstar.auth.headers(),body:fd});
+      var d=await r.json().catch(function(){return{};});
+      if(!r.ok)throw new Error(d.detail||'操作失败');
+      load();
+    }catch(e){alert(e.message);}
   }
   async function vote(id,btn){
     btn.disabled=true;
@@ -324,7 +344,8 @@
       var d=await r.json().catch(function(){return{};});
       if(!r.ok)throw new Error(d.detail||('提交失败 '+r.status));
       $('okBox').style.display='block';
-      $('okBox').textContent='✓ '+(d.message||'需求已提交！')+'（编号 #'+d.id+'）';
+      $('okBox').textContent='✓ '+(d.message||'需求已提交！')+'（编号 #'+d.id+'，之后可在公示墙对它「补充说明」）';
+      if(d.editKey){var mk=myKeys();mk[d.id]=d.editKey;Cstar.store.save('needs-mine',mk);}
       $('fTitle').value='';$('fDetail').value='';FILES=[];renderChips();$('simBox').style.display='none';
       Cstar.store.remove('needs-draft');
       load();

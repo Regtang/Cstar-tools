@@ -15,7 +15,8 @@ from auth import hash_pw
 
 
 def now_str():
-    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # 北京时间（容器为 UTC）
+    return datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S")
 
 # 标准版本标识（用于幂等迁移：升级到新版时自动刷新标准框架）
 STD_VERSION = "海关总署公告2026年第34号"

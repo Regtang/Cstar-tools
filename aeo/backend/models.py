@@ -269,6 +269,14 @@ class NeedFile(Base):
     created_at = Column(String, default="")
 
 
+class NeedKey(Base):
+    """需求编辑密钥：匿名提交人凭此密钥补充自己的需求（提交时返回，存提交人浏览器）。"""
+    __tablename__ = "need_keys"
+    id = Column(Integer, primary_key=True)
+    need_id = Column(Integer, unique=True, index=True)
+    key = Column(String, index=True, default="")
+
+
 class NeedVote(Base):
     """需求「同求」记录（按 IP+用户去重）。"""
     __tablename__ = "need_votes"
