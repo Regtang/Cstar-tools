@@ -870,6 +870,130 @@ def serve_tool(slug: str, path: str = "", db: Session = Depends(database.get_db)
     return FileResponse(target)
 
 
+# ============ 需求直通车（提交公开、公示墙公开；管理仅管理员） ============
+NEED_KINDS = ("新系统", "新功能", "体验改进", "问题反馈")
+NEED_STATUSES = ("待评估", "规划中", "开发中", "已上线", "已关闭")
+
+
+def _need_public(n):
+    """公示墙视图：不暴露联系方式与 IP。"""
+    return {"id": n.id, "kind": n.kind, "title": n.title, "detail": n.detail,
+            "tool": n.tool, "submitter": n.submitter or "匿名", "identity": n.identity,
+            "status": n.status, "reply": n.reply, "created_at": n.created_at,
+            "updated_at": n.updated_at}
+
+
+class NeedIn(BaseModel):
+    kind: str = "新功能"
+    title: str
+    detail: str = ""
+    tool: str = ""
+    submitter: str = ""
+    contact: str = ""
+
+
+@app.post("/api/needs")
+def create_need(body: NeedIn, request: Request,
+                db: Session = Depends(database.get_db), user=Depends(auth.optional_user)):
+    """公开接口：客户/员工提交系统或软件需求。免登录可提；已登录自动带身份。"""
+    title = (body.title or "").strip()
+    detail = (body.detail or "").strip()
+    if len(title) < 4:
+        raise HTTPException(400, "请用一句话写清需求标题（至少4个字）")
+    if len(detail) < 10:
+        raise HTTPException(400, "请补充业务场景与期望效果（至少10个字），便于评估")
+    ip = request.client.host if request.client else ""
+    # 简单防滥提：同一 IP 10 分钟内最多 5 条
+    cutoff = (datetime.datetime.now() - datetime.timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
+    recent = db.query(models.Need).filter(models.Need.ip == ip,
+                                          models.Need.created_at >= cutoff).count()
+    if ip and recent >= 5:
+        raise HTTPException(429, "提交太频繁，请稍后再试")
+    kind = body.kind if body.kind in NEED_KINDS else "新功能"
+    submitter = (body.submitter or "").strip()[:40]
+    identity = "外部客户"
+    uid = 0
+    if user:
+        uid = user.id
+        identity = "内部员工" if auth.is_staff(user.role) else "外部客户"
+        if not submitter:
+            submitter = (user.name or user.username)[:40]
+    n = models.Need(kind=kind, title=title[:120], detail=detail[:2000],
+                    tool=(body.tool or "").strip()[:80], submitter=submitter,
+                    contact=(body.contact or "").strip()[:120],
+                    user_id=uid, identity=identity, ip=ip,
+                    status="待评估", created_at=now(), updated_at=now())
+    db.add(n)
+    db.commit()
+    db.refresh(n)
+    # 邮件通知维护者（沿用工具提交的通知配置）
+    try:
+        notify = os.environ.get("AEO_NOTIFY_EMAIL", "").strip()
+        if notify and email_enabled():
+            html = ("<p>需求直通车收到一条新需求：</p><ul>"
+                    f"<li>类型：{n.kind}</li><li>标题：{n.title}</li>"
+                    f"<li>相关工具：{n.tool or '-'}</li>"
+                    f"<li>提交人：{n.submitter or '匿名'}（{n.identity}）</li>"
+                    f"<li>联系方式：{n.contact or '-'}</li><li>时间：{n.created_at}</li></ul>"
+                    f"<p>{n.detail}</p>"
+                    f"<p>管理后台：<a href='{public_base()}/admin.html'>{public_base()}/admin.html</a></p>")
+            send_email(notify, f"【需求直通车】{n.kind}：{n.title}", html)
+    except Exception as e:
+        print(f"[NOTIFY][ERROR] need: {type(e).__name__}: {e}", flush=True)
+    return {"ok": True, "id": n.id,
+            "message": "需求已提交，进入公示墙并通知平台维护者评估。"}
+
+
+@app.get("/api/needs")
+def list_needs(db: Session = Depends(database.get_db)):
+    """公开公示墙：最新 200 条（隐藏项除外），不含联系方式。"""
+    rows = (db.query(models.Need).filter(models.Need.hidden == 0)
+            .order_by(models.Need.id.desc()).limit(200).all())
+    stat = {}
+    for s in NEED_STATUSES:
+        stat[s] = db.query(models.Need).filter(models.Need.hidden == 0,
+                                               models.Need.status == s).count()
+    return {"needs": [_need_public(n) for n in rows], "stats": stat,
+            "kinds": list(NEED_KINDS), "statuses": list(NEED_STATUSES)}
+
+
+@app.get("/api/admin/needs")
+def admin_list_needs(db: Session = Depends(database.get_db), user=Depends(_platform)):
+    rows = db.query(models.Need).order_by(models.Need.id.desc()).all()
+    return [to_dict(r) for r in rows]
+
+
+@app.put("/api/admin/needs/{nid}")
+def admin_update_need(nid: int, data: dict = Body(...),
+                      db: Session = Depends(database.get_db), user=Depends(_platform)):
+    n = db.get(models.Need, nid)
+    if not n:
+        raise HTTPException(404, "需求不存在")
+    if "status" in data:
+        if data["status"] not in NEED_STATUSES:
+            raise HTTPException(400, "状态无效")
+        n.status = data["status"]
+    if "reply" in data:
+        n.reply = str(data["reply"] or "")[:1000]
+    if "hidden" in data:
+        n.hidden = 1 if data["hidden"] else 0
+    n.updated_at = now()
+    db.commit()
+    write_log(db, user, "更新需求", "needs", f"#{n.id} {n.title[:30]}->{n.status}")
+    return {"ok": True}
+
+
+@app.delete("/api/admin/needs/{nid}")
+def admin_delete_need(nid: int, db: Session = Depends(database.get_db), user=Depends(_platform)):
+    n = db.get(models.Need, nid)
+    if not n:
+        raise HTTPException(404, "需求不存在")
+    db.delete(n)
+    db.commit()
+    write_log(db, user, "删除需求", "needs", f"#{nid}")
+    return {"ok": True}
+
+
 # ============ 操作日志（仅管理员） ============
 @app.get("/api/logs")
 def logs(db: Session = Depends(database.get_db), user=Depends(_admin)):

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>需求直通车 · 喜事达工具平台</title>
+<link rel="stylesheet" href="/cstar-ui.css">
+<script>
+  document.documentElement.classList.toggle("embed-mode",
+    new URLSearchParams(location.search).get("embed") === "1");
+</script>
+<style>
+  .nd-wrap{max-width:1080px;margin:0 auto;padding:18px 16px 40px}
+  .nd-grid{display:grid;grid-template-columns:380px 1fr;gap:22px;align-items:start}
+  @media(max-width:860px){.nd-grid{grid-template-columns:1fr}}
+  .nd-stats{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+  .nd-stat{background:#fff;border:1px solid var(--cs-line);border-radius:8px;padding:8px 14px;
+    font-size:13px;color:var(--cs-muted);cursor:pointer;transition:.15s}
+  .nd-stat b{display:block;font-size:18px;color:var(--cs-ink)}
+  .nd-stat.on{border-color:var(--cs-teal);color:var(--cs-teal);box-shadow:0 0 0 2px rgba(0,120,146,.12)}
+  .nd-item{background:#fff;border:1px solid var(--cs-line);border-radius:8px;padding:16px 18px;margin-bottom:12px;
+    box-shadow:0 4px 14px rgba(37,47,69,.05)}
+  .nd-item h3{margin:0 0 6px;font-size:15.5px;color:var(--cs-ink);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .nd-item .meta{font-size:12.5px;color:var(--cs-muted);margin-bottom:8px}
+  .nd-item .detail{font-size:13.5px;color:#3a4656;line-height:1.7;white-space:pre-wrap;word-break:break-word}
+  .nd-reply{margin-top:10px;background:#f0f7f9;border-left:3px solid var(--cs-teal);border-radius:0 6px 6px 0;
+    padding:9px 12px;font-size:13px;color:#2a4a55;line-height:1.6}
+  .nd-reply b{color:var(--cs-teal)}
+  .st{font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;white-space:nowrap}
+  .st-待评估{background:#eef1f5;color:#5b6b7a}
+  .st-规划中{background:#fff3e6;color:#b25900}
+  .st-开发中{background:#e6eef9;color:#1d4ed8}
+  .st-已上线{background:#e3f7ec;color:#1a9b54}
+  .st-已关闭{background:#f4e6e8;color:#9b3a4a}
+  .kd{font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;background:#e6eef0;color:#005f73}
+  .nd-empty{text-align:center;color:var(--cs-muted);padding:40px 0;font-size:14px}
+  .nd-ok{background:#e3f7ec;border:1px solid #b5e6c8;color:#157347;border-radius:8px;
+    padding:12px 14px;font-size:13.5px;margin-bottom:12px;display:none}
+</style>
+</head>
+<body class="cstar-ui">
+<header class="cs-header">
+  <h1>需求直通车</h1>
+  <p>想要新系统、新功能，或对现有工具有改进建议？提交后进入公示墙，平台逐条评估并公开进度。</p>
+</header>
+
+<div class="nd-wrap">
+  <div class="nd-grid">
+    <!-- 左：提交表单 -->
+    <div class="cs-card"><div class="cs-card-body">
+      <h2 style="margin:0 0 4px;font-size:17px">提出需求</h2>
+      <p style="margin:0 0 14px;font-size:12.5px;color:var(--cs-muted)">免登录即可提交；联系方式仅平台维护者可见，不会公开。</p>
+      <div class="nd-ok" id="okBox"></div>
+      <label class="cs-label">需求类型</label>
+      <select id="fKind" class="cs-select">
+        <option>新功能</option><option>新系统</option><option>体验改进</option><option>问题反馈</option>
+      </select>
+      <label class="cs-label">相关工具（新系统可留空）</label>
+      <input id="fTool" class="cs-input" list="toolList" placeholder="选择或输入相关工具">
+      <datalist id="toolList"></datalist>
+      <label class="cs-label">需求标题 *</label>
+      <input id="fTitle" class="cs-input" maxlength="120" placeholder="一句话说清想要什么，如：装箱软件支持冷藏箱箱型">
+      <div class="cs-error-text" id="eTitle"></div>
+      <label class="cs-label">业务场景与期望效果 *</label>
+      <textarea id="fDetail" class="cs-textarea" rows="5" maxlength="2000"
+        placeholder="什么场景下遇到的问题？希望达到什么效果？越具体评估越快。"></textarea>
+      <div class="cs-error-text" id="eDetail"></div>
+      <div class="cs-row">
+        <div><label class="cs-label">姓名 / 称呼</label>
+          <input id="fName" class="cs-input" maxlength="40" placeholder="怎么称呼你（公开显示）"></div>
+        <div><label class="cs-label">联系方式（不公开）</label>
+          <input id="fContact" class="cs-input" maxlength="120" placeholder="电话/微信/邮箱，便于沟通"></div>
+      </div>
+      <div class="cs-error-text" id="eSubmit" style="margin-top:8px"></div>
+      <button class="cs-btn cs-btn-primary cs-btn-block" id="btnSubmit" style="margin-top:12px">提交需求</button>
+      <button class="cs-btn cs-btn-ghost cs-btn-block" id="btnDemo" style="margin-top:8px">填入示例</button>
+    </div></div>
+
+    <!-- 右：公示墙 -->
+    <div>
+      <div class="nd-stats" id="stats"></div>
+      <div id="wall"><div class="nd-empty">加载中…</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="/cstar-tool.js"></script>
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id);};
+  var FILTER='';   // ''=全部
+  var DATA=null;
+
+  Cstar.stamp({tool:"需求直通车", version:"v1.0.0", author:"老瑞"});
+  Cstar.store.bindForm("needs-draft", ["fKind","fTool","fTitle","fDetail","fName","fContact"]);
+
+  /* 相关工具下拉：来自工具目录 */
+  fetch('/api/catalog',{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
+    $('toolList').innerHTML=(d.tools||[]).map(function(t){return '<option value="'+Cstar.esc(t.name)+'">';}).join('')
+      +'<option value="平台整体"><option value="其他 / 新系统">';
+  }).catch(function(){});
+
+  /* 已登录通行证：自动带姓名 */
+  Cstar.auth.me().then(function(me){
+    if(me&&!$('fName').value)$('fName').value=me.name||me.username;
+  });
+
+  function badgeSt(s){return '<span class="st st-'+s+'">'+s+'</span>';}
+  function render(){
+    if(!DATA)return;
+    var st=DATA.stats||{}, total=0; Object.keys(st).forEach(function(k){total+=st[k];});
+    var hs='<div class="nd-stat'+(FILTER===''?' on':'')+'" data-f=""><b>'+total+'</b>全部</div>';
+    (DATA.statuses||[]).forEach(function(s){
+      hs+='<div class="nd-stat'+(FILTER===s?' on':'')+'" data-f="'+s+'"><b>'+(st[s]||0)+'</b>'+s+'</div>';
+    });
+    $('stats').innerHTML=hs;
+    Array.prototype.forEach.call(document.querySelectorAll('.nd-stat'),function(el){
+      el.onclick=function(){FILTER=el.getAttribute('data-f');render();};
+    });
+    var rows=(DATA.needs||[]).filter(function(n){return !FILTER||n.status===FILTER;});
+    if(!rows.length){$('wall').innerHTML='<div class="nd-empty">'+(FILTER?'该状态下暂无需求。':'还没有需求，来提第一条！')+'</div>';return;}
+    $('wall').innerHTML=rows.map(function(n){
+      return '<div class="nd-item"><h3><span class="kd">'+Cstar.esc(n.kind)+'</span>'+Cstar.esc(n.title)+badgeSt(n.status)+'</h3>'+
+        '<div class="meta">#'+n.id+' · '+Cstar.esc(n.submitter)+'（'+Cstar.esc(n.identity)+'）· '+Cstar.esc(n.created_at||'')+
+        (n.tool?' · 相关工具：'+Cstar.esc(n.tool):'')+'</div>'+
+        '<div class="detail">'+Cstar.esc(n.detail)+'</div>'+
+        (n.reply?'<div class="nd-reply"><b>平台回复：</b>'+Cstar.esc(n.reply)+'</div>':'')+
+        '</div>';
+    }).join('');
+  }
+  function load(){
+    fetch('/api/needs',{cache:'no-store'}).then(function(r){return r.json();})
+      .then(function(d){DATA=d;render();})
+      .catch(function(){$('wall').innerHTML='<div class="nd-empty">公示墙加载失败，请刷新重试。</div>';});
+  }
+
+  $('btnDemo').onclick=function(){
+    $('fKind').value='新功能';$('fTool').value='Cstar 装箱软件';
+    $('fTitle').value='装箱软件支持 45HQ 与冷藏箱箱型';
+    $('fDetail').value='我们出口冷冻食品，常用 40RH/45HQ。目前箱型列表没有冷藏箱，每次要手动改内尺寸和载重。希望内置常见冷藏箱型，自动带出尺寸与限重。';
+    $('fName').value=$('fName').value||'示例用户';$('fContact').value=$('fContact').value||'138-0000-0000';
+  };
+
+  $('btnSubmit').onclick=async function(){
+    $('eTitle').textContent='';$('eDetail').textContent='';$('eSubmit').textContent='';
+    var v=Cstar.validate([
+      {id:'fTitle',required:true,pattern:/^.{4,}$/,msg:'请用一句话写清需求（至少4个字）'},
+      {id:'fDetail',required:true,pattern:/^[\s\S]{10,}$/,msg:'请补充业务场景与期望效果（至少10个字）'}
+    ]);
+    if(!v.ok){
+      if($('fTitle').classList.contains('cs-field-error'))$('eTitle').textContent='请用一句话写清需求（至少4个字）';
+      if($('fDetail').classList.contains('cs-field-error'))$('eDetail').textContent='请补充业务场景与期望效果（至少10个字）';
+      $('eSubmit').textContent=v.firstError;
+      return;
+    }
+    var btn=$('btnSubmit');btn.disabled=true;btn.textContent='提交中…';
+    try{
+      var r=await fetch('/api/needs',{method:'POST',
+        headers:Object.assign({'Content-Type':'application/json'},Cstar.auth.headers()),
+        body:JSON.stringify({kind:$('fKind').value,tool:$('fTool').value.trim(),
+          title:$('fTitle').value.trim(),detail:$('fDetail').value.trim(),
+          submitter:$('fName').value.trim(),contact:$('fContact').value.trim()})});
+      var d=await r.json().catch(function(){return{};});
+      if(!r.ok)throw new Error(d.detail||('提交失败 '+r.status));
+      $('okBox').style.display='block';
+      $('okBox').textContent='✓ '+(d.message||'需求已提交！')+'（编号 #'+d.id+'）';
+      $('fTitle').value='';$('fDetail').value='';
+      Cstar.store.remove('needs-draft');
+      load();
+      setTimeout(function(){$('okBox').style.display='none';},6000);
+    }catch(e){$('eSubmit').textContent=e.message;}
+    btn.disabled=false;btn.textContent='提交需求';
+  };
+
+  load();
+})();
+</script>
+</body>
+</html>

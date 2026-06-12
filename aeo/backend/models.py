@@ -236,6 +236,27 @@ class Submission(Base):
     created_at = Column(String, default="")
 
 
+class Need(Base):
+    """需求直通车 —— 客户/员工提出的系统或软件需求（公示墙）。
+    contact/ip 不对外公开，仅管理员可见。"""
+    __tablename__ = "needs"
+    id = Column(Integer, primary_key=True)
+    kind = Column(String, default="新功能")        # 新系统/新功能/体验改进/问题反馈
+    title = Column(String, default="")
+    detail = Column(Text, default="")              # 业务场景与期望效果
+    tool = Column(String, default="")              # 相关工具（空=新系统/其他）
+    submitter = Column(String, default="")         # 姓名/称呼（公开）
+    contact = Column(String, default="")           # 联系方式（仅管理员可见）
+    user_id = Column(Integer, default=0)           # 登录用户 id（0=匿名）
+    identity = Column(String, default="外部客户")   # 外部客户/内部员工
+    status = Column(String, default="待评估")       # 待评估/规划中/开发中/已上线/已关闭
+    reply = Column(Text, default="")               # 平台回复（公开）
+    hidden = Column(Integer, default=0)            # 1=不在公示墙显示
+    ip = Column(String, default="")
+    created_at = Column(String, default="")
+    updated_at = Column(String, default="")
+
+
 # 实体名 -> (模型类, 归属权限模块, 可写字段)
 ENTITY_FIELDS = {
     "standards":  ["code", "cat", "name", "req", "dept", "status", "note", "evidence", "origin"],

@@ -45,19 +45,21 @@
       <div class="tabs">
         <button class="tab on" id="tabSub" onclick="showTab('sub')">待审提交 <span id="subCount"></span></button>
         <button class="tab" id="tabTool" onclick="showTab('tool')">工具管理</button>
+        <button class="tab" id="tabNeed" onclick="showTab('need')">需求管理 <span id="needCount"></span></button>
         <span style="margin-left:auto"></span>
         <button class="cs-btn cs-btn-ghost" onclick="changePw()">改密码</button>
         <button class="cs-btn cs-btn-ghost" onclick="logout()">退出</button>
       </div>
       <div id="subList"></div>
       <div id="toolList" class="hide"></div>
+      <div id="needList" class="hide"></div>
     </div>
   </main>
 
 <script>
 const $ = id => document.getElementById(id);
 let TOKEN = '';
-try { TOKEN = localStorage.getItem('aeo_token') || ''; } catch (e) {}
+try { TOKEN = localStorage.getItem('cstar_token') || localStorage.getItem('aeo_token') || ''; } catch (e) {}
 
 function H() { return TOKEN ? { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' }; }
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
@@ -72,7 +74,7 @@ async function boot() {
   } catch (e) { showLogin(); }
 }
 function showLogin(msg) { $('loginArea').classList.remove('hide'); $('console').classList.add('hide'); if (msg) $('lerr').textContent = msg; }
-function showConsole() { $('loginArea').classList.add('hide'); $('console').classList.remove('hide'); loadSubs(); loadTools(); }
+function showConsole() { $('loginArea').classList.add('hide'); $('console').classList.remove('hide'); loadSubs(); loadTools(); loadNeeds(); }
 
 async function doLogin() {
   $('lerr').textContent = '';
@@ -81,10 +83,10 @@ async function doLogin() {
   const j = await r.json().catch(() => ({}));
   if (!r.ok) { $('lerr').textContent = j.detail || '登录失败'; return; }
   if (!(j.user && (j.user.isPlatformAdmin || j.user.isAdmin))) { $('lerr').textContent = '该账号无平台管理权限'; return; }
-  TOKEN = j.token; try { localStorage.setItem('aeo_token', TOKEN); } catch (e) {}
+  TOKEN = j.token; try { localStorage.setItem('cstar_token', TOKEN); localStorage.setItem('aeo_token', TOKEN); } catch (e) {}
   showConsole();
 }
-function logout() { TOKEN = ''; try { localStorage.removeItem('aeo_token'); } catch (e) {} showLogin(); }
+function logout() { TOKEN = ''; try { localStorage.removeItem('cstar_token'); localStorage.removeItem('aeo_token'); } catch (e) {} showLogin(); }
 async function changePw() {
   const oldp = prompt('请输入当前密码：'); if (oldp === null) return;
   const np = prompt('请输入新密码（至少6位）：'); if (np === null) return;
@@ -95,7 +97,9 @@ async function changePw() {
 
 function showTab(t) {
   $('tabSub').classList.toggle('on', t === 'sub'); $('tabTool').classList.toggle('on', t === 'tool');
+  $('tabNeed').classList.toggle('on', t === 'need');
   $('subList').classList.toggle('hide', t !== 'sub'); $('toolList').classList.toggle('hide', t !== 'tool');
+  $('needList').classList.toggle('hide', t !== 'need');
 }
 
 /* ---- 待审提交 ---- */
@@ -189,6 +193,47 @@ async function rollback(tid, vid) {
   const j = await r.json().catch(() => ({}));
   if (!r.ok) { alert('回滚失败：' + (j.detail || r.status)); return; }
   alert('已回滚到 ' + j.version); toggleVers(tid); toggleVers(tid);
+}
+
+/* ---- 需求管理 ---- */
+const NEED_ST = ['待评估','规划中','开发中','已上线','已关闭'];
+async function loadNeeds() {
+  const rows = await fetch('/api/admin/needs', { headers: H() }).then(r => r.json()).catch(() => []);
+  const open = rows.filter(n => n.status === '待评估' && !n.hidden);
+  $('needCount').textContent = open.length ? '(' + open.length + ')' : '';
+  if (!rows.length) { $('needList').innerHTML = '<p class="meta">暂无需求。</p>'; return; }
+  $('needList').innerHTML = rows.map(n => `
+    <div class="sub" style="${n.hidden ? 'opacity:.55' : ''}">
+      <h3>#${n.id} ${esc(n.title)} <span class="cs-badge cs-badge-info">${esc(n.kind)}</span>${n.hidden ? ' <span class="cs-badge cs-badge-warn">已隐藏</span>' : ''}</h3>
+      <div class="meta">${esc(n.submitter || '匿名')}（${esc(n.identity)}）　|　联系：<b>${esc(n.contact || '-')}</b>　|　相关工具：${esc(n.tool || '-')}　|　${esc(n.created_at || '')}　|　IP ${esc(n.ip || '-')}</div>
+      <div class="meta" style="white-space:pre-wrap;color:var(--cs-ink)">${esc(n.detail)}</div>
+      ${n.reply ? '<div class="vers">平台回复：' + esc(n.reply) + '</div>' : ''}
+      <div class="cs-actions" style="align-items:center;margin-top:8px">
+        状态
+        <select class="cs-select" style="width:auto" onchange="updNeed(${n.id},{status:this.value})">
+          ${NEED_ST.map(s => `<option ${n.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+        <button class="cs-btn cs-btn-soft" onclick="replyNeed(${n.id},'${esc((n.reply || '').replace(/'/g, ''))}')">回复</button>
+        <button class="cs-btn cs-btn-ghost" onclick="updNeed(${n.id},{hidden:${n.hidden ? 0 : 1}},true)">${n.hidden ? '恢复公示' : '隐藏'}</button>
+        <button class="cs-btn cs-btn-ghost" style="color:var(--cs-danger)" onclick="delNeed(${n.id})">删除</button>
+      </div>
+    </div>`).join('');
+}
+async function updNeed(id, body, reload) {
+  const r = await fetch('/api/admin/needs/' + id, { method: 'PUT', headers: H(), body: JSON.stringify(body) });
+  if (!r.ok) { alert('更新失败'); return; }
+  if (reload) loadNeeds();
+}
+async function replyNeed(id, cur) {
+  const t = prompt('平台回复（会显示在公示墙）：', cur || '');
+  if (t === null) return;
+  await updNeed(id, { reply: t }, true);
+}
+async function delNeed(id) {
+  if (!confirm('确认删除该需求？不可恢复（一般用「隐藏」即可）。')) return;
+  const r = await fetch('/api/admin/needs/' + id, { method: 'DELETE', headers: H() });
+  if (!r.ok) { alert('删除失败'); return; }
+  loadNeeds();
 }
 
 boot();
