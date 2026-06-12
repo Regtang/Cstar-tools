@@ -875,29 +875,50 @@ NEED_KINDS = ("新系统", "新功能", "体验改进", "问题反馈")
 NEED_STATUSES = ("待评估", "规划中", "开发中", "已上线", "已关闭")
 
 
-def _need_public(n):
+NEED_FILE_MAX = 3                       # 每条需求最多 3 个附件
+NEED_FILE_SIZE = 5 * 1024 * 1024        # 单个 5MB
+NEED_FILE_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp",
+                 ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".zip", ".txt", ".csv"}
+NEED_IMG_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+
+
+def _need_files(db, nid):
+    rows = db.query(models.NeedFile).filter(models.NeedFile.need_id == nid).all()
+    return [{"id": f.id, "name": f.name, "size": f.size,
+             "isImage": os.path.splitext(f.name)[1].lower() in NEED_IMG_EXT,
+             "url": f"/api/needs/files/{f.id}"} for f in rows]
+
+
+def _need_votes(db, nid):
+    return db.query(models.NeedVote).filter(models.NeedVote.need_id == nid).count()
+
+
+def _need_public(n, db):
     """公示墙视图：不暴露联系方式与 IP。"""
     return {"id": n.id, "kind": n.kind, "title": n.title, "detail": n.detail,
             "tool": n.tool, "submitter": n.submitter or "匿名", "identity": n.identity,
             "status": n.status, "reply": n.reply, "created_at": n.created_at,
-            "updated_at": n.updated_at}
+            "updated_at": n.updated_at,
+            "votes": _need_votes(db, n.id), "files": _need_files(db, n.id)}
 
 
-class NeedIn(BaseModel):
-    kind: str = "新功能"
-    title: str
-    detail: str = ""
-    tool: str = ""
-    submitter: str = ""
-    contact: str = ""
+def _voter_key(request, user):
+    if user:
+        return f"user:{user.id}"
+    return request.client.host if request.client else "anon"
 
 
 @app.post("/api/needs")
-def create_need(body: NeedIn, request: Request,
-                db: Session = Depends(database.get_db), user=Depends(auth.optional_user)):
-    """公开接口：客户/员工提交系统或软件需求。免登录可提；已登录自动带身份。"""
-    title = (body.title or "").strip()
-    detail = (body.detail or "").strip()
+async def create_need(request: Request,
+                      kind: str = Form("新功能"), title: str = Form(""),
+                      detail: str = Form(""), tool: str = Form(""),
+                      submitter: str = Form(""), contact: str = Form(""),
+                      files: list[UploadFile] = File(None),
+                      db: Session = Depends(database.get_db), user=Depends(auth.optional_user)):
+    """公开接口：客户/员工提交系统或软件需求（multipart，支持最多 3 个附件）。
+    免登录可提；已登录自动带身份。"""
+    title = (title or "").strip()
+    detail = (detail or "").strip()
     if len(title) < 4:
         raise HTTPException(400, "请用一句话写清需求标题（至少4个字）")
     if len(detail) < 10:
@@ -909,8 +930,34 @@ def create_need(body: NeedIn, request: Request,
                                           models.Need.created_at >= cutoff).count()
     if ip and recent >= 5:
         raise HTTPException(429, "提交太频繁，请稍后再试")
-    kind = body.kind if body.kind in NEED_KINDS else "新功能"
-    submitter = (body.submitter or "").strip()[:40]
+    # —— 附件预校验（先读后存，任何一个不合法整单拒绝）——
+    saved = []          # (clean_name, data, mime)
+    for f in (files or [])[:NEED_FILE_MAX + 1]:
+        if not f or not (f.filename or "").strip():
+            continue
+        if len(saved) >= NEED_FILE_MAX:
+            raise HTTPException(400, f"附件最多 {NEED_FILE_MAX} 个")
+        fn = os.path.basename(f.filename.strip())
+        ext = os.path.splitext(fn)[1].lower()
+        if ext not in NEED_FILE_EXT:
+            raise HTTPException(400, f"不支持的附件类型：{ext or fn}（支持图片/PDF/Office/zip/txt/csv）")
+        data = b""
+        while True:
+            chunk = await f.read(262144)
+            if not chunk:
+                break
+            data += chunk
+            if len(data) > NEED_FILE_SIZE:
+                raise HTTPException(413, "单个附件不能超过 5MB")
+        if not data:
+            continue
+        # 文件名清洗：去路径、去危险字符、防重名
+        safe = re.sub(r"[^\w.\-一-鿿]", "_", fn)[:80] or ("file" + ext)
+        if any(s[0] == safe for s in saved):
+            safe = f"{len(saved)+1}_{safe}"
+        saved.append((safe, data, f.content_type or ""))
+    kind = kind if kind in NEED_KINDS else "新功能"
+    submitter = (submitter or "").strip()[:40]
     identity = "外部客户"
     uid = 0
     if user:
@@ -919,13 +966,27 @@ def create_need(body: NeedIn, request: Request,
         if not submitter:
             submitter = (user.name or user.username)[:40]
     n = models.Need(kind=kind, title=title[:120], detail=detail[:2000],
-                    tool=(body.tool or "").strip()[:80], submitter=submitter,
-                    contact=(body.contact or "").strip()[:120],
+                    tool=(tool or "").strip()[:80], submitter=submitter,
+                    contact=(contact or "").strip()[:120],
                     user_id=uid, identity=identity, ip=ip,
                     status="待评估", created_at=now(), updated_at=now())
     db.add(n)
     db.commit()
     db.refresh(n)
+    # —— 落盘附件并登记 ——
+    if saved:
+        d = os.path.join(database.DATA_DIR, "needs", str(n.id))
+        os.makedirs(d, exist_ok=True)
+        for safe, data, mime in saved:
+            with open(os.path.join(d, safe), "wb") as fh:
+                fh.write(data)
+            db.add(models.NeedFile(need_id=n.id, name=safe,
+                                   rel_path=f"needs/{n.id}/{safe}",
+                                   size=len(data), mime=mime[:80], created_at=now()))
+        db.commit()
+    # 提交人默认自动「同求」一票
+    db.add(models.NeedVote(need_id=n.id, voter=_voter_key(request, user), created_at=now()))
+    db.commit()
     # 邮件通知维护者（沿用工具提交的通知配置）
     try:
         notify = os.environ.get("AEO_NOTIFY_EMAIL", "").strip()
@@ -934,7 +995,8 @@ def create_need(body: NeedIn, request: Request,
                     f"<li>类型：{n.kind}</li><li>标题：{n.title}</li>"
                     f"<li>相关工具：{n.tool or '-'}</li>"
                     f"<li>提交人：{n.submitter or '匿名'}（{n.identity}）</li>"
-                    f"<li>联系方式：{n.contact or '-'}</li><li>时间：{n.created_at}</li></ul>"
+                    f"<li>联系方式：{n.contact or '-'}</li>"
+                    f"<li>附件：{len(saved)} 个</li><li>时间：{n.created_at}</li></ul>"
                     f"<p>{n.detail}</p>"
                     f"<p>管理后台：<a href='{public_base()}/admin.html'>{public_base()}/admin.html</a></p>")
             send_email(notify, f"【需求直通车】{n.kind}：{n.title}", html)
@@ -945,22 +1007,65 @@ def create_need(body: NeedIn, request: Request,
 
 
 @app.get("/api/needs")
-def list_needs(db: Session = Depends(database.get_db)):
-    """公开公示墙：最新 200 条（隐藏项除外），不含联系方式。"""
+def list_needs(request: Request, db: Session = Depends(database.get_db),
+               user=Depends(auth.optional_user)):
+    """公开公示墙：最新 200 条（隐藏项除外），不含联系方式。voted=当前访问者已同求的需求 id。"""
     rows = (db.query(models.Need).filter(models.Need.hidden == 0)
             .order_by(models.Need.id.desc()).limit(200).all())
     stat = {}
     for s in NEED_STATUSES:
         stat[s] = db.query(models.Need).filter(models.Need.hidden == 0,
                                                models.Need.status == s).count()
-    return {"needs": [_need_public(n) for n in rows], "stats": stat,
-            "kinds": list(NEED_KINDS), "statuses": list(NEED_STATUSES)}
+    voter = _voter_key(request, user)
+    voted = [v.need_id for v in
+             db.query(models.NeedVote).filter(models.NeedVote.voter == voter).all()]
+    return {"needs": [_need_public(n, db) for n in rows], "stats": stat,
+            "kinds": list(NEED_KINDS), "statuses": list(NEED_STATUSES), "voted": voted}
+
+
+@app.post("/api/needs/{nid}/vote")
+def vote_need(nid: int, request: Request,
+              db: Session = Depends(database.get_db), user=Depends(auth.optional_user)):
+    """公开接口：「同求 +1」。同一访问者（IP 或登录账号）每条限一票，再点取消。"""
+    n = db.get(models.Need, nid)
+    if not n or n.hidden:
+        raise HTTPException(404, "需求不存在")
+    voter = _voter_key(request, user)
+    ex = (db.query(models.NeedVote)
+          .filter(models.NeedVote.need_id == nid, models.NeedVote.voter == voter).first())
+    if ex:
+        db.delete(ex)
+        db.commit()
+        return {"ok": True, "voted": False, "votes": _need_votes(db, nid)}
+    db.add(models.NeedVote(need_id=nid, voter=voter, created_at=now()))
+    db.commit()
+    return {"ok": True, "voted": True, "votes": _need_votes(db, nid)}
+
+
+@app.get("/api/needs/files/{fid}")
+def need_file(fid: int, db: Session = Depends(database.get_db)):
+    """公开附件下载/预览（公示墙附件本就公开）。"""
+    f = db.get(models.NeedFile, fid)
+    if not f:
+        raise HTTPException(404, "附件不存在")
+    n = db.get(models.Need, f.need_id)
+    if not n or n.hidden:
+        raise HTTPException(404, "附件不存在")
+    base = os.path.realpath(os.path.join(database.DATA_DIR, "needs"))
+    path = os.path.realpath(os.path.join(database.DATA_DIR, f.rel_path))
+    if not path.startswith(base + os.sep) or not os.path.exists(path):
+        raise HTTPException(404, "文件缺失")
+    ext = os.path.splitext(f.name)[1].lower()
+    if ext in NEED_IMG_EXT:   # 图片内联预览，其余下载
+        return FileResponse(path, media_type=f.mime or "image/png")
+    return FileResponse(path, filename=f.name)
 
 
 @app.get("/api/admin/needs")
 def admin_list_needs(db: Session = Depends(database.get_db), user=Depends(_platform)):
     rows = db.query(models.Need).order_by(models.Need.id.desc()).all()
-    return [to_dict(r) for r in rows]
+    return [{**to_dict(r), "votes": _need_votes(db, r.id),
+             "files": _need_files(db, r.id)} for r in rows]
 
 
 @app.put("/api/admin/needs/{nid}")
@@ -988,8 +1093,11 @@ def admin_delete_need(nid: int, db: Session = Depends(database.get_db), user=Dep
     n = db.get(models.Need, nid)
     if not n:
         raise HTTPException(404, "需求不存在")
+    db.query(models.NeedFile).filter(models.NeedFile.need_id == nid).delete()
+    db.query(models.NeedVote).filter(models.NeedVote.need_id == nid).delete()
     db.delete(n)
     db.commit()
+    shutil.rmtree(os.path.join(database.DATA_DIR, "needs", str(nid)), ignore_errors=True)
     write_log(db, user, "删除需求", "needs", f"#{nid}")
     return {"ok": True}
 

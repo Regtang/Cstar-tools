@@ -36,6 +36,46 @@
   .nd-empty{text-align:center;color:var(--cs-muted);padding:40px 0;font-size:14px}
   .nd-ok{background:#e3f7ec;border:1px solid #b5e6c8;color:#157347;border-radius:8px;
     padding:12px 14px;font-size:13.5px;margin-bottom:12px;display:none}
+  /* 附件上传 */
+  .nd-drop{border:1.5px dashed #c4d0db;border-radius:8px;padding:13px;text-align:center;
+    font-size:12.5px;color:var(--cs-muted);cursor:pointer;transition:.15s;margin-top:2px}
+  .nd-drop:hover,.nd-drop.over{border-color:var(--cs-teal);color:var(--cs-teal);background:#f0f7f9}
+  .nd-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .nd-chip{display:flex;align-items:center;gap:7px;background:#f5f7fb;border:1px solid var(--cs-line);
+    border-radius:6px;padding:5px 8px;font-size:12px;color:#3a4656;max-width:100%}
+  .nd-chip img{width:30px;height:30px;object-fit:cover;border-radius:4px}
+  .nd-chip .x{cursor:pointer;color:#9b3a4a;font-weight:700;font-size:14px;padding:0 2px}
+  .nd-chip span.nm{max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* 同求按钮 */
+  .nd-vote{display:flex;flex-direction:column;align-items:center;gap:2px;flex:none;
+    border:1.5px solid #d3dce6;background:#fff;border-radius:8px;padding:7px 13px;cursor:pointer;
+    font-family:inherit;transition:.15s;min-width:58px}
+  .nd-vote b{font-size:16px;color:var(--cs-ink);line-height:1}
+  .nd-vote span{font-size:11px;color:var(--cs-muted)}
+  .nd-vote:hover{border-color:var(--cs-rose,#e84368)}
+  .nd-vote.on{border-color:var(--cs-rose,#e84368);background:#fdf0f3}
+  .nd-vote.on b,.nd-vote.on span{color:#c72d53}
+  .nd-flex{display:flex;gap:14px;align-items:flex-start}
+  .nd-flex>div.body{flex:1;min-width:0}
+  /* 附件展示 */
+  .nd-atts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .nd-atts a.img img{height:74px;border-radius:6px;border:1px solid var(--cs-line);display:block}
+  .nd-atts a.doc{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--cs-line);
+    border-radius:6px;padding:6px 10px;font-size:12.5px;color:var(--cs-teal);text-decoration:none;background:#fff}
+  .nd-atts a.doc:hover{border-color:var(--cs-teal)}
+  /* 工具条：搜索+排序 */
+  .nd-bar{display:flex;gap:10px;margin:0 0 12px;align-items:center}
+  .nd-bar input{flex:1;border:1px solid #d3dce6;border-radius:6px;padding:9px 12px;font-size:13.5px;
+    font-family:inherit;outline:none}
+  .nd-bar input:focus{border-color:var(--cs-teal)}
+  .nd-sort{display:flex;border:1px solid #d3dce6;border-radius:6px;overflow:hidden;flex:none}
+  .nd-sort button{border:0;background:#fff;padding:8px 14px;font-size:13px;cursor:pointer;
+    font-family:inherit;color:var(--cs-muted)}
+  .nd-sort button.on{background:var(--cs-teal);color:#fff;font-weight:700}
+  /* 相似需求提示 */
+  .nd-sim{display:none;background:#fff8e6;border:1px solid #f0ddb0;border-radius:6px;
+    padding:8px 11px;font-size:12px;color:#8a6d1a;margin-top:6px;line-height:1.7}
+  .nd-sim a{color:#b25900;cursor:pointer;text-decoration:underline}
 </style>
 </head>
 <body class="cstar-ui">
@@ -61,10 +101,18 @@
       <label class="cs-label">需求标题 *</label>
       <input id="fTitle" class="cs-input" maxlength="120" placeholder="一句话说清想要什么，如：装箱软件支持冷藏箱箱型">
       <div class="cs-error-text" id="eTitle"></div>
+      <div class="nd-sim" id="simBox"></div>
       <label class="cs-label">业务场景与期望效果 *</label>
       <textarea id="fDetail" class="cs-textarea" rows="5" maxlength="2000"
-        placeholder="什么场景下遇到的问题？希望达到什么效果？越具体评估越快。"></textarea>
+        placeholder="什么场景下遇到的问题？希望达到什么效果？越具体评估越快。（可直接 Ctrl+V 粘贴截图为附件）"></textarea>
       <div class="cs-error-text" id="eDetail"></div>
+      <label class="cs-label">附件（选填，最多3个，单个≤5MB）</label>
+      <div class="nd-drop" id="dropZone">📎 点击选择 / 拖入文件 / 直接粘贴截图<br>
+        <span style="font-size:11.5px">支持图片、PDF、Word、Excel、zip 等</span></div>
+      <input type="file" id="fFiles" multiple style="display:none"
+        accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.zip,.txt,.csv">
+      <div class="nd-chips" id="chips"></div>
+      <div class="cs-error-text" id="eFiles"></div>
       <div class="cs-row">
         <div><label class="cs-label">姓名 / 称呼</label>
           <input id="fName" class="cs-input" maxlength="40" placeholder="怎么称呼你（公开显示）"></div>
@@ -79,6 +127,13 @@
     <!-- 右：公示墙 -->
     <div>
       <div class="nd-stats" id="stats"></div>
+      <div class="nd-bar">
+        <input id="fSearch" placeholder="🔍 搜索需求（标题/内容/工具）">
+        <div class="nd-sort">
+          <button id="sortHot" class="on">🔥 最热</button>
+          <button id="sortNew">🕒 最新</button>
+        </div>
+      </div>
       <div id="wall"><div class="nd-empty">加载中…</div></div>
     </div>
   </div>
@@ -89,10 +144,57 @@
 (function(){
   var $=function(id){return document.getElementById(id);};
   var FILTER='';   // ''=全部
+  var SORT='hot';  // hot | new
+  var QUERY='';
   var DATA=null;
+  var FILES=[];    // 待上传附件 File[]
 
-  Cstar.stamp({tool:"需求直通车", version:"v1.0.0", author:"老瑞"});
+  Cstar.stamp({tool:"需求直通车", version:"v1.1.0", author:"老瑞"});
   Cstar.store.bindForm("needs-draft", ["fKind","fTool","fTitle","fDetail","fName","fContact"]);
+
+  /* ---------- 附件 ---------- */
+  var EXT=['.png','.jpg','.jpeg','.gif','.webp','.pdf','.doc','.docx','.xls','.xlsx','.zip','.txt','.csv'];
+  function addFiles(list){
+    $('eFiles').textContent='';
+    for(var i=0;i<list.length;i++){
+      var f=list[i];
+      if(FILES.length>=3){$('eFiles').textContent='附件最多 3 个';break;}
+      var ext=('.'+(f.name.split('.').pop()||'')).toLowerCase();
+      if(EXT.indexOf(ext)<0){$('eFiles').textContent='不支持的类型：'+f.name;continue;}
+      if(f.size>5*1024*1024){$('eFiles').textContent=f.name+' 超过 5MB';continue;}
+      FILES.push(f);
+    }
+    renderChips();
+  }
+  function renderChips(){
+    var c=$('chips');c.innerHTML='';
+    FILES.forEach(function(f,i){
+      var chip=document.createElement('div');chip.className='nd-chip';
+      if(/^image\//.test(f.type)){
+        var img=document.createElement('img');img.src=URL.createObjectURL(f);chip.appendChild(img);
+      }else{chip.appendChild(document.createTextNode('📄'));}
+      var nm=document.createElement('span');nm.className='nm';nm.textContent=f.name;chip.appendChild(nm);
+      var sz=document.createElement('span');sz.style.color='#8a99ab';sz.textContent='('+(f.size/1024).toFixed(0)+'K)';chip.appendChild(sz);
+      var x=document.createElement('span');x.className='x';x.textContent='×';
+      x.onclick=function(){FILES.splice(i,1);renderChips();};chip.appendChild(x);
+      c.appendChild(chip);
+    });
+  }
+  $('dropZone').onclick=function(){$('fFiles').click();};
+  $('fFiles').onchange=function(){addFiles(this.files);this.value='';};
+  $('dropZone').ondragover=function(e){e.preventDefault();this.classList.add('over');};
+  $('dropZone').ondragleave=function(){this.classList.remove('over');};
+  $('dropZone').ondrop=function(e){e.preventDefault();this.classList.remove('over');addFiles(e.dataTransfer.files);};
+  document.addEventListener('paste',function(e){
+    var items=(e.clipboardData||{}).items||[],got=[];
+    for(var i=0;i<items.length;i++){
+      if(items[i].kind==='file'){
+        var f=items[i].getAsFile();
+        if(f){if(!f.name||f.name==='image.png')f=new File([f],'截图-'+Date.now()+'.png',{type:f.type});got.push(f);}
+      }
+    }
+    if(got.length)addFiles(got);
+  });
 
   /* 相关工具下拉：来自工具目录 */
   fetch('/api/catalog',{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
@@ -106,6 +208,13 @@
   });
 
   function badgeSt(s){return '<span class="st st-'+s+'">'+s+'</span>';}
+  function attsHtml(n){
+    if(!(n.files||[]).length)return '';
+    return '<div class="nd-atts">'+n.files.map(function(f){
+      if(f.isImage)return '<a class="img" href="'+f.url+'" target="_blank" rel="noopener"><img src="'+f.url+'" alt="'+Cstar.esc(f.name)+'" loading="lazy"></a>';
+      return '<a class="doc" href="'+f.url+'" target="_blank" rel="noopener">📄 '+Cstar.esc(f.name)+' <span style="color:#8a99ab">('+(f.size/1024).toFixed(0)+'K)</span></a>';
+    }).join('')+'</div>';
+  }
   function render(){
     if(!DATA)return;
     var st=DATA.stats||{}, total=0; Object.keys(st).forEach(function(k){total+=st[k];});
@@ -117,17 +226,68 @@
     Array.prototype.forEach.call(document.querySelectorAll('.nd-stat'),function(el){
       el.onclick=function(){FILTER=el.getAttribute('data-f');render();};
     });
-    var rows=(DATA.needs||[]).filter(function(n){return !FILTER||n.status===FILTER;});
-    if(!rows.length){$('wall').innerHTML='<div class="nd-empty">'+(FILTER?'该状态下暂无需求。':'还没有需求，来提第一条！')+'</div>';return;}
+    var q=QUERY.toLowerCase();
+    var rows=(DATA.needs||[]).filter(function(n){
+      if(FILTER&&n.status!==FILTER)return false;
+      if(q&&(n.title+' '+n.detail+' '+(n.tool||'')).toLowerCase().indexOf(q)<0)return false;
+      return true;
+    });
+    if(SORT==='hot')rows=rows.slice().sort(function(a,b){return (b.votes-a.votes)||(b.id-a.id);});
+    if(!rows.length){$('wall').innerHTML='<div class="nd-empty">'+(q?'没有匹配的需求。':(FILTER?'该状态下暂无需求。':'还没有需求，来提第一条！'))+'</div>';return;}
+    var voted=DATA.voted||[];
     $('wall').innerHTML=rows.map(function(n){
-      return '<div class="nd-item"><h3><span class="kd">'+Cstar.esc(n.kind)+'</span>'+Cstar.esc(n.title)+badgeSt(n.status)+'</h3>'+
+      var on=voted.indexOf(n.id)>=0;
+      return '<div class="nd-item"><div class="nd-flex">'+
+        '<button class="nd-vote'+(on?' on':'')+'" data-v="'+n.id+'" title="觉得有用就点一下，帮平台排优先级"><b>'+n.votes+'</b><span>'+(on?'已同求':'同求 +1')+'</span></button>'+
+        '<div class="body"><h3><span class="kd">'+Cstar.esc(n.kind)+'</span>'+Cstar.esc(n.title)+badgeSt(n.status)+'</h3>'+
         '<div class="meta">#'+n.id+' · '+Cstar.esc(n.submitter)+'（'+Cstar.esc(n.identity)+'）· '+Cstar.esc(n.created_at||'')+
         (n.tool?' · 相关工具：'+Cstar.esc(n.tool):'')+'</div>'+
-        '<div class="detail">'+Cstar.esc(n.detail)+'</div>'+
+        '<div class="detail">'+Cstar.esc(n.detail)+'</div>'+attsHtml(n)+
         (n.reply?'<div class="nd-reply"><b>平台回复：</b>'+Cstar.esc(n.reply)+'</div>':'')+
-        '</div>';
+        '</div></div></div>';
     }).join('');
+    Array.prototype.forEach.call(document.querySelectorAll('.nd-vote'),function(b){
+      b.onclick=function(){vote(parseInt(b.getAttribute('data-v'),10),b);};
+    });
   }
+  async function vote(id,btn){
+    btn.disabled=true;
+    try{
+      var r=await fetch('/api/needs/'+id+'/vote',{method:'POST',headers:Cstar.auth.headers()});
+      var d=await r.json().catch(function(){return{};});
+      if(!r.ok)throw new Error(d.detail||'操作失败');
+      var n=(DATA.needs||[]).filter(function(x){return x.id===id;})[0];
+      if(n)n.votes=d.votes;
+      DATA.voted=DATA.voted||[];
+      var ix=DATA.voted.indexOf(id);
+      if(d.voted&&ix<0)DATA.voted.push(id);
+      if(!d.voted&&ix>=0)DATA.voted.splice(ix,1);
+      render();
+    }catch(e){alert(e.message);}
+    btn.disabled=false;
+  }
+  /* 搜索 + 排序 + 相似需求提示 */
+  $('fSearch').addEventListener('input',function(){QUERY=this.value.trim();render();});
+  $('sortHot').onclick=function(){SORT='hot';this.classList.add('on');$('sortNew').classList.remove('on');render();};
+  $('sortNew').onclick=function(){SORT='new';this.classList.add('on');$('sortHot').classList.remove('on');render();};
+  $('fTitle').addEventListener('input',function(){
+    var t=this.value.trim().toLowerCase(),box=$('simBox');
+    if(t.length<3||!DATA){box.style.display='none';return;}
+    var hits=(DATA.needs||[]).filter(function(n){
+      return n.title.toLowerCase().indexOf(t)>=0||t.split(/\s+/).every(function(w){return (n.title+n.detail).toLowerCase().indexOf(w)>=0;});
+    }).slice(0,3);
+    if(!hits.length){box.style.display='none';return;}
+    box.innerHTML='💡 可能已有人提过类似需求（点「同求」比重复提更有效）：<br>'+hits.map(function(n){
+      return '· <a data-s="'+n.id+'">#'+n.id+' '+Cstar.esc(n.title)+'</a>（'+n.votes+' 人同求 · '+n.status+'）';
+    }).join('<br>');
+    box.style.display='block';
+    Array.prototype.forEach.call(box.querySelectorAll('a[data-s]'),function(a){
+      a.onclick=function(){QUERY='';$('fSearch').value='';FILTER='';render();
+        var id=a.getAttribute('data-s');
+        var el=Array.prototype.filter.call(document.querySelectorAll('.nd-vote'),function(b){return b.getAttribute('data-v')===id;})[0];
+        if(el)el.closest('.nd-item').scrollIntoView({behavior:'smooth',block:'center'});};
+    });
+  });
   function load(){
     fetch('/api/needs',{cache:'no-store'}).then(function(r){return r.json();})
       .then(function(d){DATA=d;render();})
@@ -155,16 +315,17 @@
     }
     var btn=$('btnSubmit');btn.disabled=true;btn.textContent='提交中…';
     try{
-      var r=await fetch('/api/needs',{method:'POST',
-        headers:Object.assign({'Content-Type':'application/json'},Cstar.auth.headers()),
-        body:JSON.stringify({kind:$('fKind').value,tool:$('fTool').value.trim(),
-          title:$('fTitle').value.trim(),detail:$('fDetail').value.trim(),
-          submitter:$('fName').value.trim(),contact:$('fContact').value.trim()})});
+      var fd=new FormData();
+      fd.append('kind',$('fKind').value);fd.append('tool',$('fTool').value.trim());
+      fd.append('title',$('fTitle').value.trim());fd.append('detail',$('fDetail').value.trim());
+      fd.append('submitter',$('fName').value.trim());fd.append('contact',$('fContact').value.trim());
+      FILES.forEach(function(f){fd.append('files',f,f.name);});
+      var r=await fetch('/api/needs',{method:'POST',headers:Cstar.auth.headers(),body:fd});
       var d=await r.json().catch(function(){return{};});
       if(!r.ok)throw new Error(d.detail||('提交失败 '+r.status));
       $('okBox').style.display='block';
       $('okBox').textContent='✓ '+(d.message||'需求已提交！')+'（编号 #'+d.id+'）';
-      $('fTitle').value='';$('fDetail').value='';
+      $('fTitle').value='';$('fDetail').value='';FILES=[];renderChips();$('simBox').style.display='none';
       Cstar.store.remove('needs-draft');
       load();
       setTimeout(function(){$('okBox').style.display='none';},6000);

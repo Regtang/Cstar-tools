@@ -205,8 +205,9 @@ async function loadNeeds() {
   $('needList').innerHTML = rows.map(n => `
     <div class="sub" style="${n.hidden ? 'opacity:.55' : ''}">
       <h3>#${n.id} ${esc(n.title)} <span class="cs-badge cs-badge-info">${esc(n.kind)}</span>${n.hidden ? ' <span class="cs-badge cs-badge-warn">已隐藏</span>' : ''}</h3>
-      <div class="meta">${esc(n.submitter || '匿名')}（${esc(n.identity)}）　|　联系：<b>${esc(n.contact || '-')}</b>　|　相关工具：${esc(n.tool || '-')}　|　${esc(n.created_at || '')}　|　IP ${esc(n.ip || '-')}</div>
+      <div class="meta">👍 <b>${n.votes || 0}</b> 同求　|　${esc(n.submitter || '匿名')}（${esc(n.identity)}）　|　联系：<b>${esc(n.contact || '-')}</b>　|　相关工具：${esc(n.tool || '-')}　|　${esc(n.created_at || '')}　|　IP ${esc(n.ip || '-')}</div>
       <div class="meta" style="white-space:pre-wrap;color:var(--cs-ink)">${esc(n.detail)}</div>
+      ${(n.files || []).length ? '<div class="meta">附件：' + n.files.map(f => `<a href="${f.url}" target="_blank" rel="noopener" style="color:var(--cs-teal)">${esc(f.name)}</a>`).join('　') + '</div>' : ''}
       ${n.reply ? '<div class="vers">平台回复：' + esc(n.reply) + '</div>' : ''}
       <div class="cs-actions" style="align-items:center;margin-top:8px">
         状态

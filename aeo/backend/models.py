@@ -257,6 +257,27 @@ class Need(Base):
     updated_at = Column(String, default="")
 
 
+class NeedFile(Base):
+    """需求附件（截图/文档）。文件存 AEO_DATA_DIR/needs/<need_id>/。"""
+    __tablename__ = "need_files"
+    id = Column(Integer, primary_key=True)
+    need_id = Column(Integer, index=True)
+    name = Column(String, default="")                  # 原始文件名（已清洗）
+    rel_path = Column(String, default="")              # needs/<need_id>/<name>
+    size = Column(Integer, default=0)
+    mime = Column(String, default="")
+    created_at = Column(String, default="")
+
+
+class NeedVote(Base):
+    """需求「同求」记录（按 IP+用户去重）。"""
+    __tablename__ = "need_votes"
+    id = Column(Integer, primary_key=True)
+    need_id = Column(Integer, index=True)
+    voter = Column(String, index=True, default="")     # ip 或 user:<id>
+    created_at = Column(String, default="")
+
+
 # 实体名 -> (模型类, 归属权限模块, 可写字段)
 ENTITY_FIELDS = {
     "standards":  ["code", "cat", "name", "req", "dept", "status", "note", "evidence", "origin"],
