@@ -75,7 +75,7 @@
       <a id="aToggle">注册新账号</a>
       <a id="aForgot">忘记密码？</a>
     </div>
-    <div class="hint" id="hint">注册即可使用装箱软件云端方案保存、多设备同步等功能。<br>喜事达内部员工请使用公司分配的账号登录；AEO 合规平台仅限内部员工访问。</div>
+    <div class="hint" id="hint">注册即可解锁云端方案保存、多设备同步；本地使用始终免登录，无需注册。</div>
   </div>
 
   <!-- 已登录：账号中心 -->
@@ -111,6 +111,14 @@
   var qs=new URLSearchParams(location.search);
   var NEXT=(function(){var n=qs.get('next')||'';return /^\/[^/]/.test(n)?n:'';})();
   var RESET=qs.get('reset')||'';
+  // 登录提示按来源自适应：内部/AEO 才显示员工说明，对外工具（如装箱软件）显示客户文案
+  (function(){
+    var h=$('hint'); if(!h) return;
+    var internal=!NEXT || /^\/aeo(\/|$)/.test(NEXT);
+    h.innerHTML = internal
+      ? '注册即可使用平台工具的云端保存、多设备同步等功能。<br>喜事达内部员工请使用公司分配的账号登录；AEO 合规平台仅限内部员工访问。'
+      : '注册即可解锁云端方案保存、多设备同步；本地使用始终免登录，无需注册。';
+  })();
   var mode='login';   // login | register | forgot | reset
 
   function setMsg(t,ok){var m=$('msg');m.textContent=t||'';m.className='err'+(ok?' ok':'');}

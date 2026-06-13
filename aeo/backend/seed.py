@@ -129,7 +129,7 @@ DEFAULT_TOOLS = [
          summary="集装箱装箱计划工具：20/40GP、40/45HQ 箱型，自动装箱、重货优先、3D 可视化、多箱计划与重量分布提示，打开即用、可离线。",
          owner_dept="仓储物流部", icon="装箱",
          color="linear-gradient(135deg,#e54c5e,#f59e0b)", bar="linear-gradient(90deg,#e54c5e,#f59e0b)",
-         visibility="both", status="online", entry_kind="link", entry_path="/packer/", sort_order=20),
+         visibility="both", status="online", entry_kind="link", entry_path="/packer/?embed=1", sort_order=20),
     dict(slug="msds-un", name="危化判定（MSDS/UN）", category="合规",
          summary="进出口危化品监管判定工具：按 SDS、UN 号、CAS、成分与监管清单，自动输出所需证件与申报路径，弹窗即开即用。",
          owner_dept="关务部", icon="危化",
@@ -194,6 +194,13 @@ def run():
         for t in DEFAULT_TOOLS:
             if t["slug"] not in have:
                 db.add(models.Tool(**dict(t, created_at=now_str(), updated_at=now_str())))
+        # 修正历史遗留（幂等）：装箱软件曾通过"上传审核"流程发布到 /tools/packer/（旧副本，
+        # 登录仍指向 AEO），而平台维护的始终是 /packer/。把入口纠正到维护副本，开成弹窗。
+        pk = db.query(models.Tool).filter(models.Tool.slug == "packer").first()
+        if pk and (pk.entry_path or "").startswith("/tools/packer"):
+            pk.entry_path = "/packer/?embed=1"
+            pk.entry_kind = "link"
+            pk.updated_at = now_str()
         db.commit()
     finally:
         db.close()
