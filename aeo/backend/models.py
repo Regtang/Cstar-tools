@@ -197,6 +197,10 @@ class Tool(Base):
     entry_path = Column(String, default="")             # /xxx.html?embed=1 或 /aeo/ 或 /tools/<slug>/?embed=1
     current_version_id = Column(Integer, default=0)     # hosted 工具当前生效版本
     sort_order = Column(Integer, default=100)
+    score = Column(Integer, default=-1)                 # 合规自动评分 0-100（-1=未评分，及格底线层）
+    score_detail = Column(Text, default="")             # 自动评分明细 JSON：{items:[...], at}
+    value_score = Column(Integer, default=-1)           # 人工价值分 0-100（-1=待评，高权重层）
+    value_detail = Column(Text, default="")             # 价值评分 JSON：{customer,craft,business,note,by,at}
     created_at = Column(String, default="")
     updated_at = Column(String, default="")
 

@@ -27,10 +27,13 @@ import database
 import models
 import auth
 import seed
+import scoring
 from auth import current_user, can
 
 # 建表 + 初始化用户与标准框架
 seed.run()
+# 启动后延时自动给所有工具评分（等部署把最新前端拷到 /var/www 后再读）
+scoring.rescore_all_background()
 
 app = FastAPI(title="喜事达AEO认证管理平台", version="1.0")
 
@@ -511,10 +514,40 @@ def delete_user(uid: int, db: Session = Depends(database.get_db), user=Depends(_
 
 
 # ============ 工具目录（注册表驱动；按身份过滤内部/外部） ============
+def _composite(auto, value):
+    """综合分：自动合规分占 30%（及格底线），人工价值分占 70%（高权重）。
+    价值分未评时，先用自动分作临时分。"""
+    a = auto if (auto is not None and auto >= 0) else None
+    v = value if (value is not None and value >= 0) else None
+    if v is None:
+        return a
+    if a is None:
+        a = 0
+    return round(a * 0.3 + v * 0.7)
+
+
 def _tool_public(t):
+    auto = t.score if (t.score is not None and t.score >= 0) else None
+    value = t.value_score if (t.value_score is not None and t.value_score >= 0) else None
+    items = []
+    if t.score_detail:
+        try:
+            items = (json.loads(t.score_detail) or {}).get("items", [])
+        except Exception:
+            items = []
+    vdetail = {}
+    if t.value_detail:
+        try:
+            vdetail = json.loads(t.value_detail) or {}
+        except Exception:
+            vdetail = {}
     return {"slug": t.slug, "name": t.name, "category": t.category, "summary": t.summary,
             "icon": t.icon, "color": t.color, "bar": t.bar, "visibility": t.visibility,
-            "entryKind": t.entry_kind, "entryPath": t.entry_path}
+            "entryKind": t.entry_kind, "entryPath": t.entry_path,
+            "score": _composite(auto, value),       # 综合分（卡片显示）
+            "autoScore": auto, "scoreItems": items,  # 自动合规层
+            "valueScore": value, "valueDetail": vdetail,  # 人工价值层
+            "valueRated": value is not None}
 
 
 @app.get("/api/catalog")
@@ -526,6 +559,76 @@ def catalog(db: Session = Depends(database.get_db), user=Depends(auth.optional_u
     if not staff:
         tools = [t for t in tools if t.visibility in ("external", "both")]
     return {"isStaff": staff, "tools": [_tool_public(t) for t in tools]}
+
+
+@app.post("/api/admin/tools/rescore")
+def admin_rescore_all(db: Session = Depends(database.get_db), user=Depends(_platform)):
+    """对所有工具按《前端统一标准》重新自动评分。"""
+    n = scoring.rescore_all(db)
+    write_log(db, user, "重算工具评分", "tools", f"{n} 个")
+    return {"ok": True, "scored": n}
+
+
+@app.post("/api/admin/tools/{tid}/rescore")
+def admin_rescore_one(tid: int, db: Session = Depends(database.get_db), user=Depends(_platform)):
+    t = db.get(models.Tool, tid)
+    if not t:
+        raise HTTPException(404, "工具不存在")
+    score = scoring.rescore_tool(t, db)
+    return {"ok": True, "score": score,
+            "items": (json.loads(t.score_detail) or {}).get("items", []) if t.score_detail else []}
+
+
+@app.post("/api/admin/tools/{tid}/value")
+def admin_set_value(tid: int, data: dict = Body(...), db: Session = Depends(database.get_db), user=Depends(_platform)):
+    """人工价值评分（高权重层）：客户价值 / 用心程度 / 业务价值，各 0-100，取均值为价值分。"""
+    t = db.get(models.Tool, tid)
+    if not t:
+        raise HTTPException(404, "工具不存在")
+
+    def cl(x):
+        try:
+            return max(0, min(100, int(round(float(x)))))
+        except Exception:
+            return 0
+    customer, craft, business = cl(data.get("customer", 0)), cl(data.get("craft", 0)), cl(data.get("business", 0))
+    note = (data.get("note") or "")[:500]
+    value = round((customer + craft + business) / 3)
+    t.value_score = value
+    t.value_detail = json.dumps({"customer": customer, "craft": craft, "business": business,
+                                 "note": note, "by": user.username, "at": now()}, ensure_ascii=False)
+    t.updated_at = now()
+    db.commit()
+    write_log(db, user, "工具价值评分", "tools", f"{t.slug}={value}")
+    auto = t.score if (t.score or -1) >= 0 else None
+    return {"ok": True, "valueScore": value, "score": _composite(auto, value)}
+
+
+@app.post("/api/admin/tools/{tid}/ai-value")
+def admin_ai_value(tid: int, db: Session = Depends(database.get_db), user=Depends(_platform)):
+    """让 AI 重新对该工具做价值评分。"""
+    t = db.get(models.Tool, tid)
+    if not t:
+        raise HTTPException(404, "工具不存在")
+    if not scoring.ai_enabled():
+        raise HTTPException(400, "未配置大模型（请在服务器环境设置 AI_API_BASE / AI_API_KEY）")
+    val = scoring.rescore_value(t, db)
+    if val is None:
+        raise HTTPException(502, "AI 评分失败（模型无响应或返回格式异常）")
+    auto = t.score if (t.score or -1) >= 0 else None
+    detail = json.loads(t.value_detail) if t.value_detail else {}
+    write_log(db, user, "AI价值评分", "tools", f"{t.slug}={val}")
+    return {"ok": True, "valueScore": val, "score": _composite(auto, val), "detail": detail}
+
+
+@app.post("/api/admin/tools/ai-value-all")
+def admin_ai_value_all(db: Session = Depends(database.get_db), user=Depends(_platform)):
+    """让 AI 给所有工具（重新）评价值分。"""
+    if not scoring.ai_enabled():
+        raise HTTPException(400, "未配置大模型（请在服务器环境设置 AI_API_BASE / AI_API_KEY）")
+    n = scoring.rescore_value_all(db, only_unrated=False)
+    write_log(db, user, "AI价值评分(全部)", "tools", f"{n} 个")
+    return {"ok": True, "scored": n}
 
 
 @app.get("/api/admin/tools")
@@ -809,7 +912,13 @@ def approve_submission(sid: int, data: dict = Body(default={}),
     s.status = "已部署"
     db.commit()
     write_log(db, user, "批准并发布", "tools", f"{tool.slug}@{version}")
-    return {"ok": True, "slug": tool.slug, "version": version, "url": f"/tools/{tool.slug}/"}
+    try:
+        scoring.rescore_tool(tool, db)      # 自动合规分
+        scoring.rescore_value(tool, db)     # AI 价值分（已配大模型时）
+    except Exception:
+        pass
+    return {"ok": True, "slug": tool.slug, "version": version, "url": f"/tools/{tool.slug}/",
+            "score": tool.score if (tool.score or -1) >= 0 else None}
 
 
 @app.post("/api/admin/submissions/{sid}/reject")
@@ -822,6 +931,45 @@ def reject_submission(sid: int, data: dict = Body(default={}),
     db.commit()
     write_log(db, user, "驳回提交", "submissions", s.name)
     return {"ok": True}
+
+
+@app.post("/api/admin/submissions/{sid}/prescore")
+def prescore_submission(sid: int, db: Session = Depends(database.get_db), user=Depends(_platform)):
+    """发布前先评分：解析提交压缩包里的入口 HTML，按《前端统一标准》打分，供审核决策。"""
+    import posixpath
+    s = db.get(models.Submission, sid)
+    if not s:
+        raise HTTPException(404, "提交不存在")
+    zip_path = os.path.join(_sub_dir(s.token), "package.zip")
+    if not os.path.exists(zip_path):
+        raise HTTPException(404, "暂存文件缺失")
+    try:
+        with zipfile.ZipFile(zip_path) as z:
+            names = z.namelist()
+            htmls = [n for n in names if n.lower().endswith(".html") and not n.endswith("/")]
+            htmls.sort(key=lambda x: (x.count("/"), len(x)))
+            entry = next((n for n in htmls if posixpath.basename(n).lower() == "index.html"), None) \
+                or (htmls[0] if htmls else None)
+            if not entry:
+                raise HTTPException(400, "压缩包内未找到 HTML 页面")
+            html = z.read(entry).decode("utf-8", "ignore")
+            base = posixpath.dirname(entry)
+            bundle = html
+            for src in re.findall(r"<script[^>]+src\s*=\s*[\"']([^\"']+)[\"']", html, re.I):
+                if src.startswith(("http", "//", "/")):
+                    continue
+                cand = posixpath.normpath(posixpath.join(base, src)) if base else src
+                if cand in names:
+                    try:
+                        bundle += "\n" + z.read(cand).decode("utf-8", "ignore")
+                    except Exception:
+                        pass
+            score, items = scoring._audit(html, bundle)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(400, f"解析压缩包失败：{e}")
+    return {"ok": True, "score": score, "items": items, "name": s.name, "version": s.version}
 
 
 @app.get("/api/admin/tools/{tid}/versions")

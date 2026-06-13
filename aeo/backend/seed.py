@@ -94,7 +94,9 @@ def _ensure_columns():
     wanted = {
         "users": [("email", "VARCHAR DEFAULT ''")],
         "submissions": [("kind", "VARCHAR DEFAULT 'new'"), ("target", "VARCHAR DEFAULT ''")],
-        "tools": [("current_version_id", "INTEGER DEFAULT 0")],
+        "tools": [("current_version_id", "INTEGER DEFAULT 0"),
+                  ("score", "INTEGER DEFAULT -1"), ("score_detail", "TEXT DEFAULT ''"),
+                  ("value_score", "INTEGER DEFAULT -1"), ("value_detail", "TEXT DEFAULT ''")],
         # v2026.2 升级：标准逐字原文 + 财务9项指标测算
         "standards": [("origin", "TEXT DEFAULT ''")],
         "finance": [
@@ -201,6 +203,12 @@ def run():
             pk.entry_path = "/packer/?embed=1"
             pk.entry_kind = "link"
             pk.updated_at = now_str()
+        # 同理：AEO 也曾被作为托管工具上传到 /tools/aeo/（旧副本），纠正回维护平台 /aeo/
+        ae = db.query(models.Tool).filter(models.Tool.slug == "aeo").first()
+        if ae and (ae.entry_path or "").startswith("/tools/aeo"):
+            ae.entry_path = "/aeo/"
+            ae.entry_kind = "link"
+            ae.updated_at = now_str()
         db.commit()
     finally:
         db.close()

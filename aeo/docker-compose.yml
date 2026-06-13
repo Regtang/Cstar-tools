@@ -21,8 +21,22 @@ services:
       - AEO_SMTP_FROM=${AEO_SMTP_FROM:-}
       # 新工具提交即时通知收件邮箱（多个用逗号？此处填一个即可）
       - AEO_NOTIFY_EMAIL=${AEO_NOTIFY_EMAIL:-}
+      # 工具合规自动评分：评分器读取前端产物的位置（只读挂载）
+      - AEO_PORTAL_DIR=/srv/portal
+      - AEO_PACKER_DIR=/srv/packer
+      - AEO_FRONTEND_DIR=/srv/aeo
+      - AEO_SELF_BASE=${AEO_SELF_BASE:-https://bot.cstar.com}
+      # AI 价值评分（OpenAI 兼容）：配置后新工具自动 AI 评分。推荐 DeepSeek（国内可用、便宜）
+      - AI_API_BASE=${AI_API_BASE:-}
+      - AI_API_KEY=${AI_API_KEY:-}
+      - AI_MODEL=${AI_MODEL:-deepseek-chat}
     volumes:
       - aeo-data:/data
+      # 只读挂载门户与装箱软件静态目录，供评分器读取 HTML（不影响 nginx 提供服务）
+      - /var/www/portal:/srv/portal:ro
+      - /var/www/packer:/srv/packer:ro
+      # 实时挂载本次部署上传的 AEO 前端，确保评分读到最新文件（绕开镜像内旧副本）
+      - ./frontend:/srv/aeo:ro
     restart: unless-stopped
 
 volumes:

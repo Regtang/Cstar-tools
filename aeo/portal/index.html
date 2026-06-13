@@ -108,6 +108,44 @@
   .thead button:hover{background:rgba(255,255,255,.25)}
   .tpanel iframe{width:100%;height:100%;border:0;background:#fff}
   @media(max-width:680px){.tmodal{padding:10px}.tpanel{height:calc(100vh - 20px)}}
+
+  /* —— 现代化增强 —— */
+  .hero h1{background:linear-gradient(90deg,#fff 60%,#bfeaf3);-webkit-background-clip:text;background-clip:text}
+  .card{border-radius:20px}
+  .card .ic{box-shadow:0 8px 20px rgba(15,40,70,.18)}
+  .grid{gap:26px}
+
+  /* —— 工具合规评分环 —— */
+  .scorewrap{position:absolute;top:20px;right:20px;z-index:2}
+  .score{position:relative;width:54px;height:54px;border-radius:50%;cursor:pointer;border:0;padding:0;display:block;
+    background:conic-gradient(var(--sc,#1a9b54) calc(var(--p,0)*3.6deg), #e9eef3 0);transition:transform .18s, box-shadow .18s}
+  .score:hover{transform:scale(1.08);box-shadow:0 8px 20px rgba(15,40,70,.2)}
+  .score i{position:absolute;inset:5px;background:#fff;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;font-style:normal}
+  .score i b{font-size:17px;font-weight:800;color:var(--ink);line-height:1}
+  .score i s{font-size:8px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-decoration:none;margin-top:1px}
+  .score.na{background:#eef2f6}
+  .score.na i b{color:#aab6c2;font-size:18px}
+  .card h3{padding-right:60px}
+
+  /* —— 评分明细弹窗 —— */
+  .smodal{position:fixed;inset:0;z-index:10000;display:none;place-items:center;padding:20px;background:rgba(8,22,34,.66)}
+  .smodal.is-open{display:grid}
+  .scard{width:min(520px,100%);max-height:calc(100vh - 40px);overflow:auto;background:#fff;border-radius:20px;box-shadow:0 28px 80px rgba(0,0,0,.32)}
+  .scard .sh{padding:24px 26px;color:#fff;background:linear-gradient(120deg,#252f45,#303c58);position:relative}
+  .scard .sh h4{font-size:18px;font-weight:800;margin:0 0 4px;padding-right:30px}
+  .scard .sh .sub{font-size:13px;color:#cfeef4}
+  .scard .sh .big{position:absolute;top:20px;right:24px;font-size:30px;font-weight:800}
+  .scard .sh xb{position:absolute;top:14px;right:14px}
+  .scard .x{position:absolute;top:16px;right:16px;width:30px;height:30px;border:0;border-radius:8px;background:rgba(255,255,255,.16);color:#fff;font-size:18px;cursor:pointer}
+  .scard .body{padding:18px 24px 24px}
+  .scard .legend{font-size:12px;color:var(--muted);margin:0 0 12px}
+  .sitem{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .sitem:last-child{border-bottom:0}
+  .sitem .mk{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px;color:#fff;flex:none}
+  .sitem.ok .mk{background:#1a9b54}.sitem.no .mk{background:#e84368}
+  .sitem .lb{flex:1;color:var(--ink)}
+  .sitem .pt{font-weight:700;color:var(--muted);font-size:13px}
+  .sitem.no .lb{color:var(--muted)}
 </style>
 </head>
 <body>
@@ -211,6 +249,14 @@
   </div>
 </div>
 
+<!-- SCORE DETAIL MODAL -->
+<div class="smodal" id="smodal" onclick="if(event.target===this)closeScore()">
+  <div class="scard">
+    <div class="sh" id="sHead"></div>
+    <div class="body" id="sBody"></div>
+  </div>
+</div>
+
 <!-- FOOTER -->
 <footer><div class="wrap">
   <div class="fb"><span class="cstar cstar-light">CST<i>A</i>R</span> 工具平台</div>
@@ -224,6 +270,19 @@ const PLACEHOLDER={dev:true,name:'更多工具开发中',icon:'+',
   bar:'linear-gradient(90deg,#8a99ab,#b8c2cf)',color:'linear-gradient(135deg,#6b7a99,#9fb0cc)',
   summary:'敬请期待——更多进出口、报关、物流、合规相关的数字工具正在规划与开发中，将陆续上线到本平台。'};
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+/* 工具评分数据（slug -> {score, items, name}），供评分明细弹窗使用 */
+const SCORES={};
+function scoreColor(s){return s>=85?'#1a9b54':s>=60?'#f29900':'#e84368';}
+function scoreRing(t){
+  if(typeof t.score!=='number'){
+    return `<div class="scorewrap"><button class="score na" title="尚未评分" onclick="openScore(event,'${esc(t.slug)}')"><i><b>—</b></i></button></div>`;
+  }
+  SCORES[t.slug]={score:t.score,auto:t.autoScore,items:t.scoreItems||[],
+    value:(t.valueRated?t.valueScore:null),vdetail:t.valueDetail||{},name:t.name};
+  return `<div class="scorewrap"><button class="score" style="--p:${t.score};--sc:${scoreColor(t.score)}" `+
+    `title="综合评分 ${t.score}/100，点击查看明细" onclick="openScore(event,'${esc(t.slug)}')">`+
+    `<i><b>${t.score}</b><s>分</s></i></button></div>`;
+}
 function cardHtml(t){
   if(t.dev){
     return `<div class="card disabled" style="--bar:${t.bar}"><div class="ic" style="background:${t.color}">${t.icon}</div>`+
@@ -233,7 +292,7 @@ function cardHtml(t){
   const tag='<span class="tag t-live">● 已上线</span>'+intTag;
   const isEmbed = /[?&]embed=1/.test(t.entryPath||'');
   const go=`<span class="go">${isEmbed?'打开工具 →':'进入工具 →'}</span>`;
-  const inner=`<div class="ic" style="background:${t.color}">${esc(t.icon)}</div>`+
+  const inner=scoreRing(t)+`<div class="ic" style="background:${t.color}">${esc(t.icon)}</div>`+
     `<h3>${esc(t.name)} ${tag}</h3><p>${esc(t.summary)}</p>${go}`;
   if(isEmbed){
     const href=esc((t.entryPath||'').replace('?embed=1',''));
@@ -241,6 +300,35 @@ function cardHtml(t){
   }
   return `<a class="card" style="--bar:${t.bar}" href="${esc(t.entryPath)}">${inner}</a>`;
 }
+/* 评分明细弹窗 */
+function openScore(ev,slug){
+  ev.preventDefault();ev.stopPropagation();
+  const d=SCORES[slug];const m=document.getElementById('smodal');
+  const sh=document.getElementById('sHead');const bd=document.getElementById('sBody');
+  if(!d){sh.innerHTML=`<button class="x" onclick="closeScore()">×</button><h4>尚未评分</h4><div class="sub">该工具暂未完成合规评分，稍后将自动评分。</div>`;bd.innerHTML='';m.classList.add('is-open');return;}
+  const col=scoreColor(d.score);
+  sh.innerHTML=`<button class="x" onclick="closeScore()">×</button><div class="big" style="color:${col}">${d.score}</div>`+
+    `<h4>${esc(d.name)}</h4><div class="sub">综合评分 · 价值 70% + 合规 30%</div>`;
+  // —— 价值层（高权重）——
+  const vd=d.vdetail||{};
+  let valueHtml;
+  if(typeof d.value==='number'){
+    const bar=(lb,v)=>`<div class="sitem"><span class="lb">${lb}</span><span class="pt" style="color:${scoreColor(v)};font-weight:800">${v}</span></div>`;
+    valueHtml=`<p class="legend"><b style="color:#1f2a37">人工价值分 ${d.value}/100（占 70%）</b>　由平台评审：客户价值 / 用心程度 / 业务价值。</p>`+
+      bar('客户价值（市场难找到的真需求）',vd.customer||0)+
+      bar('用心程度（认真打磨 vs 套模板交差）',vd.craft||0)+
+      bar('业务价值（对实际业务的贡献）',vd.business||0)+
+      (vd.note?`<div class="sitem"><span class="lb" style="white-space:pre-wrap">评语：${esc(vd.note)}</span></div>`:'');
+  }else{
+    valueHtml=`<p class="legend"><b style="color:#e8a33d">价值分待评审</b>　管理员将在后台从客户价值 / 用心程度 / 业务价值三方面评分（占综合分 70%）。当前综合分暂以合规分代替。</p>`;
+  }
+  bd.innerHTML=valueHtml+
+    `<p class="legend" style="margin-top:16px"><b style="color:#1f2a37">合规底线分 ${typeof d.auto==='number'?d.auto:'—'}/100（占 30%）</b>　《前端统一标准》自动审计：</p>`+
+    (d.items||[]).map(it=>`<div class="sitem ${it.ok?'ok':'no'}"><span class="mk">${it.ok?'✓':'×'}</span>`+
+      `<span class="lb">${esc(it.label)}</span><span class="pt">${it.got}/${it.max}</span></div>`).join('');
+  m.classList.add('is-open');
+}
+function closeScore(){document.getElementById('smodal').classList.remove('is-open');}
 function renderCatalog(tools){
   document.getElementById('grid').innerHTML = tools.map(cardHtml).join('') + cardHtml(PLACEHOLDER);
 }

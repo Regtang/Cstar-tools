@@ -772,14 +772,14 @@ function exportFinReport(){
 /* 功能③：法规与政策库 */
 VIEWS.regs=async()=>{
   const items=[
-    ['海关总署公告2026年第34号','《海关高级认证企业标准》《海关认证企业标准》（2026/4/1施行，废止2022年第106号、114号）','http://www.customs.gov.cn/customs/2026-03/31/article_2026033114511949415.html'],
+    ['海关总署公告2026年第34号','《海关高级认证企业标准》《海关认证企业标准》（2026/4/1施行，废止2022年第106号、114号）','https://www.customs.gov.cn/customs/2026-03/31/article_2026033114511949415.html'],
     ['海关总署令第282号','《海关注册登记和备案企业信用管理办法》（2026/4/1施行）',''],
     ['SAFE标准框架（2025版）','世界海关组织《全球贸易安全与便利标准框架》，AEO制度国际互认依据','']
   ];
   const atts=[
-    ['附件1 《海关企业认证标准》说明','http://www.customs.gov.cn/customs/attachDir/2026/04/1.%E3%80%8A%E6%B5%B7%E5%85%B3%E4%BC%81%E4%B8%9A%E8%AE%A4%E8%AF%81%E6%A0%87%E5%87%86%E3%80%8B%E8%AF%B4%E6%98%8E.doc'],
-    ['附件2 《海关高级认证企业标准》（通用标准—进出口收发货人）★ 本平台依据','http://www.customs.gov.cn/customs/attachDir/2026/04/2.%E3%80%8A%E6%B5%B7%E5%85%B3%E9%AB%98%E7%BA%A7%E8%AE%A4%E8%AF%81%E4%BC%81%E4%B8%9A%E6%A0%87%E5%87%86%E3%80%8B%EF%BC%88%E9%80%9A%E7%94%A8%E6%A0%87%E5%87%86%E2%80%94%E8%BF%9B%E5%87%BA%E5%8F%A3%E6%94%B6%E5%8F%91%E8%B4%A7%E4%BA%BA%EF%BC%89.doc'],
-    ['附件4 《海关高级认证企业标准》（单项标准）','http://www.customs.gov.cn/customs/attachDir/2026/04/4.%E3%80%8A%E6%B5%B7%E5%85%B3%E9%AB%98%E7%BA%A7%E8%AE%A4%E8%AF%81%E4%BC%81%E4%B8%9A%E6%A0%87%E5%87%86%E3%80%8B%EF%BC%88%E5%8D%95%E9%A1%B9%E6%A0%87%E5%87%86%EF%BC%89.doc'],
+    ['附件1 《海关企业认证标准》说明','https://www.customs.gov.cn/customs/attachDir/2026/04/1.%E3%80%8A%E6%B5%B7%E5%85%B3%E4%BC%81%E4%B8%9A%E8%AE%A4%E8%AF%81%E6%A0%87%E5%87%86%E3%80%8B%E8%AF%B4%E6%98%8E.doc'],
+    ['附件2 《海关高级认证企业标准》（通用标准—进出口收发货人）★ 本平台依据','https://www.customs.gov.cn/customs/attachDir/2026/04/2.%E3%80%8A%E6%B5%B7%E5%85%B3%E9%AB%98%E7%BA%A7%E8%AE%A4%E8%AF%81%E4%BC%81%E4%B8%9A%E6%A0%87%E5%87%86%E3%80%8B%EF%BC%88%E9%80%9A%E7%94%A8%E6%A0%87%E5%87%86%E2%80%94%E8%BF%9B%E5%87%BA%E5%8F%A3%E6%94%B6%E5%8F%91%E8%B4%A7%E4%BA%BA%EF%BC%89.doc'],
+    ['附件4 《海关高级认证企业标准》（单项标准）','https://www.customs.gov.cn/customs/attachDir/2026/04/4.%E3%80%8A%E6%B5%B7%E5%85%B3%E9%AB%98%E7%BA%A7%E8%AE%A4%E8%AF%81%E4%BC%81%E4%B8%9A%E6%A0%87%E5%87%86%E3%80%8B%EF%BC%88%E5%8D%95%E9%A1%B9%E6%A0%87%E5%87%86%EF%BC%89.doc'],
   ];
   let h=`<div class="section-title">法规与政策库 <small>AEO 认证依据与最新动态</small></div>
   <div class="card"><h3>2026版标准修订要点（公告第34号）</h3>

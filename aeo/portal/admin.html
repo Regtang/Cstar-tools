@@ -113,14 +113,29 @@ async function loadSubs() {
     const sc = s.selfcheck ? '✓ 已自检' : '✗ 未自检';
     const done = s.status !== '待审核';
     const actions = done ? `<span class="cs-badge cs-badge-info">${esc(s.status)}</span>` :
-      `<button class="cs-btn cs-btn-soft" onclick="dl(${s.id},'${esc(s.filename)}')">下载</button>
+      `<button class="cs-btn cs-btn-soft" onclick="prescore(${s.id})">⊕ 先评分</button>
+       <button class="cs-btn cs-btn-soft" onclick="dl(${s.id},'${esc(s.filename)}')">下载</button>
        <button class="cs-btn cs-btn-primary" onclick="approve(${s.id}, ${s.kind === 'update' ? 'true' : 'false'})">批准并发布</button>
        <button class="cs-btn cs-btn-ghost" onclick="reject(${s.id})">驳回</button>`;
     return `<div class="sub"><h3>${esc(s.name)} <span class="cs-badge ${s.kind === 'update' ? 'cs-badge-warn' : 'cs-badge-ok'}">${s.kind === 'update' ? '更新' : '新工具'}</span></h3>
       <div class="meta">类型：${kind}　|　版本：<b>${esc(s.version || '-')}</b>　|　开发者：${esc(s.developer || '-')}　|　${sc}　|　${(s.size/1024).toFixed(0)}KB　|　${esc(s.created_at || '')}</div>
       ${s.desc ? '<div class="meta">' + esc(s.desc) + '</div>' : ''}
-      <div class="cs-actions">${actions}</div></div>`;
+      <div class="cs-actions">${actions}</div><div id="pre-${s.id}"></div></div>`;
   }).join('');
+}
+async function prescore(id) {
+  const box = $('pre-' + id);
+  box.innerHTML = '<div class="meta">按《前端统一标准》评分中…</div>';
+  const r = await fetch('/api/admin/submissions/' + id + '/prescore', { method: 'POST', headers: H() });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { box.innerHTML = '<div class="cs-error-text" style="margin-top:6px">评分失败：' + esc(j.detail || r.status) + '</div>'; return; }
+  const col = j.score >= 85 ? '#1a9b54' : j.score >= 60 ? '#f29900' : '#e84368';
+  box.innerHTML = '<div class="vers" style="margin-top:10px">'
+    + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
+    + '<b style="font-size:24px;color:' + col + '">' + j.score + '</b>'
+    + '<span style="color:var(--cs-muted)">/ 100 · 发布前合规预评分</span></div>'
+    + (j.items || []).map(it => '<div class="row" style="padding:3px 0"><span><span style="color:' + (it.ok ? '#1a9b54' : '#e84368') + ';font-weight:700">' + (it.ok ? '✓' : '×') + '</span> ' + esc(it.label) + '</span><span style="color:var(--cs-muted)">' + it.got + '/' + it.max + '</span></div>').join('')
+    + '<div class="meta" style="margin-top:8px">据此决定是否「批准并发布」，或驳回让开发者按未达标项整改后再交。</div></div>';
 }
 async function dl(id, fname) {
   const r = await fetch('/api/admin/submissions/' + id + '/download', { headers: { 'Authorization': 'Bearer ' + TOKEN } });
@@ -158,10 +173,15 @@ async function reject(id) {
 async function loadTools() {
   const rows = await fetch('/api/admin/tools', { headers: H() }).then(r => r.json()).catch(() => []);
   if (!rows.length) { $('toolList').innerHTML = '<p class="meta">暂无工具。</p>'; return; }
-  $('toolList').innerHTML = rows.map(t => `
+  $('toolList').innerHTML = '<p class="meta" style="margin-bottom:12px">综合分 = 价值分×70% + 合规分×30%；价值分由系统按逻辑（或大模型）自动生成，无需人工打分。</p>' + rows.map(t => {
+    let vd = {}; try { vd = t.value_detail ? (JSON.parse(t.value_detail) || {}) : {}; } catch (e) {}
+    const auto = (t.score != null && t.score >= 0) ? t.score : '—';
+    const val = (t.value_score != null && t.value_score >= 0) ? t.value_score : '待评';
+    return `
     <div class="sub" id="tool-${t.id}">
       <h3>${esc(t.name)} <span class="cs-badge cs-badge-info">${esc(t.slug)}</span></h3>
       <div class="meta">分类：${esc(t.category)}　|　入口：${esc(t.entry_kind)} ${esc(t.entry_path || '')}　|　负责人：${esc(t.owner_dept || '-')}</div>
+      <div class="meta">合规自动分（占30%）：<b>${auto}</b>　|　人工价值分（占70%）：<b>${val}</b></div>
       <div class="cs-actions" style="align-items:center">
         可见性
         <select class="cs-select" style="width:auto" onchange="updTool(${t.id},'visibility',this.value)">
@@ -173,12 +193,36 @@ async function loadTools() {
         </select>
         <button class="cs-btn cs-btn-soft" onclick="toggleVers(${t.id})">版本历史/回滚</button>
       </div>
+      <div class="vers" style="margin-top:10px;background:#f0f7f9">
+        <div style="font-weight:800;color:var(--cs-navy);margin-bottom:8px">价值评分（自动生成，高权重，占综合分 70%）</div>
+        ${(t.value_score != null && t.value_score >= 0) ? `
+          <div class="meta">客户价值 <b>${vd.customer != null ? vd.customer : '-'}</b>　用心程度 <b>${vd.craft != null ? vd.craft : '-'}</b>　业务价值 <b>${vd.business != null ? vd.business : '-'}</b>　→ 价值分 <b style="color:var(--cs-rose)">${t.value_score}</b></div>
+          ${vd.note ? `<div class="meta">评语：${esc(vd.note)}</div>` : ''}
+          ${vd.by ? `<div class="meta">来源：${esc(vd.by)} · ${esc(vd.at || '')}</div>` : ''}
+        ` : `<div class="meta">价值分将在部署/上线时自动生成。</div>`}
+      </div>
       <div id="vers-${t.id}" class="vers hide"></div>
-    </div>`).join('');
+    </div>`; }).join('');
 }
 async function updTool(id, field, value) {
   const r = await fetch('/api/admin/tools/' + id, { method: 'PUT', headers: H(), body: JSON.stringify({ [field]: value }) });
   if (!r.ok) alert('更新失败');
+}
+async function aiValue(id) {
+  if (!confirm('让 AI 读取该工具源码并重新评估价值分（客户价值/用心程度/业务价值）？')) return;
+  const r = await fetch('/api/admin/tools/' + id + '/ai-value', { method: 'POST', headers: H() });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { alert('AI 评分失败：' + (j.detail || r.status)); return; }
+  alert('AI 已评分 ✓ 价值分 ' + j.valueScore + '　综合分 ' + j.score);
+  loadTools();
+}
+async function aiValueAll() {
+  if (!confirm('让 AI 给全部工具重新评估价值分？（数量多时稍慢）')) return;
+  const r = await fetch('/api/admin/tools/ai-value-all', { method: 'POST', headers: H() });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { alert('失败：' + (j.detail || r.status)); return; }
+  alert('AI 已评分 ' + j.scored + ' 个工具');
+  loadTools();
 }
 async function toggleVers(id) {
   const box = $('vers-' + id);
