@@ -275,14 +275,14 @@ def complexity_score(bundle):
              + len(re.findall(r"\bif\s*\(|\bfor\s*\(|\bwhile\s*\(|\bswitch\s*\(", b))
              + len(re.findall(r"fetch\(|/api/|XMLHttpRequest", b)) * 4
              + len(re.findall(r"<table|<canvas|<svg", b, re.I)) * 2)
-    return max(0, min(100, round(depth / 7.0)))   # depth≈700 封顶 100
+    return max(0, min(100, round(depth / 10.0)))   # depth≈1000 才封顶 100（门槛更高）
 
 
-# 价值分权重：客户价值30% + 软件复杂度30% + 用心20% + 业务20%
-# （复杂度作为得高分的硬条件之一：功能再实用但很简单的，分也上不去）
+# 价值分权重：软件复杂度60% + 客户价值25% + 用心10% + 业务5%
+# （复杂度是得高分的硬门槛：功能再实用但简单的，分也上不去）
 def blend_value(d):
-    return round(0.30 * d.get("customer", 0) + 0.30 * d.get("complexity", 0)
-                 + 0.20 * d.get("craft", 0) + 0.20 * d.get("business", 0))
+    return round(0.60 * d.get("complexity", 0) + 0.25 * d.get("customer", 0)
+                 + 0.10 * d.get("craft", 0) + 0.05 * d.get("business", 0))
 
 
 def rescore_value(tool, db, commit=True):
