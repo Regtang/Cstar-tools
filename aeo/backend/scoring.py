@@ -267,8 +267,26 @@ def heuristic_value(tool, bundle):
     return {"customer": c, "craft": k, "business": b, "note": note}
 
 
+# —— 软件复杂度（客观测量）：函数/输入控件/分支/接口/数据可视 越多越复杂 ——
+def complexity_score(bundle):
+    b = bundle or ""
+    depth = (len(re.findall(r"\bfunction\b|=>", b))
+             + len(re.findall(r"<input|<select|<textarea", b, re.I))
+             + len(re.findall(r"\bif\s*\(|\bfor\s*\(|\bwhile\s*\(|\bswitch\s*\(", b))
+             + len(re.findall(r"fetch\(|/api/|XMLHttpRequest", b)) * 4
+             + len(re.findall(r"<table|<canvas|<svg", b, re.I)) * 2)
+    return max(0, min(100, round(depth / 7.0)))   # depth≈700 封顶 100
+
+
+# 价值分权重：客户价值30% + 软件复杂度30% + 用心20% + 业务20%
+# （复杂度作为得高分的硬条件之一：功能再实用但很简单的，分也上不去）
+def blend_value(d):
+    return round(0.30 * d.get("customer", 0) + 0.30 * d.get("complexity", 0)
+                 + 0.20 * d.get("craft", 0) + 0.20 * d.get("business", 0))
+
+
 def rescore_value(tool, db, commit=True):
-    """读取工具源码 → 价值评分（有大模型 key 用 AI，否则用内置逻辑）→ 写 value_score/value_detail。"""
+    """读取工具源码 → 价值评分（AI/逻辑给客户/用心/业务三维 + 客观复杂度）→ 写 value_score/value_detail。"""
     de = _resolve_dir_entry(tool, db)
     html, bundle = (_bundle_from_dir(de[0], de[1], de[2]) if de else (None, None))
     if html is None:
@@ -278,7 +296,8 @@ def rescore_value(tool, db, commit=True):
     if not res:
         res = heuristic_value(tool, bundle or "")     # 自动逻辑兜底，保证总有分、无需人工
         by = "自动逻辑评估"
-    val = round((res["customer"] + res["craft"] + res["business"]) / 3)
+    res["complexity"] = complexity_score(bundle or "")
+    val = blend_value(res)
     tool.value_score = val
     tool.value_detail = json.dumps(dict(res, by=by, at=_now()), ensure_ascii=False)
     tool.updated_at = _now()

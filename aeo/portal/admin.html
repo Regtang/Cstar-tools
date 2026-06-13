@@ -196,7 +196,7 @@ async function loadTools() {
       <div class="vers" style="margin-top:10px;background:#f0f7f9">
         <div style="font-weight:800;color:var(--cs-navy);margin-bottom:8px">价值评分（自动生成，高权重，占综合分 70%）</div>
         ${(t.value_score != null && t.value_score >= 0) ? `
-          <div class="meta">客户价值 <b>${vd.customer != null ? vd.customer : '-'}</b>　用心程度 <b>${vd.craft != null ? vd.craft : '-'}</b>　业务价值 <b>${vd.business != null ? vd.business : '-'}</b>　→ 价值分 <b style="color:var(--cs-rose)">${t.value_score}</b></div>
+          <div class="meta">客户价值 <b>${vd.customer != null ? vd.customer : '-'}</b>　软件复杂度 <b>${vd.complexity != null ? vd.complexity : '-'}</b>　用心程度 <b>${vd.craft != null ? vd.craft : '-'}</b>　业务价值 <b>${vd.business != null ? vd.business : '-'}</b>　→ 价值分 <b style="color:var(--cs-rose)">${t.value_score}</b></div>
           ${vd.note ? `<div class="meta">评语：${esc(vd.note)}</div>` : ''}
           ${vd.by ? `<div class="meta">来源：${esc(vd.by)} · ${esc(vd.at || '')}</div>` : ''}
         ` : `<div class="meta">价值分将在部署/上线时自动生成。</div>`}

@@ -314,8 +314,9 @@ function openScore(ev,slug){
   let valueHtml;
   if(typeof d.value==='number'){
     const bar=(lb,v)=>`<div class="sitem"><span class="lb">${lb}</span><span class="pt" style="color:${scoreColor(v)};font-weight:800">${v}</span></div>`;
-    valueHtml=`<p class="legend"><b style="color:#1f2a37">人工价值分 ${d.value}/100（占 70%）</b>　由平台评审：客户价值 / 用心程度 / 业务价值。</p>`+
+    valueHtml=`<p class="legend"><b style="color:#1f2a37">价值分 ${d.value}/100（占综合 70%）</b>　自动评估 = 客户价值30% + 软件复杂度30% + 用心20% + 业务20%。</p>`+
       bar('客户价值（市场难找到的真需求）',vd.customer||0)+
+      bar('软件复杂度（越复杂、功能越深越高）',vd.complexity||0)+
       bar('用心程度（认真打磨 vs 套模板交差）',vd.craft||0)+
       bar('业务价值（对实际业务的贡献）',vd.business||0)+
       (vd.note?`<div class="sitem"><span class="lb" style="white-space:pre-wrap">评语：${esc(vd.note)}</span></div>`:'');
