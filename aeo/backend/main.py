@@ -144,7 +144,7 @@ def send_email(to_addr, subject, html):
 
 
 def public_base():
-    return os.environ.get("AEO_PUBLIC_URL", "https://bot.regs.com").rstrip("/")
+    return os.environ.get("AEO_PUBLIC_URL", "https://bot.cstar.com").rstrip("/")
 
 
 # ============ 认证 ============

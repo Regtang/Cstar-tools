@@ -1,6 +1,6 @@
 # AGENTS.md — 喜事达工具平台开发规范（给 AI 编码助手）
 
-本文件供任何 AI 编码助手（Codex、Claude、Cursor 等）阅读。**在本仓库内开发、设计或改造任何挂到 bot.regs.com 的小工具时，必须遵循以下统一标准**，以保证所有工具的配色、风格、交互、基本功能与平台一致。
+本文件供任何 AI 编码助手（Codex、Claude、Cursor 等）阅读。**在本仓库内开发、设计或改造任何挂到 bot.cstar.com 的小工具时，必须遵循以下统一标准**，以保证所有工具的配色、风格、交互、基本功能与平台一致。
 
 设计基准来自门户网站与「Cstar 装箱软件」，以 cstar.com 品牌为准。
 
@@ -13,7 +13,7 @@
 平台提供共享 JS 库，把每个工具都要重复写的功能做成现成接口（任何 AI/工具通用）：
 
 ```html
-<script src="/cstar-tool.js"></script>   <!-- 线上：https://bot.regs.com/cstar-tool.js -->
+<script src="/cstar-tool.js"></script>   <!-- 线上：https://bot.cstar.com/cstar-tool.js -->
 ```
 
 全局 `Cstar` 提供：
@@ -49,7 +49,7 @@
 
 ```html
 <head>
-  <link rel="stylesheet" href="/cstar-ui.css">   <!-- 线上：https://bot.regs.com/cstar-ui.css -->
+  <link rel="stylesheet" href="/cstar-ui.css">   <!-- 线上：https://bot.cstar.com/cstar-ui.css -->
 </head>
 <body class="cstar-ui">
 ```
@@ -83,6 +83,6 @@
 
 ## 六、提交上线
 
-打包成单个 `.zip`，到 bot.regs.com 首页「For Developers」模块：新工具点「上传新工具」，现有工具出新版点「提交工具更新」（选目标工具）。上传只进待审核暂存区、不立即公开，维护者审核测试后部署。
+打包成单个 `.zip`，到 bot.cstar.com 首页「For Developers」模块：新工具点「上传新工具」，现有工具出新版点「提交工具更新」（选目标工具）。上传只进待审核暂存区、不立即公开，维护者审核测试后部署。
 
 > 详见 `前端标准/前端统一标准.md`。Claude/Cowork 用户也可安装 `cstar-tool-standard.skill` 获得同样的自动指引。

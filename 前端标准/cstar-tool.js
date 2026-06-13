@@ -4,7 +4,7 @@
      <script src="/cstar-tool.js"></script>
    提供：数据存储 / 历史台账 / 表单校验 / 电子签名 / 自动编号 /
         导出 CSV·JSON / 打印 / 嵌入模式 等标准功能，免去重复造轮子。
-   线上地址：https://bot.regs.com/cstar-tool.js   （配合 /cstar-ui.css 使用）
+   线上地址：https://bot.cstar.com/cstar-tool.js   （配合 /cstar-ui.css 使用）
    依赖：无。
    ============================================================ */
 (function (w) {

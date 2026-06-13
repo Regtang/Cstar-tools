@@ -12,7 +12,7 @@ services:
       # 前后端分离时设置允许的来源，如 https://aeo.yourcompany.com
       - AEO_CORS=${AEO_CORS:-}
       # 站点公网地址（用于重置密码邮件里的链接）
-      - AEO_PUBLIC_URL=${AEO_PUBLIC_URL:-https://bot.regs.com}
+      - AEO_PUBLIC_URL=${AEO_PUBLIC_URL:-https://bot.cstar.com}
       # 邮件 SMTP（.env 中密码若含 $ 需写成 $$ 转义）
       - AEO_SMTP_HOST=${AEO_SMTP_HOST:-}
       - AEO_SMTP_PORT=${AEO_SMTP_PORT:-587}

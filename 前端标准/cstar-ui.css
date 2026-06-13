@@ -5,7 +5,7 @@
    用法：在工具 HTML 的 <head> 引入即可自动统一配色/字体/组件：
      <link rel="stylesheet" href="/cstar-ui.css">
    组件类名统一加 cs- 前缀；类名与旧版完全兼容，引入即换新。
-   线上地址：https://bot.regs.com/cstar-ui.css
+   线上地址：https://bot.cstar.com/cstar-ui.css
    ============================================================ */
 
 :root {
