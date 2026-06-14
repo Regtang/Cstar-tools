@@ -275,7 +275,7 @@ def complexity_score(bundle):
              + len(re.findall(r"\bif\s*\(|\bfor\s*\(|\bwhile\s*\(|\bswitch\s*\(", b))
              + len(re.findall(r"fetch\(|/api/|XMLHttpRequest", b)) * 4
              + len(re.findall(r"<table|<canvas|<svg", b, re.I)) * 2)
-    return max(0, min(100, round(depth / 7.0)))   # depth≈700 封顶 100
+    return max(0, min(100, round(depth / 10.0)))   # depth≈1000 才封顶 100（门槛收紧）
 
 
 # —— 客户使用量 / 版本迭代次数（客观信号，归一化到 0-100）——
