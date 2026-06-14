@@ -200,7 +200,8 @@ class Tool(Base):
     score = Column(Integer, default=-1)                 # 合规自动评分 0-100（-1=未评分，及格底线层）
     score_detail = Column(Text, default="")             # 自动评分明细 JSON：{items:[...], at}
     value_score = Column(Integer, default=-1)           # 人工价值分 0-100（-1=待评，高权重层）
-    value_detail = Column(Text, default="")             # 价值评分 JSON：{customer,craft,business,note,by,at}
+    value_detail = Column(Text, default="")             # 价值评分 JSON：{customer,craft,business,complexity,usage,iter,note,by,at}
+    usage_count = Column(Integer, default=0)            # 客户使用次数（打开计数，价值评分输入之一）
     created_at = Column(String, default="")
     updated_at = Column(String, default="")
 

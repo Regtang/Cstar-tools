@@ -275,18 +275,55 @@ def complexity_score(bundle):
              + len(re.findall(r"\bif\s*\(|\bfor\s*\(|\bwhile\s*\(|\bswitch\s*\(", b))
              + len(re.findall(r"fetch\(|/api/|XMLHttpRequest", b)) * 4
              + len(re.findall(r"<table|<canvas|<svg", b, re.I)) * 2)
-    return max(0, min(100, round(depth / 10.0)))   # depth≈1000 才封顶 100（门槛更高）
+    return max(0, min(100, round(depth / 7.0)))   # depth≈700 封顶 100
 
 
-# 价值分权重：软件复杂度60% + 客户价值25% + 用心10% + 业务5%
-# （复杂度是得高分的硬门槛：功能再实用但简单的，分也上不去）
+# —— 客户使用量 / 版本迭代次数（客观信号，归一化到 0-100）——
+# 内置工具（直接部署、无版本记录）的迭代次数基线；上传类工具按 ToolVersion 实数
+BUILTIN_ITER = {"aeo": 20, "packer": 18, "hs-lookup": 8, "msds-un": 6, "trade-docs": 5,
+                "duty-calc": 4, "export-customs": 4, "export-advisor": 3, "container-eir": 6}
+
+
+def _iter_raw(tool, db):
+    c = db.query(models.ToolVersion).filter(models.ToolVersion.tool_id == tool.id).count()
+    return c if c > 0 else BUILTIN_ITER.get(tool.slug, 3)
+
+
+def _norm(v, mx):
+    return round(100.0 * v / mx) if (mx and mx > 0) else 50   # 全员为0时取中性50，冷启动不压崩
+
+
+def _max_usage(db):
+    return max([(t.usage_count or 0) for t in db.query(models.Tool).all()] or [0])
+
+
+def _max_iter(db):
+    return max([_iter_raw(t, db) for t in db.query(models.Tool).all()] or [1])
+
+
+# 价值分权重（配对防刷：可刷的客观指标和不可刷的判断绑在一起）：
+#   复杂度30% +（客户使用量20% + 客户价值20%）+（版本迭代12.5% + 用心12.5%）+ 业务5%
 def blend_value(d):
-    return round(0.60 * d.get("complexity", 0) + 0.25 * d.get("customer", 0)
-                 + 0.10 * d.get("craft", 0) + 0.05 * d.get("business", 0))
+    return round(0.30 * d.get("complexity", 0)
+                 + 0.20 * d.get("usage", 0) + 0.20 * d.get("customer", 0)
+                 + 0.125 * d.get("iter", 0) + 0.125 * d.get("craft", 0)
+                 + 0.05 * d.get("business", 0))
+
+
+def _fill_objective(d, tool, db, bundle, mu=None, mi=None):
+    """补齐客观维度：复杂度 + 使用量(归一) + 迭代次数(归一)。"""
+    if mu is None:
+        mu = _max_usage(db)
+    if mi is None:
+        mi = _max_iter(db)
+    d["complexity"] = complexity_score(bundle or "")
+    d["usage"] = _norm(tool.usage_count or 0, mu)
+    d["iter"] = _norm(_iter_raw(tool, db), mi)
+    return d
 
 
 def rescore_value(tool, db, commit=True):
-    """读取工具源码 → 价值评分（AI/逻辑给客户/用心/业务三维 + 客观复杂度）→ 写 value_score/value_detail。"""
+    """读取工具源码 → 价值评分（判断维度 AI/逻辑给，客观维度系统算）→ 写 value_score/value_detail。"""
     de = _resolve_dir_entry(tool, db)
     html, bundle = (_bundle_from_dir(de[0], de[1], de[2]) if de else (None, None))
     if html is None:
@@ -296,24 +333,45 @@ def rescore_value(tool, db, commit=True):
     if not res:
         res = heuristic_value(tool, bundle or "")     # 自动逻辑兜底，保证总有分、无需人工
         by = "自动逻辑评估"
-    res["complexity"] = complexity_score(bundle or "")
-    val = blend_value(res)
-    tool.value_score = val
+    _fill_objective(res, tool, db, bundle)
+    tool.value_score = blend_value(res)
     tool.value_detail = json.dumps(dict(res, by=by, at=_now()), ensure_ascii=False)
     tool.updated_at = _now()
     if commit:
         db.commit()
-    return val
+    return tool.value_score
 
 
 def rescore_value_all(db, only_unrated=False):
+    """全量重算价值分：保留已有判断维度（客户/用心/业务），客观维度（复杂度/使用量/迭代）
+    在全体范围内归一化后重新合成。使用量/迭代会随时间变化，故每次都刷新。"""
+    tools = db.query(models.Tool).all()
+    mu = max([(t.usage_count or 0) for t in tools] or [0])
+    mi = max([_iter_raw(t, db) for t in tools] or [1])
     n = 0
-    for t in db.query(models.Tool).all():
-        if only_unrated and (t.value_score is not None and t.value_score >= 0):
-            continue
+    for t in tools:
         try:
-            if rescore_value(t, db, commit=False) is not None:
-                n += 1
+            de = _resolve_dir_entry(t, db)
+            html, bundle = (_bundle_from_dir(de[0], de[1], de[2]) if de else (None, None))
+            if html is None:
+                html, bundle = _http_fallback(t)
+            d, by = {}, None
+            if t.value_detail:
+                try:
+                    d = json.loads(t.value_detail) or {}
+                    by = d.get("by")
+                except Exception:
+                    d = {}
+            if "customer" not in d:          # 还没判断过 → 现评（AI 或逻辑兜底）
+                d = ai_value_score(t, bundle or "") or heuristic_value(t, bundle or "")
+                by = ("AI(%s)" % AI_MODEL) if ai_enabled() else "自动逻辑评估"
+            _fill_objective(d, t, db, bundle, mu, mi)
+            t.value_score = blend_value(d)
+            d["by"] = by or "自动逻辑评估"
+            d["at"] = _now()
+            t.value_detail = json.dumps(d, ensure_ascii=False)
+            t.updated_at = _now()
+            n += 1
         except Exception:
             pass
     db.commit()

@@ -96,7 +96,8 @@ def _ensure_columns():
         "submissions": [("kind", "VARCHAR DEFAULT 'new'"), ("target", "VARCHAR DEFAULT ''")],
         "tools": [("current_version_id", "INTEGER DEFAULT 0"),
                   ("score", "INTEGER DEFAULT -1"), ("score_detail", "TEXT DEFAULT ''"),
-                  ("value_score", "INTEGER DEFAULT -1"), ("value_detail", "TEXT DEFAULT ''")],
+                  ("value_score", "INTEGER DEFAULT -1"), ("value_detail", "TEXT DEFAULT ''"),
+                  ("usage_count", "INTEGER DEFAULT 0")],
         # v2026.2 升级：标准逐字原文 + 财务9项指标测算
         "standards": [("origin", "TEXT DEFAULT ''")],
         "finance": [

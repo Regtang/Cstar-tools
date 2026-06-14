@@ -118,7 +118,7 @@
   /* —— 工具合规评分环 —— */
   .scorewrap{position:absolute;top:20px;right:20px;z-index:2}
   .score{position:relative;width:54px;height:54px;border-radius:50%;cursor:pointer;border:0;padding:0;display:block;
-    background:conic-gradient(var(--sc,#1a9b54) calc(var(--p,0)*3.6deg), #e9eef3 0);transition:transform .18s, box-shadow .18s}
+    background:conic-gradient(var(--sc,#1a9b54) calc(var(--p,0)*3deg), #e9eef3 0);transition:transform .18s, box-shadow .18s}
   .score:hover{transform:scale(1.08);box-shadow:0 8px 20px rgba(15,40,70,.2)}
   .score i{position:absolute;inset:5px;background:#fff;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;font-style:normal}
   .score i b{font-size:17px;font-weight:800;color:var(--ink);line-height:1}
@@ -272,15 +272,16 @@ const PLACEHOLDER={dev:true,name:'更多工具开发中',icon:'+',
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 /* 工具评分数据（slug -> {score, items, name}），供评分明细弹窗使用 */
 const SCORES={};
-function scoreColor(s){return s>=85?'#1a9b54':s>=60?'#f29900':'#e84368';}
+function scoreColor(s){return s>=85?'#1a9b54':s>=60?'#f29900':'#e84368';}        /* 0-100 子项用 */
+function scoreColor120(s){return s>=90?'#1a9b54':s>=72?'#f29900':'#e84368';}      /* 0-120 综合分用：≥90 绿 */
 function scoreRing(t){
   if(typeof t.score!=='number'){
     return `<div class="scorewrap"><button class="score na" title="尚未评分" onclick="openScore(event,'${esc(t.slug)}')"><i><b>—</b></i></button></div>`;
   }
   SCORES[t.slug]={score:t.score,auto:t.autoScore,items:t.scoreItems||[],
     value:(t.valueRated?t.valueScore:null),vdetail:t.valueDetail||{},name:t.name};
-  return `<div class="scorewrap"><button class="score" style="--p:${t.score};--sc:${scoreColor(t.score)}" `+
-    `title="综合评分 ${t.score}/100，点击查看明细" onclick="openScore(event,'${esc(t.slug)}')">`+
+  return `<div class="scorewrap"><button class="score" style="--p:${t.score};--sc:${scoreColor120(t.score)}" `+
+    `title="综合评分 ${t.score}/120，点击查看明细" onclick="openScore(event,'${esc(t.slug)}')">`+
     `<i><b>${t.score}</b><s>分</s></i></button></div>`;
 }
 function cardHtml(t){
@@ -296,9 +297,9 @@ function cardHtml(t){
     `<h3>${esc(t.name)} ${tag}</h3><p>${esc(t.summary)}</p>${go}`;
   if(isEmbed){
     const href=esc((t.entryPath||'').replace('?embed=1',''));
-    return `<a class="card" style="--bar:${t.bar}" href="${href}" data-embed="${esc(t.entryPath)}" data-name="${esc(t.name)}">${inner}</a>`;
+    return `<a class="card" style="--bar:${t.bar}" href="${href}" data-embed="${esc(t.entryPath)}" data-name="${esc(t.name)}" data-slug="${esc(t.slug)}">${inner}</a>`;
   }
-  return `<a class="card" style="--bar:${t.bar}" href="${esc(t.entryPath)}">${inner}</a>`;
+  return `<a class="card" style="--bar:${t.bar}" href="${esc(t.entryPath)}" data-slug="${esc(t.slug)}">${inner}</a>`;
 }
 /* 评分明细弹窗 */
 function openScore(ev,slug){
@@ -306,25 +307,27 @@ function openScore(ev,slug){
   const d=SCORES[slug];const m=document.getElementById('smodal');
   const sh=document.getElementById('sHead');const bd=document.getElementById('sBody');
   if(!d){sh.innerHTML=`<button class="x" onclick="closeScore()">×</button><h4>尚未评分</h4><div class="sub">该工具暂未完成合规评分，稍后将自动评分。</div>`;bd.innerHTML='';m.classList.add('is-open');return;}
-  const col=scoreColor(d.score);
+  const col=scoreColor120(d.score);
   sh.innerHTML=`<button class="x" onclick="closeScore()">×</button><div class="big" style="color:${col}">${d.score}</div>`+
-    `<h4>${esc(d.name)}</h4><div class="sub">综合评分 · 价值 70% + 合规 30%</div>`;
+    `<h4>${esc(d.name)}</h4><div class="sub">综合评分 · 满分 120 ·（价值85% + 合规15%）×1.2</div>`;
   // —— 价值层（高权重）——
   const vd=d.vdetail||{};
   let valueHtml;
   if(typeof d.value==='number'){
     const bar=(lb,v)=>`<div class="sitem"><span class="lb">${lb}</span><span class="pt" style="color:${scoreColor(v)};font-weight:800">${v}</span></div>`;
-    valueHtml=`<p class="legend"><b style="color:#1f2a37">价值分 ${d.value}/100（占综合 70%）</b>　自动评估 = 软件复杂度60% + 客户价值25% + 用心10% + 业务5%。</p>`+
-      bar('客户价值（市场难找到的真需求）',vd.customer||0)+
+    const cv=Math.round(((vd.customer||0)+(vd.usage||0))/2);   // 客户价值（含实际使用）
+    const cf=Math.round(((vd.craft||0)+(vd.iter||0))/2);        // 用心程度（含持续迭代）
+    valueHtml=`<p class="legend"><b style="color:#1f2a37">价值分 ${d.value}/100（占综合 85%）</b>　软件复杂度30% + 客户价值40% + 用心程度25% + 业务5%。</p>`+
       bar('软件复杂度（越复杂、功能越深越高）',vd.complexity||0)+
-      bar('用心程度（认真打磨 vs 套模板交差）',vd.craft||0)+
+      bar('客户价值（真需求 + 实际使用）',cv)+
+      bar('用心程度（认真打磨 + 持续迭代）',cf)+
       bar('业务价值（对实际业务的贡献）',vd.business||0)+
       (vd.note?`<div class="sitem"><span class="lb" style="white-space:pre-wrap">评语：${esc(vd.note)}</span></div>`:'');
   }else{
     valueHtml=`<p class="legend"><b style="color:#e8a33d">价值分待评审</b>　管理员将在后台从客户价值 / 用心程度 / 业务价值三方面评分（占综合分 70%）。当前综合分暂以合规分代替。</p>`;
   }
   bd.innerHTML=valueHtml+
-    `<p class="legend" style="margin-top:16px"><b style="color:#1f2a37">合规底线分 ${typeof d.auto==='number'?d.auto:'—'}/100（占 30%）</b>　《前端统一标准》自动审计：</p>`+
+    `<p class="legend" style="margin-top:16px"><b style="color:#1f2a37">合规底线分 ${typeof d.auto==='number'?d.auto:'—'}/100（占 15%）</b>　《前端统一标准》自动审计：</p>`+
     (d.items||[]).map(it=>`<div class="sitem ${it.ok?'ok':'no'}"><span class="mk">${it.ok?'✓':'×'}</span>`+
       `<span class="lb">${esc(it.label)}</span><span class="pt">${it.got}/${it.max}</span></div>`).join('');
   m.classList.add('is-open');
@@ -342,6 +345,13 @@ function renderCatalog(tools){
     .catch(()=>{document.getElementById('grid').innerHTML='<p style="color:var(--muted);text-align:center">工具清单加载失败，请刷新重试。</p>';});
 })();
 /* 内嵌工具用事件委托打开弹窗（避免内联 onclick 注入） */
+/* 客户使用打点：打开任意工具卡片即 +1（点评分环不算） */
+document.getElementById('grid').addEventListener('click',e=>{
+  if(e.target.closest('.score')) return;
+  const c=e.target.closest('a.card[data-slug]'); if(!c) return;
+  const s=c.getAttribute('data-slug');
+  if(s){try{fetch('/api/tools/'+encodeURIComponent(s)+'/hit',{method:'POST',keepalive:true});}catch(_){}}
+},true);
 document.getElementById('grid').addEventListener('click',e=>{
   const a=e.target.closest('a.card[data-embed]'); if(!a) return;
   e.preventDefault(); openTool(a.getAttribute('data-embed'), a.getAttribute('data-name'));

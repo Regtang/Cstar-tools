@@ -515,7 +515,7 @@ def delete_user(uid: int, db: Session = Depends(database.get_db), user=Depends(_
 
 # ============ 工具目录（注册表驱动；按身份过滤内部/外部） ============
 def _composite(auto, value):
-    """综合分：自动合规分占 30%（及格底线），人工价值分占 70%（高权重）。
+    """综合分：价值分占 85%（主体），自动合规分占 15%（及格底线）。
     价值分未评时，先用自动分作临时分。"""
     a = auto if (auto is not None and auto >= 0) else None
     v = value if (value is not None and value >= 0) else None
@@ -523,7 +523,7 @@ def _composite(auto, value):
         return a
     if a is None:
         a = 0
-    return round(a * 0.3 + v * 0.7)
+    return round((a * 0.15 + v * 0.85) * 1.2)   # 满分 120
 
 
 def _tool_public(t):
@@ -559,6 +559,16 @@ def catalog(db: Session = Depends(database.get_db), user=Depends(auth.optional_u
     if not staff:
         tools = [t for t in tools if t.visibility in ("external", "both")]
     return {"isStaff": staff, "tools": [_tool_public(t) for t in tools]}
+
+
+@app.post("/api/tools/{slug}/hit")
+def tool_hit(slug: str, db: Session = Depends(database.get_db)):
+    """客户使用打点：打开工具时计数（公开，无需登录），作为价值评分的使用量输入。"""
+    t = db.query(models.Tool).filter(models.Tool.slug == slug).first()
+    if t:
+        t.usage_count = (t.usage_count or 0) + 1
+        db.commit()
+    return {"ok": True}
 
 
 @app.post("/api/admin/tools/rescore")
