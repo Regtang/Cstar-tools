@@ -154,9 +154,86 @@
   .sitem .lb{flex:1;color:var(--ink)}
   .sitem .pt{font-weight:700;color:var(--muted);font-size:13px}
   .sitem.no .lb{color:var(--muted)}
+
+  /* ===================== 科技感 / 炫酷动效（保持 Cstar 配色） ===================== */
+  @keyframes gridmove{from{background-position:0 0}to{background-position:46px 46px}}
+  @keyframes auroraSpin{0%{transform:rotate(0) scale(1)}50%{transform:rotate(180deg) scale(1.18)}100%{transform:rotate(360deg) scale(1)}}
+  @keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
+  @keyframes sheen{0%{left:-70%}60%,100%{left:150%}}
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-16px)}}
+  @keyframes blink{0%,100%{opacity:.25}50%{opacity:1}}
+
+  /* HERO：流动光晕 + 粒子网络画布 + 流光标题 */
+  .hero{background:linear-gradient(125deg,#1b2333 0%,#252f45 46%,#22304a 100%)}
+  .hero .hero-fx{position:absolute;inset:0;z-index:1;opacity:.95;pointer-events:none}
+  .hero .deco{z-index:0}
+  .hero .wrap{z-index:2}
+  .hero .glow{content:"";position:absolute;border-radius:50%;filter:blur(72px);z-index:0;pointer-events:none}
+  .hero .glow.g1{width:520px;height:520px;left:-130px;top:-170px;background:radial-gradient(circle,rgba(0,120,146,.85),transparent 70%);animation:auroraSpin 26s linear infinite}
+  .hero .glow.g2{width:480px;height:480px;right:-130px;bottom:-200px;background:radial-gradient(circle,rgba(232,67,104,.7),transparent 70%);animation:auroraSpin 34s linear infinite reverse}
+  .hero .glow.g3{width:360px;height:360px;left:42%;top:30%;background:radial-gradient(circle,rgba(32,199,201,.5),transparent 70%);animation:floaty 9s ease-in-out infinite}
+  .hero h1{background:linear-gradient(100deg,#fff 0%,#bfeaf3 28%,#20c7c9 50%,#fff 72%);background-size:220% auto;
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 7s linear infinite}
+  .eyebrow{background:rgba(32,199,201,.12);border-color:rgba(32,199,201,.5);color:#9bf0f2;backdrop-filter:blur(4px)}
+  .eyebrow::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#20c7c9;margin-right:8px;vertical-align:middle;box-shadow:0 0 8px #20c7c9;animation:blink 1.8s infinite}
+  .btn-red{box-shadow:0 8px 24px rgba(232,67,104,.4)}
+  .btn-red:hover{box-shadow:0 14px 34px rgba(232,67,104,.55)}
+  .btn-ghost{position:relative;overflow:hidden}
+  .btn-ghost::after{content:"";position:absolute;top:0;left:-70%;width:45%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.4),transparent);transform:skewX(-20deg)}
+  .btn-ghost:hover::after{animation:sheen 1s ease}
+
+  /* STATS：动态网格背景 + 流光数字 */
+  .stats{position:relative;overflow:hidden;background:linear-gradient(180deg,#202a3e,#252f45)}
+  .stats::before{content:"";position:absolute;inset:0;pointer-events:none;
+    background-image:linear-gradient(rgba(32,199,201,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(32,199,201,.08) 1px,transparent 1px);
+    background-size:46px 46px;animation:gridmove 7s linear infinite}
+  .stats .wrap{position:relative;z-index:1}
+  .stat b{background:linear-gradient(90deg,#fff,#bfeaf3);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+
+  /* 工具卡：3D 透视 + 玻璃描边 + 光泽扫过 */
+  .grid{perspective:1200px}
+  .card{transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s,border-color .25s;transform-style:preserve-3d;will-change:transform}
+  .card::after{content:"";position:absolute;top:0;left:-70%;width:55%;height:100%;pointer-events:none;opacity:0;z-index:3;
+    background:linear-gradient(100deg,transparent,rgba(255,255,255,.5),transparent);transform:skewX(-18deg);transition:opacity .2s}
+  .card:hover::after{opacity:1;animation:sheen 1.1s ease}
+  .card:hover{box-shadow:0 26px 64px rgba(15,40,70,.2),0 0 0 1px rgba(32,199,201,.3)}
+  .card .ic{transition:transform .25s,box-shadow .25s}
+  .card:hover .ic{box-shadow:0 12px 28px rgba(15,40,70,.28),0 0 22px rgba(32,199,201,.35)}
+
+  /* 滚动揭示 + 标题霓虹下划线 */
+  .reveal{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+  .sec-head h2{position:relative;display:inline-block}
+  .sec-head h2::after{content:"";position:absolute;left:50%;transform:translateX(-50%);bottom:-12px;width:0;height:3px;border-radius:2px;
+    background:linear-gradient(90deg,var(--teal),#20c7c9,var(--red));transition:width .9s ease .15s}
+  .sec-head.in h2::after{width:84px}
+  @media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none}.hero h1{animation:none}*{animation-duration:.001s!important}}
+
+  /* ===================== 拉满增强层（顶部进度条 / 导航收缩 / 打字机 / 跑马灯 / 滚动提示） ===================== */
+  @keyframes mqx{to{transform:translateX(-50%)}}
+  @keyframes caret{0%,100%{opacity:1}50%{opacity:0}}
+  @keyframes wheel{0%{opacity:1;top:7px}80%{opacity:0;top:18px}100%{opacity:0}}
+  #scrollbar{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+    background:linear-gradient(90deg,var(--teal),#20c7c9,var(--red));box-shadow:0 0 10px rgba(32,199,201,.6)}
+  .nav{transition:height .3s,box-shadow .3s}
+  .nav.scrolled .wrap{height:54px}
+  .nav.scrolled{box-shadow:0 8px 26px rgba(15,40,70,.12)}
+  .typed{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#9bf0f2;font-size:15px;
+    margin:4px 0 6px;min-height:24px;letter-spacing:.3px;text-shadow:0 0 12px rgba(32,199,201,.4)}
+  .typed .ct{display:inline-block;width:8px;background:var(--red);margin-left:2px;animation:caret 1s steps(2) infinite}
+  .marquee{overflow:hidden;background:var(--soft);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .mqtrack{display:flex;gap:46px;white-space:nowrap;width:max-content;padding:15px 0;animation:mqx 30s linear infinite}
+  .marquee:hover .mqtrack{animation-play-state:paused}
+  .mqtrack span{font-size:18px;font-weight:800;color:var(--navy);opacity:.5;display:flex;align-items:center;gap:46px}
+  .mqtrack span::after{content:"◆";color:var(--red);font-size:11px}
+  .scrollcue{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);z-index:2;text-align:center;color:#9bf0f2;font-size:11px;letter-spacing:2px;pointer-events:none}
+  .scrollcue .ms{width:22px;height:34px;border:2px solid rgba(255,255,255,.4);border-radius:12px;margin:0 auto 7px;position:relative}
+  .scrollcue .ms::after{content:"";position:absolute;left:50%;transform:translateX(-50%);top:7px;width:3px;height:7px;border-radius:3px;background:#20c7c9;animation:wheel 1.6s infinite}
+  @media(max-width:680px){.scrollcue{display:none}}
 </style>
 </head>
 <body>
+<div id="scrollbar"></div>
 
 <!-- NAV -->
 <div class="nav"><div class="wrap">
@@ -173,6 +250,8 @@
 
 <!-- HERO -->
 <div class="hero">
+  <span class="glow g1"></span><span class="glow g2"></span><span class="glow g3"></span>
+  <canvas class="hero-fx" id="heroFx"></canvas>
   <svg class="deco" viewBox="0 0 1200 500" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
     <g fill="none" stroke="#ffffff" stroke-width="1.4" stroke-dasharray="2 7" stroke-linecap="round">
       <path d="M-50 380 C 250 260, 500 460, 780 300 S 1150 180, 1300 260"/>
@@ -187,11 +266,13 @@
     <span class="eyebrow">Cstar Tools Platform</span>
     <h1>喜事达工具平台<br>进出口供应链数字工具集</h1>
     <p class="lead">一站式访问海关 AEO 合规管理、智能装箱等在线工具。专业、安全、持续进化——让繁琐的关务与物流工作更高效。</p>
+    <div class="typed"><span id="tw"></span><span class="ct">&nbsp;</span></div>
     <div class="btns">
       <a class="btn btn-red" href="/aeo/">进入 AEO 认证平台 →</a>
       <a class="btn btn-ghost" href="/packer/">打开 Cstar 装箱软件</a>
     </div>
   </div>
+  <div class="scrollcue"><div class="ms"></div>SCROLL</div>
 </div>
 
 <!-- STATS -->
@@ -200,6 +281,12 @@
   <div class="stat"><b>13<em>家</em></b><span>旗下子公司</span></div>
   <div class="stat"><b>230<em>+</em></b><span>专业顾问团队</span></div>
   <div class="stat"><b>全球</b><span>多国货代服务网络</span></div>
+</div></div>
+
+<!-- MARQUEE -->
+<div class="marquee" aria-hidden="true"><div class="mqtrack">
+  <span>AEO 合规</span><span>智能装箱</span><span>危化判定</span><span>出口研判</span><span>HS 速查</span><span>单证生成</span><span>税费试算</span><span>EIR 交接单</span>
+  <span>AEO 合规</span><span>智能装箱</span><span>危化判定</span><span>出口研判</span><span>HS 速查</span><span>单证生成</span><span>税费试算</span><span>EIR 交接单</span>
 </div></div>
 
 <!-- TOOLS -->
@@ -453,6 +540,84 @@ function closeTool(){
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTool();});
 document.getElementById('tmodal').addEventListener('click',e=>{if(e.target.id==='tmodal')closeTool();});
+
+/* ===================== 科技感动效 ===================== */
+const REDUCE = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* 1) HERO 粒子网络（青/玫红节点 + 连线），随鼠标轻微扰动 */
+(function particles(){
+  const cv=document.getElementById('heroFx'); if(!cv||REDUCE) return;
+  const ctx=cv.getContext('2d'); let w,h,dpr,pts=[],mx=-999,my=-999,raf;
+  function size(){const r=cv.parentElement.getBoundingClientRect();dpr=Math.min(devicePixelRatio||1,2);
+    w=r.width;h=r.height;cv.width=w*dpr;cv.height=h*dpr;cv.style.width=w+'px';cv.style.height=h+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
+    const n=Math.min(90,Math.round(w*h/13000));pts=[];for(let i=0;i<n;i++)pts.push({x:Math.random()*w,y:Math.random()*h,vx:(Math.random()-.5)*.35,vy:(Math.random()-.5)*.35,r:Math.random()*1.8+.7,c:Math.random()<.18?'232,67,104':'32,199,201'});}
+  function step(){ctx.clearRect(0,0,w,h);
+    for(const p of pts){p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>w)p.vx*=-1;if(p.y<0||p.y>h)p.vy*=-1;
+      const dx=p.x-mx,dy=p.y-my,d2=dx*dx+dy*dy;if(d2<14000){const f=(14000-d2)/14000*0.6;p.x+=dx/Math.sqrt(d2+1)*f;p.y+=dy/Math.sqrt(d2+1)*f;}}
+    for(let i=0;i<pts.length;i++){for(let j=i+1;j<pts.length;j++){const a=pts[i],b=pts[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.sqrt(dx*dx+dy*dy);
+      if(d<118){ctx.strokeStyle='rgba(120,200,210,'+(0.16*(1-d/118))+')';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}}}
+    for(const p of pts){ctx.beginPath();ctx.fillStyle='rgba('+p.c+',.85)';ctx.shadowColor='rgba('+p.c+',.9)';ctx.shadowBlur=6;ctx.arc(p.x,p.y,p.r,0,7);ctx.fill();}
+    ctx.shadowBlur=0;raf=requestAnimationFrame(step);}
+  size();step();
+  addEventListener('resize',()=>{cancelAnimationFrame(raf);size();step();},{passive:true});
+  cv.parentElement.addEventListener('mousemove',e=>{const r=cv.getBoundingClientRect();mx=e.clientX-r.left;my=e.clientY-r.top;});
+  cv.parentElement.addEventListener('mouseleave',()=>{mx=my=-999;});
+})();
+
+/* 2) 滚动揭示：卡片/区块进入视口时上浮淡入（带轻微错峰） */
+(function reveal(){
+  const io=new IntersectionObserver((es)=>{es.forEach(en=>{if(en.isIntersecting){en.target.classList.add('in');io.unobserve(en.target);}});},{threshold:.12});
+  function tag(){
+    document.querySelectorAll('.sec-head').forEach(el=>{el.classList.add('reveal');io.observe(el);});
+    document.querySelectorAll('#grid .card, .stat, .ctaband .wrap > *').forEach((el,i)=>{el.classList.add('reveal');el.style.transitionDelay=(Math.min(i,8)*60)+'ms';io.observe(el);});
+  }
+  if(REDUCE){document.querySelectorAll('.reveal').forEach(e=>e.classList.add('in'));return;}
+  tag();
+  // 工具卡是异步渲染的，等渲染完再补观察
+  const grid=document.getElementById('grid');
+  if(grid)new MutationObserver(()=>{grid.querySelectorAll('.card:not(.reveal)').forEach((el,i)=>{el.classList.add('reveal');el.style.transitionDelay=(Math.min(i,8)*55)+'ms';io.observe(el);});}).observe(grid,{childList:true});
+})();
+
+/* 3) 数字滚动：统计区进入视口时从 0 计数到目标 */
+(function countup(){
+  if(REDUCE) return;
+  const io=new IntersectionObserver((es)=>{es.forEach(en=>{if(!en.isIntersecting)return;io.unobserve(en.target);
+    const b=en.target;const m=(b.textContent||'').match(/^(\D*)(\d+)(.*)$/);if(!m){return;}
+    const pre=m[1],target=+m[2],suf=m[3];let t0=null;
+    const render=(v)=>{b.innerHTML=pre+v+(suf?'<em>'+suf+'</em>':'');};
+    function tick(ts){if(!t0)t0=ts;const p=Math.min((ts-t0)/1100,1);const e=1-Math.pow(1-p,3);render(Math.round(target*e));if(p<1)requestAnimationFrame(tick);else render(target);}
+    requestAnimationFrame(tick);});},{threshold:.4});
+  document.querySelectorAll('.stat b').forEach(b=>io.observe(b));
+})();
+
+/* 4) 卡片 3D 倾斜：鼠标移动时随光标微倾，离开复位 */
+(function tilt(){
+  if(REDUCE||matchMedia('(hover:none)').matches) return;
+  const grid=document.getElementById('grid'); if(!grid) return;
+  grid.addEventListener('mousemove',e=>{const c=e.target.closest('.card');if(!c)return;
+    const r=c.getBoundingClientRect();const px=(e.clientX-r.left)/r.width-.5,py=(e.clientY-r.top)/r.height-.5;
+    c.style.transform=`translateY(-5px) rotateX(${(-py*6).toFixed(2)}deg) rotateY(${(px*8).toFixed(2)}deg)`;});
+  grid.addEventListener('mouseleave',e=>{},true);
+  grid.addEventListener('mouseout',e=>{const c=e.target.closest('.card');if(c&&!c.contains(e.relatedTarget))c.style.transform='';});
+})();
+
+/* 5) 顶部滚动进度条 + 导航滚动收缩 */
+(function(){const sb=document.getElementById('scrollbar'),nav=document.querySelector('.nav');
+  addEventListener('scroll',()=>{const h=document.documentElement;
+    const sc=h.scrollTop/((h.scrollHeight-h.clientHeight)||1);
+    if(sb)sb.style.width=(sc*100)+'%';
+    if(nav)nav.classList.toggle('scrolled',h.scrollTop>30);},{passive:true});})();
+
+/* 6) HERO 打字机：循环展示典型用法 */
+(function(){const el=document.getElementById('tw');if(!el)return;
+  const arr=['> 输入品名，秒得 HS 编码与申报要素','> 一键生成中英双语发票 / 装箱单',
+    '> 自动装柜，3D 可视化利用率','> AEO 45 条标准自评与加分测算'];
+  if(REDUCE){el.textContent=arr[0];return;}
+  let p=0,c=0,del=false;(function t(){const s=arr[p];el.textContent=s.slice(0,c);
+    if(!del&&c<s.length){c++;setTimeout(t,55);}
+    else if(!del){del=true;setTimeout(t,1500);}
+    else if(c>0){c--;setTimeout(t,24);}
+    else{del=false;p=(p+1)%arr.length;setTimeout(t,220);}})();})();
 </script>
 </body>
 </html>
