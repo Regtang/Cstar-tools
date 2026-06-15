@@ -230,6 +230,36 @@
   .scrollcue .ms{width:22px;height:34px;border:2px solid rgba(255,255,255,.4);border-radius:12px;margin:0 auto 7px;position:relative}
   .scrollcue .ms::after{content:"";position:absolute;left:50%;transform:translateX(-50%);top:7px;width:3px;height:7px;border-radius:3px;background:#20c7c9;animation:wheel 1.6s infinite}
   @media(max-width:680px){.scrollcue{display:none}}
+
+  /* 工具卡：跟随鼠标的径向辉光（青色，仅 hover 显示） */
+  .card:hover{background:radial-gradient(230px circle at var(--mx,50%) var(--my,50%),rgba(32,199,201,.16),transparent 58%),#fff}
+
+  /* 英雄区 · 实时数据面板（玻璃拟态） */
+  .hero-panel{position:absolute;top:104px;right:0;width:312px;z-index:3;color:#eaf3f7;
+    background:rgba(20,28,44,.55);border:1px solid rgba(255,255,255,.14);border-radius:16px;
+    padding:18px 18px 15px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    box-shadow:0 24px 60px rgba(0,0,0,.42);animation:floaty 7s ease-in-out infinite}
+  .hero-panel h4{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#9bf0f2;
+    margin:0 0 12px;display:flex;align-items:center;gap:8px;font-weight:700}
+  .hero-panel h4 .live{width:8px;height:8px;border-radius:50%;background:#20c7c9;box-shadow:0 0 10px #20c7c9;animation:blink 1.6s infinite}
+  .hp-row{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+  .hp-row:last-of-type{border-bottom:0}
+  .hp-row .k{font-size:13px;color:#b9c6d6}
+  .hp-row .v{font-size:23px;font-weight:800;color:#fff;background:linear-gradient(90deg,#fff,#bfeaf3);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .hp-foot{margin-top:12px;padding-top:11px;border-top:1px solid rgba(255,255,255,.1);font-size:11px;color:#8fa3b8;display:flex;justify-content:space-between;align-items:center}
+  .hp-foot .ok{color:#51cf66;font-weight:700}
+  .hp-foot .clock{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#9bf0f2}
+  /* 面板轮播多页 + 数字跳动微光 */
+  .hero-panel h4 .hp-dots{margin-left:auto;display:inline-flex;gap:5px}
+  .hp-dots button{width:7px;height:7px;border-radius:50%;border:0;padding:0;cursor:pointer;background:rgba(255,255,255,.25);transition:.2s}
+  .hp-dots button.on{background:#20c7c9;box-shadow:0 0 8px #20c7c9}
+  .hp-body{position:relative;min-height:126px}
+  .hp-page{position:absolute;inset:0;opacity:0;transform:translateY(8px);transition:opacity .5s ease,transform .5s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+  .hp-page.on{opacity:1;transform:none;pointer-events:auto}
+  @keyframes numpulse{0%,100%{text-shadow:0 0 0 rgba(32,199,201,0)}50%{text-shadow:0 0 14px rgba(32,199,201,.75)}}
+  .hp-row .v{animation:numpulse 2.4s ease-in-out infinite}
+  @media(prefers-reduced-motion:reduce){.hp-row .v{animation:none}.hp-page{transition:none}}
+  @media(max-width:1180px){.hero-panel{display:none}}
 </style>
 </head>
 <body>
@@ -271,6 +301,7 @@
       <a class="btn btn-red" href="/aeo/">进入 AEO 认证平台 →</a>
       <a class="btn btn-ghost" href="/packer/">打开 Cstar 装箱软件</a>
     </div>
+    <div class="hero-panel" id="heroPanel" aria-hidden="true"></div>
   </div>
   <div class="scrollcue"><div class="ms"></div>SCROLL</div>
 </div>
@@ -475,12 +506,71 @@ function closeScore(){document.getElementById('smodal').classList.remove('is-ope
 function renderCatalog(tools){
   document.getElementById('grid').innerHTML = tools.map(cardHtml).join('') + cardHtml(PLACEHOLDER);
 }
+/* 英雄区实时数据面板：工具数 / 覆盖部门（取自 /api/catalog）+ 系统健康 + 实时时钟 */
+function _countTo(id,target){const el=document.getElementById(id);if(!el)return;
+  if(typeof REDUCE!=='undefined'&&REDUCE){el.textContent=target;return;}
+  let t0=null;(function tick(ts){if(!t0)t0=ts;const p=Math.min((ts-t0)/900,1);
+    el.textContent=Math.round(target*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(tick);else el.textContent=target;})();}
+function buildHeroPanel(tools){
+  const el=document.getElementById('heroPanel'); if(!el) return;
+  const live=(tools||[]).filter(t=>!t.dev);
+  const depts=new Set(live.map(t=>t.ownerDept).filter(Boolean));
+  /* 分类分布（真实：按 category 统计）*/
+  const catCount={}; live.forEach(t=>{const c=t.category||'通用';catCount[c]=(catCount[c]||0)+1;});
+  const cats=Object.entries(catCount).sort((a,b)=>b[1]-a[1]).slice(0,4);
+  /* 最新加入（真实：catalog 收录顺序，末尾即最新）*/
+  const latest=live.slice(-3).reverse();
+  const row=(k,v,vid)=>`<div class="hp-row"><span class="k">${esc(k)}</span><span class="v"${vid?` id="${vid}"`:''}>${v}</span></div>`;
+  const nameRow=(k,name)=>`<div class="hp-row"><span class="k">${esc(k)}</span><span class="v" style="font-size:13.5px;font-weight:700;-webkit-text-fill-color:#eaf3f7">${esc(name)}</span></div>`;
+  const pages=[
+    row('在线工具','0','hpTools')+row('覆盖部门','0','hpDept')+row('服务网络','<span style="font-size:18px">全球</span>'),
+    '<div class="hp-row"><span class="k">累计调用</span><span class="v" id="hpHits">—</span></div>'+
+      '<div class="hp-row"><span class="k">热门工具</span><span class="v" id="hpTop" style="font-size:13.5px;font-weight:700;-webkit-text-fill-color:#eaf3f7">—</span></div>',
+    cats.map(([c,n])=>row(c+' 类',n)).join(''),
+    latest.map((t,i)=>nameRow('#'+(i+1)+' 最新',t.name)).join('')
+  ];
+  const titles=['概览','吞吐量','分类分布','最新加入'];
+  el.innerHTML=
+    '<h4><span class="live"></span>平台实时 · <span id="hpTitle">概览</span><span class="hp-dots" id="hpDots"></span></h4>'+
+    '<div class="hp-body" id="hpBody">'+pages.map((p,i)=>`<div class="hp-page${i===0?' on':''}">${p}</div>`).join('')+'</div>'+
+    '<div class="hp-foot"><span>系统 <span class="ok" id="hpHealth">检测中…</span></span><span class="clock" id="hpClock">--:--:--</span></div>';
+  const dots=document.getElementById('hpDots');
+  dots.innerHTML=pages.map((_,i)=>`<button type="button" data-i="${i}"${i===0?' class="on"':''} aria-label="第${i+1}页"></button>`).join('');
+  _countTo('hpTools',live.length); _countTo('hpDept',depts.size);
+  /* 吞吐量（真实：后端 /api/stats 汇总 usage_count）*/
+  fetch('/api/stats',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(s=>{
+    if(!s)return;
+    _countTo('hpHits', s.totalHits||0);
+    const tp=document.getElementById('hpTop');
+    if(tp) tp.textContent=(s.top&&s.top[0])?s.top[0].name:'暂无数据';
+  }).catch(()=>{});
+  fetch('/api/health',{cache:'no-store'}).then(r=>r.ok?r.json():null)
+    .then(h=>{const e=document.getElementById('hpHealth'); if(e) e.textContent=(h&&h.status==='ok')?'● 正常运行':'● 未知';})
+    .catch(()=>{const e=document.getElementById('hpHealth'); if(e){e.textContent='● 离线';e.style.color='#ff8787';}});
+  const ck=document.getElementById('hpClock');
+  if(ck){const upd=()=>{ck.textContent=new Date().toLocaleTimeString('zh-CN',{hour12:false});};upd();setInterval(upd,1000);}
+  /* 轮播：自动 4.5s 切换，悬停暂停，圆点可点 */
+  const pageEls=[...el.querySelectorAll('#hpBody .hp-page')];
+  const dotEls=[...dots.querySelectorAll('button')];
+  const ttl=document.getElementById('hpTitle');
+  let idx=0,timer=null;
+  function show(i){idx=(i+pages.length)%pages.length;
+    pageEls.forEach((p,k)=>p.classList.toggle('on',k===idx));
+    dotEls.forEach((d,k)=>d.classList.toggle('on',k===idx));
+    if(ttl)ttl.textContent=titles[idx];}
+  function start(){if(!timer)timer=setInterval(()=>show(idx+1),4500);}
+  function stop(){clearInterval(timer);timer=null;}
+  dotEls.forEach(d=>d.addEventListener('click',()=>{show(+d.dataset.i);stop();start();}));
+  el.addEventListener('mouseenter',stop);
+  el.addEventListener('mouseleave',start);
+  if(!(typeof REDUCE!=='undefined'&&REDUCE)) start();
+}
 (function loadCatalog(){
   let headers={};
   try{const tok=localStorage.getItem('cstar_token')||localStorage.getItem('aeo_token'); if(tok) headers={'Authorization':'Bearer '+tok};}catch(e){}
   fetch('/api/catalog',{headers,cache:'no-store'})
     .then(r=>r.json())
-    .then(d=>renderCatalog(d.tools||[]))
+    .then(d=>{const tools=d.tools||[];renderCatalog(tools);buildHeroPanel(tools);})
     .catch(()=>{document.getElementById('grid').innerHTML='<p style="color:var(--muted);text-align:center">工具清单加载失败，请刷新重试。</p>';});
 })();
 /* 内嵌工具用事件委托打开弹窗（避免内联 onclick 注入） */
@@ -596,7 +686,9 @@ const REDUCE = window.matchMedia && window.matchMedia('(prefers-reduced-motion: 
   const grid=document.getElementById('grid'); if(!grid) return;
   grid.addEventListener('mousemove',e=>{const c=e.target.closest('.card');if(!c)return;
     const r=c.getBoundingClientRect();const px=(e.clientX-r.left)/r.width-.5,py=(e.clientY-r.top)/r.height-.5;
-    c.style.transform=`translateY(-5px) rotateX(${(-py*6).toFixed(2)}deg) rotateY(${(px*8).toFixed(2)}deg)`;});
+    c.style.transform=`translateY(-5px) rotateX(${(-py*6).toFixed(2)}deg) rotateY(${(px*8).toFixed(2)}deg)`;
+    c.style.setProperty('--mx',((px+.5)*100).toFixed(1)+'%');
+    c.style.setProperty('--my',((py+.5)*100).toFixed(1)+'%');});
   grid.addEventListener('mouseleave',e=>{},true);
   grid.addEventListener('mouseout',e=>{const c=e.target.closest('.card');if(c&&!c.contains(e.relatedTarget))c.style.transform='';});
 })();

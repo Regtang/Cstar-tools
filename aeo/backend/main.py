@@ -556,6 +556,25 @@ def tool_hit(slug: str, db: Session = Depends(database.get_db)):
     return {"ok": True}
 
 
+@app.get("/api/stats")
+def public_stats(db: Session = Depends(database.get_db)):
+    """平台公开统计（首页实时面板的吞吐量来源，只读、无需登录）：
+    在线工具数、覆盖部门数、累计调用量（各工具 usage_count 之和）、热门工具 Top3。
+    仅统计对外可见（external/both）的在线工具，避免暴露内部工具。"""
+    q = db.query(models.Tool).filter(models.Tool.status == "online")
+    tools = [t for t in q.all() if t.visibility in ("external", "both")]
+    total_hits = sum((t.usage_count or 0) for t in tools)
+    depts = {t.owner_dept for t in tools if t.owner_dept}
+    top = sorted(tools, key=lambda t: (t.usage_count or 0), reverse=True)[:3]
+    return {
+        "tools": len(tools),
+        "departments": len(depts),
+        "totalHits": total_hits,
+        "top": [{"name": t.name, "hits": (t.usage_count or 0)}
+                for t in top if (t.usage_count or 0) > 0],
+    }
+
+
 @app.post("/api/admin/tools/rescore")
 def admin_rescore_all(db: Session = Depends(database.get_db), user=Depends(_platform)):
     """对所有工具按《前端统一标准》重新自动评分。"""
