@@ -13,6 +13,7 @@
 import os
 import re
 import json
+import hashlib
 import datetime
 
 import database
@@ -191,47 +192,122 @@ AI_BASE = os.environ.get("AI_API_BASE", "").rstrip("/")
 AI_KEY = os.environ.get("AI_API_KEY", "")
 AI_MODEL = os.environ.get("AI_MODEL", "deepseek-chat")
 
-AI_SYS = (
-    "你是喜事达（Cstar）工具平台的资深评审。平台是进出口物流/报关/合规领域的内部+对客户工具集，"
-    "由各部门管理层用 AI 自行开发。请只按 JSON 输出，对一个工具的‘价值’严格打分（每项 0-100 整数）：\n"
-    "- customer 客户价值：是否解决客户真实、且在市场上不易找到的需求；越独特实用越高。\n"
-    "- craft 用心程度：是否认真打磨（完整流程、细节、可用性），还是只套模板/凑几句提示词交差；敷衍的给低分。\n"
-    "- business 业务价值：对喜事达实际业务（获客/效率/专业形象/留存）的贡献。\n"
-    "再给一句 note（中文，50字内）说明理由与改进建议。"
-    "严格输出：{\"customer\":int,\"craft\":int,\"business\":int,\"note\":\"...\"}，不要多余文字。"
-)
+# ============================================================
+#  评分锚定量规（Rubric）—— 解决“同质软件分数不同”的根本机制：
+#  大模型不擅长给稳定的 0-100 绝对分，但擅长对“定义清晰的是/否问题”做判断。
+#  因此：① 把每个价值维度拆成若干条客观可判定的 true/false 标准；
+#       ② 让模型只回答 true/false（多次调用取多数票，抵消 MoE 服务端抖动）；
+#       ③ 分数由代码按“通过条数/总条数”确定性算出。
+#  → 质量相同的工具会勾选出相同的清单 → 得到完全相同的分数，且每分可解释。
+# ============================================================
+RUBRIC = {
+    "customer": [
+        ("pain", "解决真实、高频的进出口/物流/报关/合规业务痛点（不是玩具或纯通用小工具）"),
+        ("scarce", "同等能力在市场上不易免费获得"),
+        ("targeted", "明确面向喜事达客户或具体业务场景，而非泛用"),
+        ("actionable", "能直接产出结果/单据/判断，而非仅做信息展示"),
+    ],
+    "craft": [
+        ("validate", "有输入校验与明确的错误提示"),
+        ("states", "处理了空数据/加载/异常/边界等状态"),
+        ("sample", "提供示例数据或清晰的使用引导"),
+        ("polish", "具备导出、打印、快捷操作、响应式等完善交互细节中的至少两项"),
+        ("structured", "功能成体系、代码组织清晰，而非套模板凑数"),
+    ],
+    "business": [
+        ("acquisition", "有助于获客或对外展示专业形象"),
+        ("efficiency", "显著提升内部效率或可被多部门高频复用"),
+        ("core", "与主营进出口物流/报关/合规强相关"),
+        ("moat", "体现专业壁垒（专业数据、算法、规则库），非随处可得"),
+    ],
+}
+AI_SAMPLES = 3  # 自一致性：每个工具评 3 次，逐条标准取多数票，消除模型服务端非确定性
+
+
+def _build_sys():
+    lines = ["你是喜事达（Cstar）工具平台的资深评审。平台面向进出口物流/报关/合规，"
+             "工具由各部门用 AI 自建。请阅读工具源码，对照下列清单逐条客观判断 true/false"
+             "（必须依据源码事实，不臆测、不打人情分）：", ""]
+    for dim, items in RUBRIC.items():
+        lines.append("【%s】" % dim)
+        for k, desc in items:
+            lines.append("  - %s: %s" % (k, desc))
+        lines.append("")
+    lines.append("再给一句 note（中文，40字内）说明主要依据与改进建议。")
+    lines.append("严格只输出 JSON，键名用上面的英文 key："
+                 "{\"customer\":{\"pain\":true/false,...},\"craft\":{...},\"business\":{...},\"note\":\"...\"}")
+    return "\n".join(lines)
+
+
+AI_SYS = _build_sys()
 
 
 def ai_enabled():
     return bool(AI_BASE and AI_KEY)
 
 
-def ai_value_score(tool, bundle):
-    """调用大模型对工具价值打分；返回 {customer,craft,business,note} 或 None。"""
-    if not ai_enabled():
-        return None
+def _ai_call_checklist(user):
+    """单次调用：返回 {dim:{key:bool}} + note，解析失败返回 None。"""
     import urllib.request
-    content = (bundle or "")[:12000]
-    user = "工具名：%s\n一句话简介：%s\n前端源码片段（用于判断用心程度/功能完整度）：\n%s" % (
-        tool.name, tool.summary or "", content)
     body = json.dumps({
         "model": AI_MODEL,
         "messages": [{"role": "system", "content": AI_SYS}, {"role": "user", "content": user}],
-        "temperature": 0.2, "max_tokens": 400,
+        "temperature": 0, "top_p": 1, "seed": 20260614, "max_tokens": 2000,
     }).encode("utf-8")
     req = urllib.request.Request(AI_BASE + "/chat/completions", data=body,
                                  headers={"Authorization": "Bearer " + AI_KEY, "Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=45) as r:
+        with urllib.request.urlopen(req, timeout=60) as r:
             d = json.loads(r.read().decode("utf-8"))
-        text = d["choices"][0]["message"]["content"]
+        text = d["choices"][0]["message"]["content"] or ""
+        if "</think>" in text:
+            text = text.rsplit("</think>", 1)[-1]
+        text = text.replace("```json", "").replace("```", "")
         m = re.search(r"\{.*\}", text, re.S)
         obj = json.loads(m.group(0))
-        cl = lambda x: max(0, min(100, int(round(float(x)))))
-        return {"customer": cl(obj.get("customer", 0)), "craft": cl(obj.get("craft", 0)),
-                "business": cl(obj.get("business", 0)), "note": (obj.get("note") or "")[:200]}
+        out = {}
+        for dim, items in RUBRIC.items():
+            sub = obj.get(dim) or {}
+            if not isinstance(sub, dict):
+                return None
+            out[dim] = {k: bool(sub.get(k)) for k, _ in items}
+        out["note"] = (obj.get("note") or "")[:200]
+        return out
     except Exception:
         return None
+
+
+def ai_value_score(tool, bundle):
+    """量规清单评分：多次调用取多数票，代码按通过条数算分 → 同质工具同分、可解释。
+    返回 {customer,craft,business,note,checks} 或 None。"""
+    if not ai_enabled():
+        return None
+    # 量规为是/否判断，60K 字符足以覆盖工具核心逻辑；相比喂 20 万字符，3 次取样更快更省。
+    content = (bundle or "")[:60000]
+    user = "工具名：%s\n一句话简介：%s\n前端核心源码：\n%s" % (
+        tool.name, tool.summary or "", content)
+    samples = []
+    for _ in range(AI_SAMPLES):
+        r = _ai_call_checklist(user)
+        if r:
+            samples.append(r)
+    if not samples:
+        return None
+    res, checks = {}, {}
+    n = len(samples)
+    for dim, items in RUBRIC.items():
+        passed = 0
+        for k, _ in items:
+            votes = sum(1 for s in samples if s[dim].get(k))
+            ok = votes * 2 > n          # 严格多数，平票取 False（从严）
+            checks["%s.%s" % (dim, k)] = ok
+            if ok:
+                passed += 1
+        res[dim] = int(round(100 * passed / len(items)))
+    note = next((s.get("note") for s in samples if s.get("note")), "")
+    res["note"] = note
+    res["checks"] = checks
+    return res
 
 
 # —— 逻辑评估（无大模型 key 时的自动兜底）：按工具领域价值 + 实现体量自动估分 ——
@@ -322,20 +398,158 @@ def _fill_objective(d, tool, db, bundle, mu=None, mi=None):
     return d
 
 
+def _bundle_hash(bundle):
+    """工具源码内容指纹：相同源码 → 相同哈希。"""
+    return hashlib.sha1((bundle or "").encode("utf-8", "ignore")).hexdigest()
+
+
+def _cached_judgment(db, h, exclude_id=None):
+    """查是否已有同源码（同哈希）工具的 AI 判分，可直接复用，保证同质同分。"""
+    if not h:
+        return None
+    for t in db.query(models.Tool).all():
+        if exclude_id and t.id == exclude_id:
+            continue
+        if not t.value_detail:
+            continue
+        try:
+            d = json.loads(t.value_detail)
+        except Exception:
+            continue
+        if d.get("src_hash") == h and "customer" in d and (d.get("by") or "").startswith("AI("):
+            return {"customer": d["customer"], "craft": d["craft"],
+                    "business": d["business"], "note": d.get("note", "")}
+    return None
+
+
+# ============================================================
+#  确定性量规检测器 —— 根治“同质软件打分差异”的核心：
+#  价值的判断维度（客户价值/用心程度/业务价值）不再交给非确定性的大模型，
+#  而是用代码对源码做静态分析，逐条客观检测每个量规标准是否满足。
+#  → 同一份源码必然检出相同特征 → 必然得到完全相同的分数（可复现、可解释、即时、免费）。
+# ============================================================
+# 进出口/物流领域关键词（已收紧：去掉“税/箱/认证/合规/贸易/申报”等过宽词，改用专指术语，
+# 避免“个税计算器/世界公共假期”等通用工具被误判为进出口强相关）。
+_DOMAIN_KW = ["进出口", "报关", "海关", "关务", "集装箱", "危化", "危险品", "HS编码", "退税",
+              "单证", "AEO", "货代", "清关", "保税", "提单", "报检", "原产地", "归类",
+              "申报要素", "完税", "装箱", "配载", "运价", "车型", "证照", "税则", "铅封",
+              "船公司", "UN编号", "CAS号", "商品编码", "海运", "空运", "监管证件", "物流"]
+
+
+def _has(b, pats):
+    return any(re.search(p, b, re.I) for p in pats)
+
+
+def _count(b, pats):
+    """命中的不同标准条数（每个 pattern 命中计 1）。"""
+    return sum(1 for p in pats if re.search(p, b, re.I))
+
+
+def _detect_checks(tool, bundle):
+    """对源码做静态分析，逐条判定量规标准（已收紧门槛：多数标准要求多重信号，避免人人 100）。"""
+    b = bundle or ""
+    blen = len(b)
+    name_sum = (tool.name or "") + " " + (tool.summary or "")
+    domain = any(k in name_sum for k in _DOMAIN_KW) or any(k in b for k in _DOMAIN_KW)
+    funcs = len(re.findall(r"\bfunction\b|=>", b))
+    tables = len(re.findall(r"<table|<canvas|<svg", b, re.I))
+    has_api = bool(re.search(r"fetch\(|/api/|XMLHttpRequest|axios", b, re.I))
+    datarows = len(re.findall(r"\},\s*\{", b))                 # 内置数据/规则库的体量信号
+    # polish：要求多种细节同时具备（导出打印 / 响应式 / 快捷键 / 本地保存 / 可视化 / 复制）
+    io = 1 if _has(b, [r"window\.print", r"导出", r"下载", r"xlsx", r"csv", r"PDF",
+                       r"打印", r"saveAs", r"toBlob"]) else 0
+    resp = 1 if re.search(r"@media", b) else 0
+    kbd = 1 if _has(b, [r"keydown", r"keyup", r"快捷键", r"addEventListener\(\s*['\"]key"]) else 0
+    store = 1 if _has(b, [r"localStorage", r"sessionStorage"]) else 0
+    viz = 1 if tables >= 1 else 0
+    clip = 1 if _has(b, [r"clipboard", r"复制"]) else 0
+    polish = io + resp + kbd + store + viz + clip
+    validate_cnt = _count(b, [r"校验", r"required", r"必填", r"isNaN", r"\.test\(",
+                              r"pattern\s*=", r"不能为空", r"无效", r"请输入有效", r"超出",
+                              r"请选择", r"请填写"])
+    states_cnt = _count(b, [r"try\s*\{", r"catch\s*\(", r"暂无", r"没有数据", r"加载",
+                            r"loading", r"无数据", r"异常", r"出错", r"未找到", r"请先"])
+    compute = _has(b, [r"calc\(", r"计算", r"测算", r"求解", r"生成", r"匹配", r"换算", r"估算"])
+    render = _has(b, [r"getElementById\(['\"]result", r"innerHTML", r"<canvas", r"\brender", r"appendChild"])
+    return {
+        "customer.pain": domain,                                            # 进出口真实痛点
+        "customer.scarce": has_api or blen > 80000 or tables >= 3 or datarows > 60,  # 专业壁垒/数据
+        "customer.targeted": any(s in name_sum for s in ("喜事达", "Cstar", "cstar", "客户", "供应商")),
+        "customer.actionable": compute and render,                          # 真有计算且产出结果
+        "craft.validate": validate_cnt >= 2,                                # 多重校验
+        "craft.states": states_cnt >= 2,                                    # 多种状态处理
+        "craft.sample": _has(b, [r"示例", r"filldemo", r"demo", r"演示", r"测试数据"]),
+        "craft.polish": polish >= 3,                                        # 至少 3 类细节
+        "craft.structured": funcs >= 20 and blen >= 15000,                  # 真有体量的代码
+        "business.acquisition": (any(s in (name_sum + b) for s in ("喜事达", "官网", "400-", "400 "))
+                                 and tool.visibility in ("both", "external")),
+        "business.efficiency": _count(b, [r"导出", r"台账", r"历史", r"批量", r"记录", r"保存", r"打印"]) >= 2,
+        "business.core": domain,
+        "business.moat": has_api or _count(b, [r"求解", r"测算", r"配载", r"算法", r"规则库",
+                          r"税则", r"引擎", r"3D", r"three", r"<canvas", r"<svg"]) >= 2,
+    }
+
+
+def _dims_from_checks(checks):
+    out = {}
+    for dim, items in RUBRIC.items():
+        passed = sum(1 for k, _ in items if checks.get("%s.%s" % (dim, k)))
+        out[dim] = int(round(100 * passed / len(items)))
+    return out
+
+
+def _complexity_cap(cx):
+    """复杂度硬门槛：功能过于简单的工具，价值判断维度封顶（落实‘复杂度是高分的硬性条件’）。"""
+    if cx < 15:
+        return 50
+    if cx < 30:
+        return 70
+    if cx < 45:
+        return 85
+    return 100
+
+
+def value_judgment(tool, bundle):
+    """价值判断三维（确定性）：量规检测 + 复杂度硬上限。返回 {customer,craft,business,checks,cap}。"""
+    checks = _detect_checks(tool, bundle)
+    dims = _dims_from_checks(checks)
+    cap = _complexity_cap(complexity_score(bundle or ""))
+    for k in ("customer", "craft", "business"):
+        dims[k] = min(dims[k], cap)
+    dims["checks"] = checks
+    dims["cap"] = cap
+    return dims
+
+
+_CHECK_LABEL = {
+    "craft.validate": "输入校验与错误提示", "craft.states": "空/加载/异常状态处理",
+    "craft.sample": "示例数据/使用引导", "craft.polish": "导出·打印·响应式等细节",
+    "craft.structured": "功能体系化（非套模板）", "customer.scarce": "专业壁垒/数据接入",
+    "customer.actionable": "可直接产出结果", "business.moat": "算法/规则库等护城河",
+}
+
+
+def _det_note(checks):
+    fails = [lab for k, lab in _CHECK_LABEL.items() if not checks.get(k)]
+    if not fails:
+        return "各项质量标准均达标，完成度高。"
+    return "建议补强：" + "、".join(fails[:4]) + "。"
+
+
 def rescore_value(tool, db, commit=True):
-    """读取工具源码 → 价值评分（判断维度 AI/逻辑给，客观维度系统算）→ 写 value_score/value_detail。"""
+    """价值评分（确定性）：判断维度由代码静态分析逐条检测，客观维度由系统计算。
+    全程不依赖大模型 → 同一份源码必得完全相同的分数，彻底消除‘同质软件打分差异’。"""
     de = _resolve_dir_entry(tool, db)
     html, bundle = (_bundle_from_dir(de[0], de[1], de[2]) if de else (None, None))
     if html is None:
         html, bundle = _http_fallback(tool)
-    res = ai_value_score(tool, bundle or "")
-    by = "AI(%s)" % AI_MODEL
-    if not res:
-        res = heuristic_value(tool, bundle or "")     # 自动逻辑兜底，保证总有分、无需人工
-        by = "自动逻辑评估"
+    res = value_judgment(tool, bundle or "")
+    res["note"] = _det_note(res["checks"])
+    res["src_hash"] = _bundle_hash(bundle or "")
     _fill_objective(res, tool, db, bundle)
     tool.value_score = blend_value(res)
-    tool.value_detail = json.dumps(dict(res, by=by, at=_now()), ensure_ascii=False)
+    tool.value_detail = json.dumps(dict(res, by="确定性量规·代码静态分析", at=_now()),
+                                   ensure_ascii=False)
     tool.updated_at = _now()
     if commit:
         db.commit()
@@ -343,8 +557,8 @@ def rescore_value(tool, db, commit=True):
 
 
 def rescore_value_all(db, only_unrated=False):
-    """全量重算价值分：保留已有判断维度（客户/用心/业务），客观维度（复杂度/使用量/迭代）
-    在全体范围内归一化后重新合成。使用量/迭代会随时间变化，故每次都刷新。"""
+    """全量重算价值分（确定性）：判断维度由代码静态分析逐条检测，客观维度（复杂度/使用量/迭代）
+    在全体范围内归一化后合成。全程不依赖大模型 → 同源码必同分，结果可复现。"""
     tools = db.query(models.Tool).all()
     mu = max([(t.usage_count or 0) for t in tools] or [0])
     mi = max([_iter_raw(t, db) for t in tools] or [1])
@@ -355,19 +569,12 @@ def rescore_value_all(db, only_unrated=False):
             html, bundle = (_bundle_from_dir(de[0], de[1], de[2]) if de else (None, None))
             if html is None:
                 html, bundle = _http_fallback(t)
-            d, by = {}, None
-            if t.value_detail:
-                try:
-                    d = json.loads(t.value_detail) or {}
-                    by = d.get("by")
-                except Exception:
-                    d = {}
-            if "customer" not in d:          # 还没判断过 → 现评（AI 或逻辑兜底）
-                d = ai_value_score(t, bundle or "") or heuristic_value(t, bundle or "")
-                by = ("AI(%s)" % AI_MODEL) if ai_enabled() else "自动逻辑评估"
+            d = value_judgment(t, bundle or "")
+            d["note"] = _det_note(d["checks"])
+            d["src_hash"] = _bundle_hash(bundle or "")
             _fill_objective(d, t, db, bundle, mu, mi)
             t.value_score = blend_value(d)
-            d["by"] = by or "自动逻辑评估"
+            d["by"] = "确定性量规·代码静态分析"
             d["at"] = _now()
             t.value_detail = json.dumps(d, ensure_ascii=False)
             t.updated_at = _now()

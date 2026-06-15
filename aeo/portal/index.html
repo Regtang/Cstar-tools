@@ -112,8 +112,16 @@
   /* —— 现代化增强 —— */
   .hero h1{background:linear-gradient(90deg,#fff 60%,#bfeaf3);-webkit-background-clip:text;background-clip:text}
   .card{border-radius:20px}
-  .card .ic{box-shadow:0 8px 20px rgba(15,40,70,.18)}
+  .card .ic{box-shadow:0 10px 22px rgba(15,40,70,.20)}
+  .card .ic svg{display:block}
+  .card:hover .ic{transform:translateY(-2px) rotate(-3deg);transition:.25s}
   .grid{gap:26px}
+  /* —— 部门 / 开发人员 标签 —— */
+  .card .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .card .meta .m-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;
+    color:#5a6b7e;background:#f3f6fa;border:1px solid #e6edf4;border-radius:999px;padding:4px 11px;line-height:1.4}
+  .card .meta .m-pill b{color:#2b3a4d;font-weight:700}
+  .card .meta .m-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--teal)}
 
   /* —— 工具合规评分环 —— */
   .scorewrap{position:absolute;top:20px;right:20px;z-index:2}
@@ -284,22 +292,66 @@ function scoreRing(t){
     `title="综合评分 ${t.score}/120，点击查看明细" onclick="openScore(event,'${esc(t.slug)}')">`+
     `<i><b>${t.score}</b><s>分</s></i></button></div>`;
 }
+/* —— 品类主题色：同品类统一配色；通用品类按工具名散列取色，避免千篇一律 —— */
+const CAT_THEME={'合规':['#0e7490','#22b8cf'],'物流':['#e8553b','#f59f00'],'报关':['#2f4b7c','#4dabf7'],
+  '财务':['#b45309','#f59f00'],'单证':['#6741d9','#9775fa'],'关务':['#0f766e','#20c997']};
+const GEN_PALETTE=[['#2f6fed','#5b8def'],['#7048e8','#9775fa'],['#c2255c','#f06595'],['#0c8599','#22b8cf'],
+  ['#2b8a3e','#51cf66'],['#d9480f','#ff922b'],['#5f3dc4','#7950f2'],['#1864ab','#4dabf7'],['#a61e4d','#e64980'],['#087f5b','#20c997']];
+function _hash(s){let h=0;for(let i=0;i<String(s).length;i++)h=(h*31+s.charCodeAt(i))>>>0;return h;}
+function theme(t){return CAT_THEME[t.category]||GEN_PALETTE[_hash(t.slug||t.name||'x')%GEN_PALETTE.length];}
+/* —— 抽象工具图标（线性 SVG，按关键词/品类匹配，替代文字图标）—— */
+const ICONS={
+  shield:'<path d="M12 3l7 3v5c0 4.6-3.1 7.8-7 9-3.9-1.2-7-4.4-7-9V6z"/><path d="M8.5 12l2.3 2.3 4.7-4.6"/>',
+  truck:'<path d="M3 6h10v9H3z"/><path d="M13 9h4l3 3v3h-7z"/><circle cx="7" cy="17.5" r="1.5"/><circle cx="17.3" cy="17.5" r="1.5"/>',
+  cube:'<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>',
+  doc:'<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M10 12h5M10 16h5"/>',
+  calc:'<rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 7h6"/><path d="M9.5 11h0M14.5 11h0M9.5 15h0M14.5 15h0"/>',
+  calendar:'<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4"/>',
+  scan:'<path d="M4 8V6a2 2 0 012-2h2M20 8V6a2 2 0 00-2-2h-2M4 16v2a2 2 0 002 2h2M20 16v2a2 2 0 01-2 2h-2"/><path d="M7.5 8.5v7M11 8.5v7M14.5 8.5v7"/>',
+  container:'<rect x="3" y="7" width="18" height="10" rx="1"/><path d="M7 7v10M11 7v10M15 7v10M19 7v10"/>',
+  chart:'<path d="M4 4v16h16"/><path d="M8 16v-4M12 16V8M16 16v-7"/>',
+  hazard:'<path d="M12 4l9 16H3z"/><path d="M12 10v4.5M12 17.4h0"/>',
+  stamp:'<path d="M9.5 9a2.5 2.5 0 115 0c0 1.8-1.3 2.3-1.3 3.5h-2.4C10.8 11.3 9.5 10.8 9.5 9z"/><path d="M6 19h12M8 16h8v3H8z"/>',
+  cert:'<rect x="4" y="4" width="16" height="11" rx="1.5"/><path d="M8 8h8M8 11h5"/><circle cx="12" cy="18" r="2"/><path d="M10.6 19.4l-1 2.4 2.4-1 2.4 1-1-2.4"/>',
+  food:'<path d="M7 3v7a2 2 0 01-2 2 2 2 0 002 2v7M7 3v6M5 3v6M9 3v6"/><path d="M17 3c-1.6 0-2.6 2-2.6 5s1 4 2.6 4v9"/>',
+  grid:'<rect x="4" y="4" width="6" height="6" rx="1.2"/><rect x="14" y="4" width="6" height="6" rx="1.2"/><rect x="4" y="14" width="6" height="6" rx="1.2"/><rect x="14" y="14" width="6" height="6" rx="1.2"/>'};
+function iconKey(t){
+  const n=(t.name||'')+(t.summary||'');
+  const kw=[[/集装箱|EIR|交接单/,'container'],[/车型|整车|货车|运输/,'truck'],
+    [/发票|装箱单|提单|单证/,'doc'],[/装箱|配载|箱量|堆叠/,'cube'],
+    [/危化|危险品|MSDS|\bUN\b/,'hazard'],[/退税|关税|完税|税费|个税|增值税/,'calc'],[/假期|节假|日历/,'calendar'],
+    [/HS|编码|归类|速查/,'scan'],[/运价|智算|测算|价格/,'chart'],[/证照|证书|执照/,'cert'],
+    [/AEO|认证|合规|审核|财务指标/,'shield'],[/报关|申报|风险|研判/,'stamp'],
+    [/食品|入关|标签/,'food'],[/求解|规划/,'calc']];
+  for(const [re,k] of kw){ if(re.test(n)) return k; }
+  return {'合规':'shield','物流':'truck','报关':'stamp','财务':'calc','单证':'doc','关务':'stamp'}[t.category]||'grid';
+}
+function iconSvg(t){
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" width="27" height="27">${ICONS[iconKey(t)]}</svg>`;
+}
 function cardHtml(t){
   if(t.dev){
-    return `<div class="card disabled" style="--bar:${t.bar}"><div class="ic" style="background:${t.color}">${t.icon}</div>`+
+    return `<div class="card disabled" style="--bar:linear-gradient(90deg,#8a99ab,#b8c2cf)"><div class="ic" style="background:linear-gradient(135deg,#8a99ab,#b8c2cf)">${iconSvg({category:'通用'})}</div>`+
       `<h3>${esc(t.name)} <span class="tag t-dev">开发中</span></h3><p>${esc(t.summary)}</p><span class="go">敬请期待</span></div>`;
   }
+  const th=theme(t), c1=th[0], c2=th[1];
+  const bg=`linear-gradient(135deg,${c1},${c2})`, bar=`linear-gradient(90deg,${c1},${c2})`;
   const intTag = t.visibility==='internal' ? ' <span class="tag t-int">内部</span>' : '';
   const tag='<span class="tag t-live">● 已上线</span>'+intTag;
   const isEmbed = /[?&]embed=1/.test(t.entryPath||'');
-  const go=`<span class="go">${isEmbed?'打开工具 →':'进入工具 →'}</span>`;
-  const inner=scoreRing(t)+`<div class="ic" style="background:${t.color}">${esc(t.icon)}</div>`+
-    `<h3>${esc(t.name)} ${tag}</h3><p>${esc(t.summary)}</p>${go}`;
+  const go=`<span class="go" style="color:${c1}">${isEmbed?'打开工具 →':'进入工具 →'}</span>`;
+  /* 部门 / 开发人员（评分仍仅在管理后台展示，前台不显示分数）*/
+  const pills=[];
+  if(t.ownerDept) pills.push(`<span class="m-pill"><span class="dot" style="background:${c1}"></span>部门 · <b>${esc(t.ownerDept)}</b></span>`);
+  if(t.developer) pills.push(`<span class="m-pill"><span class="dot" style="background:${c1}"></span>开发 · <b>${esc(t.developer)}</b></span>`);
+  const meta = pills.length?`<div class="meta">${pills.join('')}</div>`:'';
+  const inner=`<div class="ic" style="background:${bg}">${iconSvg(t)}</div>`+
+    `<h3>${esc(t.name)} ${tag}</h3><p>${esc(t.summary||'')}</p>${meta}${go}`;
   if(isEmbed){
     const href=esc((t.entryPath||'').replace('?embed=1',''));
-    return `<a class="card" style="--bar:${t.bar}" href="${href}" data-embed="${esc(t.entryPath)}" data-name="${esc(t.name)}" data-slug="${esc(t.slug)}">${inner}</a>`;
+    return `<a class="card" style="--bar:${bar}" href="${href}" data-embed="${esc(t.entryPath)}" data-name="${esc(t.name)}" data-slug="${esc(t.slug)}">${inner}</a>`;
   }
-  return `<a class="card" style="--bar:${t.bar}" href="${esc(t.entryPath)}" data-slug="${esc(t.slug)}">${inner}</a>`;
+  return `<a class="card" style="--bar:${bar}" href="${esc(t.entryPath)}" data-slug="${esc(t.slug)}">${inner}</a>`;
 }
 /* 评分明细弹窗 */
 function openScore(ev,slug){
@@ -318,10 +370,10 @@ function openScore(ev,slug){
     const cv=Math.round(((vd.customer||0)+(vd.usage||0))/2);   // 客户价值（含实际使用）
     const cf=Math.round(((vd.craft||0)+(vd.iter||0))/2);        // 用心程度（含持续迭代）
     valueHtml=`<p class="legend"><b style="color:#1f2a37">价值分 ${d.value}/100（占综合 85%）</b>　软件复杂度30% + 客户价值40% + 用心程度25% + 业务5%。</p>`+
-      bar('软件复杂度（越复杂、功能越深越高）',vd.complexity||0)+
-      bar('客户价值（真需求 + 实际使用）',cv)+
-      bar('用心程度（认真打磨 + 持续迭代）',cf)+
-      bar('业务价值（对实际业务的贡献）',vd.business||0)+
+      bar('软件复杂度',vd.complexity||0)+
+      bar('客户价值',cv)+
+      bar('用心程度',cf)+
+      bar('业务价值',vd.business||0)+
       (vd.note?`<div class="sitem"><span class="lb" style="white-space:pre-wrap">评语：${esc(vd.note)}</span></div>`:'');
   }else{
     valueHtml=`<p class="legend"><b style="color:#e8a33d">价值分待评审</b>　管理员将在后台从客户价值 / 用心程度 / 业务价值三方面评分（占综合分 70%）。当前综合分暂以合规分代替。</p>`;

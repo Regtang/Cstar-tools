@@ -527,27 +527,12 @@ def _composite(auto, value):
 
 
 def _tool_public(t):
-    auto = t.score if (t.score is not None and t.score >= 0) else None
-    value = t.value_score if (t.value_score is not None and t.value_score >= 0) else None
-    items = []
-    if t.score_detail:
-        try:
-            items = (json.loads(t.score_detail) or {}).get("items", [])
-        except Exception:
-            items = []
-    vdetail = {}
-    if t.value_detail:
-        try:
-            vdetail = json.loads(t.value_detail) or {}
-        except Exception:
-            vdetail = {}
+    # 对外门户目录：不再返回任何评分字段（评分只在平台管理员后台 /api/admin/tools 展示，
+    # 避免分数出现在客户可见的前台或网络响应里，影响客户使用与观感）。
     return {"slug": t.slug, "name": t.name, "category": t.category, "summary": t.summary,
             "icon": t.icon, "color": t.color, "bar": t.bar, "visibility": t.visibility,
             "entryKind": t.entry_kind, "entryPath": t.entry_path,
-            "score": _composite(auto, value),       # 综合分（卡片显示）
-            "autoScore": auto, "scoreItems": items,  # 自动合规层
-            "valueScore": value, "valueDetail": vdetail,  # 人工价值层
-            "valueRated": value is not None}
+            "ownerDept": t.owner_dept or "", "developer": getattr(t, "developer", "") or ""}
 
 
 @app.get("/api/catalog")
@@ -669,7 +654,7 @@ def admin_update_tool(tid: int, data: dict = Body(...), db: Session = Depends(da
     t = db.get(models.Tool, tid)
     if not t:
         raise HTTPException(404, "工具不存在")
-    for k in ("name", "category", "summary", "owner_dept", "icon", "color", "bar",
+    for k in ("name", "category", "summary", "owner_dept", "developer", "icon", "color", "bar",
               "visibility", "status", "entry_kind", "entry_path", "sort_order"):
         if k in data:
             setattr(t, k, data[k])
@@ -829,6 +814,27 @@ def _safe_extract(zip_path, dest):
             for e in os.listdir(inner):
                 shutil.move(os.path.join(inner, e), os.path.join(dest, e))
             shutil.rmtree(inner, ignore_errors=True)
+    # 兜底：技能包（SKILL.md + assets/*.html）无 index.html，但常自带一份成品 HTML 工具。
+    # 自动把体量最大、结构完整的整页 HTML 提升为 index.html，使技能包也能一键批准发布。
+    if not os.path.exists(os.path.join(dest, "index.html")):
+        best, best_size = None, -1
+        for root, dirs, files in os.walk(dest):
+            dirs[:] = [d for d in dirs if not d.startswith("__MACOSX")]
+            for fn in files:
+                if not fn.lower().endswith((".html", ".htm")):
+                    continue
+                fp = os.path.join(root, fn)
+                try:
+                    txt = open(fp, "r", encoding="utf-8", errors="ignore").read()
+                except Exception:
+                    continue
+                low = txt.lower()
+                if "<html" not in low or "</body>" not in low:
+                    continue  # 仅接受完整整页文档
+                if len(txt) > best_size:
+                    best, best_size = fp, len(txt)
+        if best:
+            shutil.copyfile(best, os.path.join(dest, "index.html"))
     if not os.path.exists(os.path.join(dest, "index.html")):
         raise HTTPException(400, "压缩包内未找到 index.html（工具入口）")
 
@@ -880,10 +886,17 @@ def approve_submission(sid: int, data: dict = Body(default={}),
             raise HTTPException(400, f"未找到要更新的工具：{s.target}")
         slug = tool.slug
     else:
-        tool = None
-        slug = _slugify(data.get("slug") or s.name)
-        if db.query(models.Tool).filter(models.Tool.slug == slug).first():
-            slug = slug + "-" + uuid.uuid4().hex[:4]
+        # 去重根因：新提交若已存在同名工具，则视为更新该工具（替换版本），不再新建副本——
+        # 杜绝重复点击“批准并发布”或重复上传同一工具时堆叠出多份一模一样的工具。
+        existing = db.query(models.Tool).filter(models.Tool.name == s.name).first()
+        if existing:
+            tool = existing
+            slug = existing.slug
+        else:
+            tool = None
+            slug = _slugify(data.get("slug") or s.name)
+            if db.query(models.Tool).filter(models.Tool.slug == slug).first():
+                slug = slug + "-" + uuid.uuid4().hex[:4]
 
     version = (s.version or "").strip() or datetime.datetime.now(TZ_CN).strftime("v%Y%m%d-%H%M%S")
     rel = f"tools/{slug}/{version}"
@@ -895,7 +908,8 @@ def approve_submission(sid: int, data: dict = Body(default={}),
     # 解压成功后才落库
     if tool is None:
         tool = models.Tool(
-            slug=slug, name=s.name, summary=s.desc, owner_dept=s.developer,
+            slug=slug, name=s.name, summary=s.desc,
+            owner_dept=data.get("dept", ""), developer=s.developer,
             category=data.get("category", "通用"),
             visibility=data.get("visibility", "both"),
             icon=(data.get("icon") or (s.name[:2] if s.name else "工具")),

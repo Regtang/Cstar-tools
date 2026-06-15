@@ -187,7 +187,8 @@ class Tool(Base):
     name = Column(String, default="")
     category = Column(String, default="通用")
     summary = Column(Text, default="")                  # 一句话说明
-    owner_dept = Column(String, default="")
+    owner_dept = Column(String, default="")             # 归属部门
+    developer = Column(String, default="")              # 开发人员（个人，与部门分开展示）
     icon = Column(String, default="工具")               # 卡片图标字
     color = Column(String, default="linear-gradient(135deg,#007892,#0a9bbd)")  # 卡片主题色
     bar = Column(String, default="linear-gradient(90deg,#007892,#0a9bbd)")     # 顶部条

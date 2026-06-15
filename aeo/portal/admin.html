@@ -180,8 +180,16 @@ async function loadTools() {
     return `
     <div class="sub" id="tool-${t.id}">
       <h3>${esc(t.name)} <span class="cs-badge cs-badge-info">${esc(t.slug)}</span></h3>
-      <div class="meta">分类：${esc(t.category)}　|　入口：${esc(t.entry_kind)} ${esc(t.entry_path || '')}　|　负责人：${esc(t.owner_dept || '-')}</div>
-      <div class="meta">合规自动分（占30%）：<b>${auto}</b>　|　人工价值分（占70%）：<b>${val}</b></div>
+      <div class="meta">分类：${esc(t.category)}　|　入口：${esc(t.entry_kind)} ${esc(t.entry_path || '')}</div>
+      <div class="meta">合规自动分（占15%）：<b>${auto}</b>　|　价值分（占85%）：<b>${val}</b></div>
+      <div class="cs-actions" style="align-items:center;gap:8px;margin-top:8px">
+        <span style="color:var(--cs-muted);font-size:13px">部门</span>
+        <input class="cs-input" style="width:150px" value="${esc(t.owner_dept || '')}" placeholder="如 关务部"
+          onchange="updTool(${t.id},'owner_dept',this.value)">
+        <span style="color:var(--cs-muted);font-size:13px">开发人员</span>
+        <input class="cs-input" style="width:150px" value="${esc(t.developer || '')}" placeholder="如 张三"
+          onchange="updTool(${t.id},'developer',this.value)">
+      </div>
       <div class="cs-actions" style="align-items:center">
         可见性
         <select class="cs-select" style="width:auto" onchange="updTool(${t.id},'visibility',this.value)">

@@ -97,7 +97,7 @@ def _ensure_columns():
         "tools": [("current_version_id", "INTEGER DEFAULT 0"),
                   ("score", "INTEGER DEFAULT -1"), ("score_detail", "TEXT DEFAULT ''"),
                   ("value_score", "INTEGER DEFAULT -1"), ("value_detail", "TEXT DEFAULT ''"),
-                  ("usage_count", "INTEGER DEFAULT 0")],
+                  ("usage_count", "INTEGER DEFAULT 0"), ("developer", "VARCHAR DEFAULT ''")],
         # v2026.2 升级：标准逐字原文 + 财务9项指标测算
         "standards": [("origin", "TEXT DEFAULT ''")],
         "finance": [
@@ -163,6 +163,11 @@ DEFAULT_TOOLS = [
          owner_dept="单证部", icon="单证",
          color="linear-gradient(135deg,#5b21b6,#8b5cf6)", bar="linear-gradient(90deg,#5b21b6,#8b5cf6)",
          visibility="both", status="online", entry_kind="embed", entry_path="/trade-docs-app.html?embed=1", sort_order=30),
+    dict(slug="vehicle-matcher", name="空海运散货装车车型匹配器", category="物流",
+         summary="按货物尺寸、毛重、件数与堆叠策略推荐最小可装国内货车车型：4.2m~17.5m 经验车型库，硬约束校验（长/宽/高/载重/体积/地板占用）、最小可装与放大一档建议、3D/等距/俯视/侧视装载视图与排布步骤、体积/重量/地板利用率，打印/PDF。默认车型为经验值，派车前需按实际车源复核。",
+         owner_dept="仓储物流部", icon="车型",
+         color="linear-gradient(135deg,#e84368,#20c7c9)", bar="linear-gradient(90deg,#e84368,#20c7c9)",
+         visibility="both", status="online", entry_kind="embed", entry_path="/vehicle-matcher-app.html?embed=1", sort_order=25),
 ]
 
 
