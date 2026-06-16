@@ -21,9 +21,9 @@
     />
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="stylesheet" href="/cstar-ui.css" />
-    <link rel="stylesheet" href="./styles.css?v=20" />
+    <link rel="stylesheet" href="./styles.css?v=23" />
   </head>
-  <body>
+  <body class="cstar-ui">
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
@@ -31,7 +31,7 @@
           <div>
             <h1>喜事达 Cstar</h1>
             <p>装箱软件</p>
-            <span class="version-badge">版本 1.5.0</span>
+            <span class="version-badge">版本 1.6.0</span>
           </div>
         </div>
 
@@ -69,7 +69,7 @@
             <p class="eyebrow">Cstar 装箱软件</p>
             <div class="title-line">
               <h2>喜事达（Cstar）装箱软件</h2>
-              <span class="version-badge top-version">版本 1.5.0</span>
+              <span class="version-badge top-version">版本 1.6.0</span>
             </div>
           </div>
           <div class="actions">
@@ -244,6 +244,7 @@
                     <th>可旋转</th>
                     <th>可倾斜</th>
                     <th>可堆叠</th>
+                    <th>超尺寸</th>
                     <th>最大层数</th>
                     <th>优先级</th>
                     <th></th>
@@ -352,6 +353,7 @@
         <td><input data-field="rotatable" type="checkbox" /></td>
         <td><input data-field="tiltable" type="checkbox" /></td>
         <td><input data-field="stackable" type="checkbox" /></td>
+        <td><input data-field="oversize" type="checkbox" /></td>
         <td><input data-field="maxStackLayers" type="number" min="1" max="20" /></td>
         <td>
           <select data-field="priority">
@@ -365,8 +367,8 @@
     </template>
 
     <script src="/cstar-tool.js"></script>
-    <script src="./i18n.js?v=20"></script>
-    <script src="./app.js?v=20"></script>
+    <script src="./i18n.js?v=23"></script>
+    <script src="./app.js?v=23"></script>
 
     <!-- 喜事达：云端方案 + 退出登录（自包含，复用 serializeProject/applyProject） -->
     <style>
@@ -382,6 +384,12 @@
       .cloud-item button.cloud-load{border-color:#007892;color:#007892;font-weight:600}
       .cloud-logout{margin-top:14px;width:100%;border:1px solid #e3b7bd;background:#fff;color:#e54c5e;border-radius:9px;padding:9px;font-size:13px;font-weight:600;cursor:pointer}
       .cloud-logout:hover{background:#fdeef0}
+      /* 响应式：窄屏/弹窗(?embed=1)下货物表横向滚动，避免看不到右侧列；本地暂存见 app.js saveProject + 顶部 localStorage */
+      @media (max-width: 920px) {
+        .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .table-wrap table { min-width: 900px; }
+        .cloud-modal { width: 96%; }
+      }
     </style>
     <script>
     (function(){

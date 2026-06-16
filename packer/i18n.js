@@ -17,7 +17,7 @@
     // —— 品牌 / 导航 / 顶栏 / 状态 ——
     "喜事达 Cstar": { en: "Cstar", ko: "Cstar", th: "Cstar", ms: "Cstar", vi: "Cstar" },
     "装箱软件": { en: "Container Packer", ko: "컨테이너 적재", th: "ซอฟต์แวร์จัดตู้", ms: "Pemuat Kontena", vi: "Phần mềm xếp container" },
-    "版本 1.5.0": { en: "Version 1.5.0", ko: "버전 1.5.0", th: "เวอร์ชัน 1.5.0", ms: "Versi 1.5.0", vi: "Phiên bản 1.5.0" },
+    "版本 1.6.0": { en: "Version 1.6.0", ko: "버전 1.6.0", th: "เวอร์ชัน 1.6.0", ms: "Versi 1.6.0", vi: "Phiên bản 1.6.0" },
     "主导航": { en: "Main navigation", ko: "주 메뉴", th: "เมนูหลัก", ms: "Navigasi utama", vi: "Điều hướng chính" },
     "工作台": { en: "Workspace", ko: "작업대", th: "พื้นที่ทำงาน", ms: "Ruang kerja", vi: "Bàn làm việc" },
     "货物清单": { en: "Cargo list", ko: "화물 목록", th: "รายการสินค้า", ms: "Senarai kargo", vi: "Danh sách hàng" },
@@ -202,6 +202,14 @@
     "右侧": { en: "Right", ko: "오른쪽", th: "ขวา", ms: "Kanan", vi: "Phải" },
 
     // —— 箱型名称 ——
+    "20OT 开顶箱": { en: "20OT Open Top", ko: "20OT 오픈탑", th: "20OT เปิดด้านบน", ms: "20OT Open Top", vi: "20OT mở nóc" },
+    "40OT 开顶箱": { en: "40OT Open Top", ko: "40OT 오픈탑", th: "40OT เปิดด้านบน", ms: "40OT Open Top", vi: "40OT mở nóc" },
+    "20FR 框架箱": { en: "20FR Flat Rack", ko: "20FR 플랫랙", th: "20FR แฟลตแร็ค", ms: "20FR Flat Rack", vi: "20FR sàn phẳng" },
+    "40FR 框架箱": { en: "40FR Flat Rack", ko: "40FR 플랫랙", th: "40FR แฟลตแร็ค", ms: "40FR Flat Rack", vi: "40FR sàn phẳng" },
+    "20RF 冷藏箱": { en: "20RF Reefer", ko: "20RF 냉동", th: "20RF ตู้แช่เย็น", ms: "20RF Reefer", vi: "20RF lạnh" },
+    "40RH 冷藏高柜": { en: "40RH Reefer HC", ko: "40RH 냉동 HC", th: "40RH ตู้แช่เย็น HC", ms: "40RH Reefer HC", vi: "40RH lạnh HC" },
+    "自定义箱型": { en: "Custom container", ko: "사용자 정의", th: "กำหนดเอง", ms: "Kontena tersuai", vi: "Tùy chỉnh" },
+    "超尺寸": { en: "Oversize", ko: "초과 규격", th: "เกินขนาด", ms: "Lebih saiz", vi: "Quá khổ" },
     "20GP 标准箱": { en: "20GP Standard", ko: "20GP 표준", th: "20GP มาตรฐาน", ms: "20GP Standard", vi: "20GP tiêu chuẩn" },
     "40GP 标准箱": { en: "40GP Standard", ko: "40GP 표준", th: "40GP มาตรฐาน", ms: "40GP Standard", vi: "40GP tiêu chuẩn" },
     "40HQ 高柜": { en: "40HQ High Cube", ko: "40HQ 하이큐브", th: "40HQ ไฮคิวบ์", ms: "40HQ High Cube", vi: "40HQ cao" },

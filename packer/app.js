@@ -50,6 +50,13 @@ const containers = [
     maxGross: 32500,
     maxWeight: 27680,
   },
+  { id: "20OT", name: "20OT 开顶箱", type: "opentop", length: 5898, width: 2352, height: 2348, doorWidth: 2340, doorHeight: 2280, tare: 2440, maxGross: 30480, maxWeight: 28040 },
+  { id: "40OT", name: "40OT 开顶箱", type: "opentop", length: 12032, width: 2352, height: 2348, doorWidth: 2340, doorHeight: 2280, tare: 4300, maxGross: 30480, maxWeight: 26180 },
+  { id: "20FR", name: "20FR 框架箱", type: "flatrack", length: 5618, width: 2436, height: 2210, doorWidth: 2436, doorHeight: 2210, tare: 2740, maxGross: 30480, maxWeight: 27740 },
+  { id: "40FR", name: "40FR 框架箱", type: "flatrack", length: 12080, width: 2438, height: 2103, doorWidth: 2438, doorHeight: 2103, tare: 5000, maxGross: 45000, maxWeight: 40000 },
+  { id: "20RF", name: "20RF 冷藏箱", type: "reefer", length: 5444, width: 2294, height: 2238, doorWidth: 2290, doorHeight: 2188, tare: 3080, maxGross: 30480, maxWeight: 27400 },
+  { id: "40RH", name: "40RH 冷藏高柜", type: "reefer", length: 11561, width: 2286, height: 2509, doorWidth: 2286, doorHeight: 2478, tare: 4600, maxGross: 34000, maxWeight: 29400 },
+  { id: "CUSTOM", name: "自定义箱型", type: "custom", length: 12000, width: 2350, height: 2690, doorWidth: 2340, doorHeight: 2585, tare: 3900, maxGross: 30480, maxWeight: 26580 },
 ];
 
 const colors = [
@@ -143,6 +150,7 @@ const state = {
   },
   cargo: structuredClone(sampleCargo),
   selectedContainer: "40HQ",
+  customContainer: null,
   maxContainers: 1,
   activeContainerNo: 1,
   renderMode: "view3d",
@@ -444,7 +452,12 @@ function loadSavedProject() {
 
 function saveProject() {
   state.project = readProjectFields();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeProject()));
+  const payload = serializeProject();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  // 共享库本地暂存（前端统一标准基线：本地暂存，刷新/断网不丢数据）
+  if (window.Cstar && Cstar.store && typeof Cstar.store.save === "function") {
+    try { Cstar.store.save(STORAGE_KEY, payload); } catch (e) {}
+  }
 }
 
 function serializeProject() {
@@ -509,6 +522,7 @@ function normalizeCargo(cargo) {
     stackable: item.stackable !== false,
     maxStackLayers: Math.max(1, Math.min(20, Number(item.maxStackLayers) || (item.stackable === false ? 1 : 6))),
     priority: Number(item.priority) || 2,
+    oversize: item.oversize === true,
   }));
 }
 
@@ -529,12 +543,67 @@ function clamp(value, min, max) {
 }
 
 function getContainer() {
-  return containers.find((container) => container.id === state.selectedContainer);
+  const base = containers.find((container) => container.id === state.selectedContainer) || containers[0];
+  if (base.type === "custom" && state.customContainer) {
+    const c = { ...base, ...state.customContainer };
+    c.maxWeight = Math.max(0, (Number(c.maxGross) || 0) - (Number(c.tare) || 0));
+    return c;
+  }
+  return base;
+}
+
+// 开顶/框架箱按「从顶部/侧面装载」处理：放宽高度（开顶）与宽度（框架），
+// 使超高/超宽的重大件不会被直接判为无法装入。放宽幅度只取当前货物的最大尺寸，
+// 避免空间利用率被严重稀释。
+function packingContainer(container, units) {
+  const type = container.type || "dry";
+  if (type !== "opentop" && type !== "flatrack") return container;
+  const maxH = units.reduce((m, u) => Math.max(m, Number(u.height) || 0), 0);
+  const maxW = units.reduce((m, u) => Math.max(m, Number(u.width) || 0), 0);
+  const eff = { ...container };
+  eff.height = Math.max(container.height, maxH);
+  eff.doorHeight = Math.max(container.doorHeight, maxH);
+  if (type === "flatrack") {
+    eff.width = Math.max(container.width, maxW);
+    eff.doorWidth = Math.max(container.doorWidth, maxW);
+  }
+  return eff;
 }
 
 function renderContainerSpecs() {
+  const base = containers.find((c) => c.id === state.selectedContainer) || containers[0];
   const container = getContainer();
   els.containerBadge.textContent = container.id;
+
+  if (base.type === "custom") {
+    if (!state.customContainer) {
+      state.customContainer = {
+        length: base.length, width: base.width, height: base.height,
+        doorWidth: base.doorWidth, doorHeight: base.doorHeight,
+        tare: base.tare, maxGross: base.maxGross,
+      };
+    }
+    const cc = state.customContainer;
+    const fields = [
+      ["内长", "length"], ["内宽", "width"], ["内高", "height"],
+      ["箱门宽", "doorWidth"], ["箱门高", "doorHeight"],
+      ["箱体自重", "tare"], ["最大总重", "maxGross"],
+    ];
+    els.containerSpecs.innerHTML = fields
+      .map(([label, key]) => `<div class="spec-row"><span>${label}</span><input class="spec-input" type="number" min="1" data-custom="${key}" value="${cc[key]}" /></div>`)
+      .join("") +
+      `<div class="spec-row"><span>最大载重</span><strong>${container.maxWeight.toLocaleString()} 千克</strong></div>`;
+    els.containerSpecs.querySelectorAll("[data-custom]").forEach((input) => {
+      input.addEventListener("change", () => {
+        state.customContainer[input.dataset.custom] = Number(input.value) || 0;
+        renderContainerSpecs();
+        runPacking();
+        saveProject();
+      });
+    });
+    return;
+  }
+
   els.containerSpecs.innerHTML = [
     ["内长", `${container.length.toLocaleString()} 毫米`],
     ["内宽", `${container.width.toLocaleString()} 毫米`],
@@ -593,6 +662,9 @@ function buildUnits() {
     for (let i = 0; i < quantity; i += 1) {
       units.push({
         ...item,
+        stackable: item.oversize ? false : item.stackable,
+        tiltable: item.oversize ? false : item.tiltable,
+        maxStackLayers: item.oversize ? 1 : item.maxStackLayers,
         cargoIndex,
         unitId: `${cargoIndex + 1}-${i + 1}`,
         volume: item.length * item.width * item.height,
@@ -606,8 +678,9 @@ function runPacking() {
   syncTableState();
   state.validation = validateCargo();
   markInvalidRows();
-  const container = getContainer();
+  const baseContainer = getContainer();
   const units = sortUnits(buildUnits());
+  const container = packingContainer(baseContainer, units);
   const packed = [];
   let remaining = [...units];
 
@@ -766,7 +839,8 @@ function getCargoIssues(item) {
   if (!String(item.group || "").trim()) issues.push("分组/目的地不能为空");
   if (!Number.isInteger(Number(item.maxStackLayers)) || Number(item.maxStackLayers) < 1) issues.push("最大层数必须为正整数");
   const container = getContainer();
-  if (isPositive(item.length) && isPositive(item.width) && isPositive(item.height) && !canItemPassDoor(item, container)) {
+  const topOrSideLoad = container.type === "opentop" || container.type === "flatrack";
+  if (!topOrSideLoad && isPositive(item.length) && isPositive(item.width) && isPositive(item.height) && !canItemPassDoor(item, container)) {
     issues.push(`任意旋转后都无法通过箱门 ${container.doorWidth}×${container.doorHeight} 毫米`);
   }
   return issues;
@@ -2343,10 +2417,23 @@ async function handleCargoFileImport(event) {
     renderCargoTable();
     runPacking();
     saveProject();
+    showImportSummary();
   } catch (error) {
     alert(error.message || "货物文件导入失败。");
   } finally {
     event.target.value = "";
+  }
+}
+
+function showImportSummary() {
+  const s = lastImportSummary;
+  if (!s) return;
+  let msg = `导入完成：成功 ${s.imported} 件，跳过 ${s.skipped} 件（尺寸缺失或为 0）。`;
+  if (s.unknownColumns && s.unknownColumns.length) {
+    msg += `\n未识别并已忽略的列：${s.unknownColumns.join("、")}。`;
+  }
+  if (s.skipped > 0 || (s.unknownColumns && s.unknownColumns.length)) {
+    alert(msg);
   }
 }
 
@@ -2358,31 +2445,96 @@ async function readCargoRows(file) {
   throw new Error("暂不支持该文件格式。请导入逗号表、工作簿或文字文档。");
 }
 
+let lastImportSummary = null;
+
 function rowsToCargo(rows) {
-  const [header, ...body] = rows.filter((row) => row.some((cell) => String(cell || "").trim()));
+  const data = rows.filter((row) => row.some((cell) => String(cell || "").trim()));
+  const [header, ...body] = data;
   if (!header) throw new Error("货物文件为空。");
-  const normalized = header.map((name) => normalizeHeader(name));
-  const cargo = body
+
+  const known = new Set([
+    "name", "length", "width", "height", "weight", "quantity",
+    "group", "rotatable", "tiltable", "stackable", "maxStackLayers", "priority", "oversize",
+  ]);
+  const cols = header.map((raw, index) => {
+    const field = normalizeHeader(raw);
+    return { index, raw: String(raw || "").trim(), field, scale: dimScale(raw, field) };
+  });
+  const unknownColumns = cols.filter((col) => col.raw && col.field !== "ignore" && !known.has(col.field)).map((col) => col.raw);
+  const findCol = (field) => cols.find((col) => col.field === field);
+  // 重量列优先级：毛重 > 普通重量 > 净重
+  const weightCol = cols.filter((col) => col.field === "weight").sort((a, b) => weightRank(a.raw) - weightRank(b.raw))[0];
+
+  let imported = 0;
+  let skipped = 0;
+  const cargo = [];
+  body
     .filter((row) => row.some(Boolean))
-    .map((row) => {
-      const record = Object.fromEntries(normalized.map((name, index) => [name, row[index]]));
-      return {
-        name: record.name || "导入货物",
-        length: parseNumber(record.length),
-        width: parseNumber(record.width),
-        height: parseNumber(record.height),
-        weight: parseNumber(record.weight),
-        quantity: parseNumber(record.quantity) || 1,
-        group: record.group || record.destination || "默认",
-        rotatable: parseBool(record.rotatable, true),
-        tiltable: parseBool(record.tiltable, true),
-        stackable: parseBool(record.stackable, true),
-        maxStackLayers: parseNumber(record.maxStackLayers) || 6,
-        priority: parseNumber(record.priority) || 2,
+    .forEach((row) => {
+      const cell = (field) => {
+        const col = findCol(field);
+        return col ? row[col.index] : undefined;
       };
+      const dim = (field) => {
+        const col = findCol(field);
+        return col ? parseNumber(row[col.index]) * col.scale : 0;
+      };
+      const item = {
+        name: String(cell("name") ?? "").trim() || "导入货物",
+        length: dim("length"),
+        width: dim("width"),
+        height: dim("height"),
+        weight: weightCol ? parseNumber(row[weightCol.index]) : 0,
+        quantity: parseNumber(cell("quantity")) || 1,
+        group: String(cell("group") ?? "").trim() || "默认",
+        rotatable: parseBool(cell("rotatable"), true),
+        tiltable: parseBool(cell("tiltable"), true),
+        stackable: parseBool(cell("stackable"), true),
+        maxStackLayers: parseNumber(cell("maxStackLayers")) || 6,
+        priority: parsePriority(cell("priority")),
+        oversize: parseBool(cell("oversize"), false),
+      };
+      if (item.length > 0 && item.width > 0 && item.height > 0) {
+        cargo.push(item);
+        imported += 1;
+      } else {
+        skipped += 1;
+      }
     });
-  if (cargo.length === 0) throw new Error("没有读取到货物行。请确认第一行是字段名，后续行是货物数据。");
+
+  lastImportSummary = { imported, skipped, unknownColumns, total: imported + skipped };
+
+  if (cargo.length === 0) {
+    throw new Error(
+      "没有读取到有效货物行。请确认表头含「名称/长/宽/高/重量」等列、且尺寸大于 0。" +
+        (unknownColumns.length ? `未识别的列：${unknownColumns.join("、")}。` : "")
+    );
+  }
   return normalizeCargo(cargo);
+}
+
+// 维度单位换算：表头标注 cm/厘米 时按 ×10 转毫米；标 mm/毫米 或无单位按原值。
+function dimScale(raw, field) {
+  if (field !== "length" && field !== "width" && field !== "height") return 1;
+  const text = String(raw || "").toLowerCase();
+  const isCm = /cm|厘米|公分/.test(text) && !/mm|毫米/.test(text);
+  return isCm ? 10 : 1;
+}
+
+function weightRank(raw) {
+  const text = String(raw || "").toLowerCase();
+  if (/gross|毛重|毛/.test(text)) return 0;
+  if (/net|净重|净/.test(text)) return 2;
+  return 1;
+}
+
+function parsePriority(value) {
+  const text = String(value ?? "").trim();
+  if (/高|high/i.test(text)) return 3;
+  if (/低|low/i.test(text)) return 1;
+  if (/中|mid|medium/i.test(text)) return 2;
+  const num = parseNumber(text);
+  return num >= 1 && num <= 3 ? num : 2;
 }
 
 function normalizeHeader(value) {
@@ -2391,56 +2543,31 @@ function normalizeHeader(value) {
     .toLowerCase()
     .replace(/\s+/g, "")
     .replace(/[（）()]/g, "");
+  const stripped = key.replace(/(mm|cm|毫米|厘米|公分|kgs|kg|千克|cbm|m3|立方米|吨)$/g, "");
   const map = {
-    name: "name",
-    名称: "name",
-    货物名称: "name",
-    品名: "name",
-    cargo: "name",
-    length: "length",
-    len: "length",
-    长: "length",
-    长度: "length",
-    长mm: "length",
-    width: "width",
-    宽: "width",
-    宽度: "width",
-    宽mm: "width",
-    height: "height",
-    高: "height",
-    高度: "height",
-    高mm: "height",
-    weight: "weight",
-    重量: "weight",
-    重量kg: "weight",
-    单重: "weight",
-    quantity: "quantity",
-    qty: "quantity",
-    数量: "quantity",
-    group: "group",
-    destination: "group",
-    分组: "group",
-    目的地: "group",
-    客户: "group",
-    rotatable: "rotatable",
-    可旋转: "rotatable",
-    旋转: "rotatable",
-    stackable: "stackable",
-    可堆叠: "stackable",
-    堆叠: "stackable",
-    maxstacklayers: "maxStackLayers",
-    stacklayers: "maxStackLayers",
-    最大层数: "maxStackLayers",
-    最大堆叠层数: "maxStackLayers",
-    堆叠层数: "maxStackLayers",
-    tiltable: "tiltable",
-    可倾斜: "tiltable",
-    禁止倾斜: "tiltable",
-    倾斜: "tiltable",
-    priority: "priority",
-    优先级: "priority",
+    name: "name", 名称: "name", 货物名称: "name", 品名: "name", cargo: "name",
+    package: "name", packages: "name", 件号: "name", 箱号: "name", 序号: "name", no: "name", item: "name",
+    length: "length", len: "length", l: "length", 长: "length", 长度: "length",
+    width: "width", w: "width", 宽: "width", 宽度: "width",
+    height: "height", h: "height", 高: "height", 高度: "height",
+    weight: "weight", 重量: "weight", 单重: "weight", 毛重: "weight", gross: "weight", grossweight: "weight",
+    净重: "weight", net: "weight", netweight: "weight",
+    quantity: "quantity", qty: "quantity", 数量: "quantity", 件数: "quantity", pcs: "quantity",
+    group: "group", destination: "group", dest: "group", 分组: "group", 目的地: "group", 客户: "group", 目的港: "group",
+    rotatable: "rotatable", 可旋转: "rotatable", 旋转: "rotatable",
+    stackable: "stackable", 可堆叠: "stackable", 堆叠: "stackable",
+    maxstacklayers: "maxStackLayers", stacklayers: "maxStackLayers", layers: "maxStackLayers",
+    最大层数: "maxStackLayers", 最大堆叠层数: "maxStackLayers", 堆叠层数: "maxStackLayers", 层数: "maxStackLayers",
+    tiltable: "tiltable", 可倾斜: "tiltable", 禁止倾斜: "tiltable", 倾斜: "tiltable",
+    priority: "priority", 优先级: "priority", prio: "priority",
+    oversize: "oversize", oversized: "oversize", 超尺寸: "oversize", 超大件: "oversize", 重大件: "oversize", 超限: "oversize",
+    "分组/目的地": "group", "group/destination": "group", "目的地/分组": "group",
+    备注: "ignore", remark: "ignore", remarks: "ignore", note: "ignore", notes: "ignore",
+    校验: "ignore", 体积: "ignore", volume: "ignore", cbm: "ignore", 箱门校验: "ignore",
   };
-  return map[key] || key;
+  const firstSeg = key.split(/[\/、,，]/)[0];
+  const firstStripped = firstSeg.replace(/(mm|cm|毫米|厘米|公分|kgs|kg|千克|cbm|m3|立方米|吨)$/g, "");
+  return map[key] || map[stripped] || map[firstSeg] || map[firstStripped] || stripped;
 }
 
 function parseNumber(value) {

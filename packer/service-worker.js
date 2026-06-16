@@ -1,4 +1,4 @@
-const CACHE_NAME = "cstar-container-packer-v22";
+const CACHE_NAME = "cstar-container-packer-v25";
 const ASSETS = [
   "./",
   "./index.html",

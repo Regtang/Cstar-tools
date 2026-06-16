@@ -988,3 +988,6 @@ pre {
     grid-template-columns: 1fr;
   }
 }
+
+.spec-input { width: 120px; text-align: right; padding: 4px 6px; border: 1px solid var(--cs-line, #d3dce6); border-radius: 6px; font: inherit; color: var(--cs-ink, #212121); }
+.spec-input:focus { outline: none; border-color: var(--cs-teal, #007892); }
