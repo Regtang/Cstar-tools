@@ -625,7 +625,7 @@ def admin_ai_value(tid: int, db: Session = Depends(database.get_db), user=Depend
     if not t:
         raise HTTPException(404, "工具不存在")
     if not scoring.ai_enabled():
-        raise HTTPException(400, "未配置大模型（请在服务器环境设置 AI_API_BASE / AI_API_KEY）")
+        raise HTTPException(400, "未配置大模型（请在服务器环境用 AI_ACTIVE_MODEL 选用模型并填好对应密钥，如 DEEPSEEK_API_KEY）")
     val = scoring.rescore_value(t, db)
     if val is None:
         raise HTTPException(502, "AI 评分失败（模型无响应或返回格式异常）")
@@ -635,11 +635,17 @@ def admin_ai_value(tid: int, db: Session = Depends(database.get_db), user=Depend
     return {"ok": True, "valueScore": val, "score": _composite(auto, val), "detail": detail}
 
 
+@app.get("/api/admin/ai/models")
+def admin_ai_models(user=Depends(_platform)):
+    """查看大模型注册表：各模型的启用 / 配置状态，便于切换调用。"""
+    return {"ok": True, "enabled": scoring.ai_enabled(), "models": scoring.list_models()}
+
+
 @app.post("/api/admin/tools/ai-value-all")
 def admin_ai_value_all(db: Session = Depends(database.get_db), user=Depends(_platform)):
     """让 AI 给所有工具（重新）评价值分。"""
     if not scoring.ai_enabled():
-        raise HTTPException(400, "未配置大模型（请在服务器环境设置 AI_API_BASE / AI_API_KEY）")
+        raise HTTPException(400, "未配置大模型（请在服务器环境用 AI_ACTIVE_MODEL 选用模型并填好对应密钥，如 DEEPSEEK_API_KEY）")
     n = scoring.rescore_value_all(db, only_unrated=False)
     write_log(db, user, "AI价值评分(全部)", "tools", f"{n} 个")
     return {"ok": True, "scored": n}

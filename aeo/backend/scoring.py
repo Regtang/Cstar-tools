@@ -186,11 +186,71 @@ def rescore_all(db):
 
 # ============================================================
 #  AI 价值评分（高权重层）—— 用大模型按"客户价值/用心程度/业务价值"打分
-#  OpenAI 兼容接口，配置 AI_API_BASE + AI_API_KEY + AI_MODEL 即启用；未配置则跳过。
+#  全部走 OpenAI 兼容接口（/chat/completions）。配置好任一模型的密钥并选用即启用。
 # ============================================================
-AI_BASE = os.environ.get("AI_API_BASE", "").rstrip("/")
-AI_KEY = os.environ.get("AI_API_KEY", "")
-AI_MODEL = os.environ.get("AI_MODEL", "deepseek-chat")
+#
+#  ── 大模型注册表（可切换 / 可扩展）─────────────────────────
+#  · 在 MODELS 里登记可用模型；新增一家 = 加一条，无需改其它任何逻辑。
+#  · base / model 是公开信息，写在表里；密钥各自用对应环境变量提供，
+#    密钥永不写进代码或仓库（部署时在服务器 .env 填）。
+#  · 用环境变量 AI_ACTIVE_MODEL 选用哪一个（默认 deepseek）。
+#  · 兼容旧部署：若仍设了 AI_API_BASE + AI_API_KEY，则作为一条
+#    临时“自定义”模型，优先于注册表生效（无需改服务器配置即可平滑过渡）。
+# ============================================================
+MODELS = {
+    "deepseek": {
+        "label": "DeepSeek",
+        "base": os.environ.get("DEEPSEEK_API_BASE", "https://api.deepseek.com"),
+        "model": os.environ.get("DEEPSEEK_MODEL", "deepseek-chat"),
+        "key_env": "DEEPSEEK_API_KEY",
+    },
+    "openai": {
+        "label": "OpenAI GPT",
+        "base": os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1"),
+        "model": os.environ.get("OPENAI_MODEL", "gpt-4o-mini"),
+        "key_env": "OPENAI_API_KEY",
+    },
+    "qwen": {
+        "label": "通义千问 Qwen",
+        "base": os.environ.get("QWEN_API_BASE", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
+        "model": os.environ.get("QWEN_MODEL", "qwen-plus"),
+        "key_env": "DASHSCOPE_API_KEY",
+    },
+}
+
+ACTIVE_MODEL = os.environ.get("AI_ACTIVE_MODEL", "deepseek").strip().lower()
+
+
+def _active_cfg():
+    """返回当前启用模型的 (base, key, model, label)。
+    旧部署的 AI_API_BASE/AI_API_KEY 若存在则作为“自定义”条目优先生效。"""
+    legacy_base = os.environ.get("AI_API_BASE", "").rstrip("/")
+    legacy_key = os.environ.get("AI_API_KEY", "")
+    if legacy_base and legacy_key:
+        return legacy_base, legacy_key, os.environ.get("AI_MODEL", "deepseek-chat"), "自定义(AI_API_*)"
+    m = MODELS.get(ACTIVE_MODEL)
+    if not m:
+        return "", "", "", ACTIVE_MODEL
+    return m["base"].rstrip("/"), os.environ.get(m["key_env"], ""), m["model"], m["label"]
+
+
+def list_models():
+    """供管理端/接口展示：列出注册表内各模型及其启用、配置状态。"""
+    legacy = bool(os.environ.get("AI_API_BASE") and os.environ.get("AI_API_KEY"))
+    out = []
+    for mid, m in MODELS.items():
+        out.append({
+            "id": mid,
+            "label": m["label"],
+            "model": m["model"],
+            "active": (not legacy) and (mid == ACTIVE_MODEL),
+            "configured": bool(os.environ.get(m["key_env"], "")),
+        })
+    if legacy:
+        out.insert(0, {"id": "custom", "label": "自定义(AI_API_*)",
+                       "model": os.environ.get("AI_MODEL", "deepseek-chat"),
+                       "active": True, "configured": True})
+    return out
 
 # ============================================================
 #  评分锚定量规（Rubric）—— 解决“同质软件分数不同”的根本机制：
@@ -243,19 +303,21 @@ AI_SYS = _build_sys()
 
 
 def ai_enabled():
-    return bool(AI_BASE and AI_KEY)
+    base, key, _, _ = _active_cfg()
+    return bool(base and key)
 
 
 def _ai_call_checklist(user):
     """单次调用：返回 {dim:{key:bool}} + note，解析失败返回 None。"""
     import urllib.request
+    base, key, model, _ = _active_cfg()
     body = json.dumps({
-        "model": AI_MODEL,
+        "model": model,
         "messages": [{"role": "system", "content": AI_SYS}, {"role": "user", "content": user}],
         "temperature": 0, "top_p": 1, "seed": 20260614, "max_tokens": 2000,
     }).encode("utf-8")
-    req = urllib.request.Request(AI_BASE + "/chat/completions", data=body,
-                                 headers={"Authorization": "Bearer " + AI_KEY, "Content-Type": "application/json"})
+    req = urllib.request.Request(base + "/chat/completions", data=body,
+                                 headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             d = json.loads(r.read().decode("utf-8"))
