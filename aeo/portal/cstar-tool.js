@@ -260,10 +260,56 @@
     }
   };
 
+  /* ---------- 后端数据存储 Cstar.cloud（跨设备 / 可统计 / 按账号隔离） ----------
+     与本地 Cstar.store / Cstar.records 用法对齐，但异步、需登录。
+     建议：本地 store 做自动暂存/离线兜底，cloud 做"保存到云端 / 我的台账"。
+     所有调用自动带 Cstar.auth 的 Bearer 头；遇 401 默认引导登录（可关）。 */
+  const cloud = {
+    _base(slug) { return "/api/store/" + encodeURIComponent(slug); },
+    /* 统一请求；needAuth 为 false 时未登录不跳转、直接返回 null */
+    async _req(url, method, body, opt) {
+      opt = opt || {};
+      const t = auth.token();
+      if (!t) { if (opt.needAuth !== false) auth.gotoLogin(); return null; }
+      const init = { method: method || "GET", headers: Object.assign({}, auth.headers()) };
+      if (body !== undefined) {
+        init.headers["Content-Type"] = "application/json";
+        init.body = JSON.stringify(body);
+      }
+      let r;
+      try { r = await fetch(url, init); } catch (e) { return null; }
+      if (r.status === 401) { auth.clear(); if (opt.needAuth !== false) auth.gotoLogin(); return null; }
+      if (!r.ok) throw new Error("cloud " + method + " " + url + " -> " + r.status);
+      try { return await r.json(); } catch (e) { return null; }
+    },
+    /* —— KV：单份配置 / 表单暂存 —— */
+    async save(slug, key, data) { return this._req(this._base(slug) + "/kv/" + encodeURIComponent(key), "PUT", { data: data }); },
+    async load(slug, key, dflt) {
+      const r = await this._req(this._base(slug) + "/kv/" + encodeURIComponent(key), "GET", undefined, { needAuth: false });
+      return (r && r.data != null) ? r.data : (dflt === undefined ? null : dflt);
+    },
+    async remove(slug, key) { return this._req(this._base(slug) + "/kv/" + encodeURIComponent(key), "DELETE"); },
+    /* —— 台账：一条条记录 —— */
+    async list(slug, q) {
+      const r = await this._req(this._base(slug) + "/records" + (q ? "?q=" + encodeURIComponent(q) : ""), "GET", undefined, { needAuth: false });
+      return r || [];
+    },
+    async add(slug, data) { return this._req(this._base(slug) + "/records", "POST", { data: data }); },
+    async update(slug, id, data) { return this._req(this._base(slug) + "/records/" + id, "PUT", { data: data }); },
+    async del(slug, id) { return this._req(this._base(slug) + "/records/" + id, "DELETE"); },
+    /* 拉全量台账并复用现有导出。cols = [[字段名, 表头], ...]（同 Records.exportExcel），取自每条 record.data */
+    async exportExcel(slug, cols, file) {
+      const rows = (await this.list(slug)).map(function (it) { return it.data || {}; });
+      return exportExcelData(cols.map(c => c[1]),
+        rows.map(r => cols.map(c => r[c[0]] == null ? "" : r[c[0]])),
+        file || (slug + "-台账.xls"));
+    }
+  };
+
   w.Cstar = {
     $, esc, download, store, Records, records: (k, cap) => new Records(k, cap),
     signature, validate, serial, today, nowStr, watermarkPhoto,
     print, exportJSON, exportWord, exportExcel, exportExcelData, exportPDF, loadScript,
-    stamp, stampLine, info: null, auth
+    stamp, stampLine, info: null, auth, cloud
   };
 })(window);

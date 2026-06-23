@@ -179,6 +179,22 @@ class PackerProject(Base):
     updated_at = Column(String, default="")
 
 
+class ToolStore(Base):
+    """通用工具数据存储 —— 任意工具的后端持久化，按 (用户, 工具slug) 隔离。
+
+    两种用法共用一张表：
+      · KV   —— key 非空，每个 key 一行（upsert）。用于表单暂存 / 单份配置。
+      · 台账 —— key 为空，自增多行。用于"一条条记录"并支持检索/导出。
+    服务端强制 owner==当前用户 且按 slug 过滤：A 工具读不到 B 工具，张三读不到李四。"""
+    __tablename__ = "tool_store"
+    id = Column(Integer, primary_key=True)
+    owner = Column(Integer, index=True)                # 所属用户 id
+    slug = Column(String, default="", index=True)      # 哪个工具
+    key = Column(String, default="", index=True)       # KV 的逻辑键；台账记录留空
+    data = Column(JSON, default=dict)                  # 任意 JSON 内容
+    updated_at = Column(String, default="")
+
+
 class Tool(Base):
     """工具注册表 —— 平台唯一事实来源。首页与各视图从此渲染。"""
     __tablename__ = "tools"

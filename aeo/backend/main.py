@@ -404,6 +404,114 @@ def packer_delete(pid: int, db: Session = Depends(database.get_db), user=Depends
     return {"ok": True}
 
 
+# ============ 通用工具后端存储（任意工具按账号 + slug 隔离） ============
+# 凡是登录用户都可读写"自己 + 该工具"的数据；不走 AEO 模块权限矩阵（工具数据非合规数据）。
+# 前端用 cstar-tool.js 的 Cstar.cloud 调用。
+_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,49}$", re.I)
+
+
+def _slug_ok(slug: str) -> str:
+    if not _SLUG_RE.match(slug or ""):
+        raise HTTPException(400, "非法工具标识")
+    return slug
+
+
+# —— KV：表单暂存 / 单份配置（每个 key 一行，upsert）——
+@app.get("/api/store/{slug}/kv/{key}")
+def store_kv_get(slug: str, key: str, db: Session = Depends(database.get_db), user=Depends(current_user)):
+    _slug_ok(slug)
+    row = (db.query(models.ToolStore)
+           .filter(models.ToolStore.owner == user.id,
+                   models.ToolStore.slug == slug,
+                   models.ToolStore.key == key).first())
+    return {"key": key, "data": (row.data if row else None),
+            "updated_at": (row.updated_at if row else "")}
+
+
+@app.put("/api/store/{slug}/kv/{key}")
+def store_kv_put(slug: str, key: str, body: dict = Body(...),
+                 db: Session = Depends(database.get_db), user=Depends(current_user)):
+    _slug_ok(slug)
+    row = (db.query(models.ToolStore)
+           .filter(models.ToolStore.owner == user.id,
+                   models.ToolStore.slug == slug,
+                   models.ToolStore.key == key).first())
+    if not row:
+        row = models.ToolStore(owner=user.id, slug=slug, key=key)
+        db.add(row)
+    row.data = body.get("data", {})
+    row.updated_at = now()
+    db.commit()
+    return {"ok": True, "updated_at": row.updated_at}
+
+
+@app.delete("/api/store/{slug}/kv/{key}")
+def store_kv_del(slug: str, key: str, db: Session = Depends(database.get_db), user=Depends(current_user)):
+    _slug_ok(slug)
+    (db.query(models.ToolStore)
+     .filter(models.ToolStore.owner == user.id,
+             models.ToolStore.slug == slug,
+             models.ToolStore.key == key).delete())
+    db.commit()
+    return {"ok": True}
+
+
+# —— 台账：一条条记录（key 留空，自增多行）——
+def _store_rec(row):
+    return {"id": row.id, "data": row.data, "updated_at": row.updated_at}
+
+
+@app.get("/api/store/{slug}/records")
+def store_rec_list(slug: str, q: str = "", db: Session = Depends(database.get_db), user=Depends(current_user)):
+    _slug_ok(slug)
+    rows = (db.query(models.ToolStore)
+            .filter(models.ToolStore.owner == user.id,
+                    models.ToolStore.slug == slug,
+                    models.ToolStore.key == "")
+            .order_by(models.ToolStore.id.desc()).all())
+    items = [_store_rec(r) for r in rows]
+    if q:
+        kw = q.strip().lower()
+        items = [it for it in items if kw in json.dumps(it["data"], ensure_ascii=False).lower()]
+    return items
+
+
+@app.post("/api/store/{slug}/records")
+def store_rec_add(slug: str, body: dict = Body(...),
+                  db: Session = Depends(database.get_db), user=Depends(current_user)):
+    _slug_ok(slug)
+    row = models.ToolStore(owner=user.id, slug=slug, key="",
+                           data=body.get("data", {}), updated_at=now())
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return {"id": row.id, "updated_at": row.updated_at}
+
+
+@app.put("/api/store/{slug}/records/{rid}")
+def store_rec_update(slug: str, rid: int, body: dict = Body(...),
+                     db: Session = Depends(database.get_db), user=Depends(current_user)):
+    _slug_ok(slug)
+    row = db.get(models.ToolStore, rid)
+    if not row or row.owner != user.id or row.slug != slug or row.key != "":
+        raise HTTPException(404, "记录不存在")
+    row.data = body.get("data", {})
+    row.updated_at = now()
+    db.commit()
+    return {"ok": True, "updated_at": row.updated_at}
+
+
+@app.delete("/api/store/{slug}/records/{rid}")
+def store_rec_del(slug: str, rid: int, db: Session = Depends(database.get_db), user=Depends(current_user)):
+    _slug_ok(slug)
+    row = db.get(models.ToolStore, rid)
+    if not row or row.owner != user.id or row.slug != slug or row.key != "":
+        raise HTTPException(404, "记录不存在")
+    db.delete(row)
+    db.commit()
+    return {"ok": True}
+
+
 # ============ 仪表盘聚合 ============
 @app.get("/api/dashboard")
 def dashboard(db: Session = Depends(database.get_db), user=Depends(auth.staff_only)):
