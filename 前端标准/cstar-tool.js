@@ -262,3 +262,42 @@
     stamp, stampLine, showChangelog, info: null
   };
 })(window);
+
+/* ============================================================
+   Cstar.cloud — 云端保存（v2.1 新增）
+   存到平台数据库（/api/store），跨设备、同组织多人共享；需登录平台。
+   用法：
+     const db = Cstar.cloud('mytool');      // 用工具名做命名空间（与 Cstar.records 同名即可）
+     await db.add({ 客户:'A', 金额:100 });  // 新增一条（data 为任意对象）
+     const list = await db.all();           // 取全部；每条记录形如 {id, data, scope, created_at}
+   所有方法返回 Promise：all() / add(data,scope) / get(id) / update(id,data,scope) / remove(id)
+   scope: 'org'(同组织共享，默认) | 'private'(仅本人可见)
+   注：与 Cstar.records（本机 localStorage，同步返回）相对应——cloud 是云端、异步。
+   ============================================================ */
+(function (w) {
+  if (!w.Cstar || w.Cstar.cloud) return;            // 库未加载或已存在则跳过（幂等）
+  w.Cstar.cloud = function (tool) {
+    if (!tool) throw new Error("Cstar.cloud(tool)：需要工具名作命名空间");
+    var base = "/api/store/" + encodeURIComponent(tool) + "/records";
+    function req(method, url, body) {
+      var opt = { method: method, credentials: "same-origin", headers: {} };
+      if (body !== undefined) {
+        opt.headers["Content-Type"] = "application/json";
+        opt.body = JSON.stringify(body);
+      }
+      return fetch(url, opt).then(function (r) {
+        if (r.status === 401) throw new Error("未登录：云端保存需先登录平台");
+        if (!r.ok) throw new Error("云端请求失败 " + r.status);
+        return r.status === 204 ? null : r.json();
+      });
+    }
+    return {
+      tool: tool,
+      all: function () { return req("GET", base).then(function (d) { return (d && d.records) || []; }); },
+      add: function (data, scope) { return req("POST", base, { data: data, scope: scope || "org" }); },
+      get: function (id) { return req("GET", base + "/" + id); },
+      update: function (id, data, scope) { return req("PUT", base + "/" + id, { data: data, scope: scope || "org" }); },
+      remove: function (id) { return req("DELETE", base + "/" + id); }
+    };
+  };
+})(window);
