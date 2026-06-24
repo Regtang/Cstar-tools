@@ -819,7 +819,8 @@ def _sub_dir(token):
 async def submit_tool(request: Request,
                       name: str = Form(...), version: str = Form(""),
                       developer: str = Form(""), desc: str = Form(""),
-                      selfcheck: str = Form(""), file: UploadFile = File(...),
+                      selfcheck: str = Form(""), storage: str = Form(""),
+                      file: UploadFile = File(...),
                       kind: str = Form("new"), target: str = Form(""),
                       db: Session = Depends(database.get_db)):
     """公开接口：同事上传工具 zip（新工具或现有工具的更新版本）。仅写入暂存区，
@@ -855,6 +856,7 @@ async def submit_tool(request: Request,
         name=name[:120], version=(version or "").strip()[:40],
         developer=(developer or "").strip()[:80], desc=(desc or "").strip()[:300],
         selfcheck=1 if str(selfcheck).lower() in ("1", "true", "yes", "on") else 0,
+        storage=(str(storage).strip().lower() if str(storage).strip().lower() in ("none", "local", "cloud") else ""),
         filename=fn[:120], size=len(data),
         ip=(request.client.host if request.client else ""),
         status="待审核", created_at=now())
@@ -862,7 +864,7 @@ async def submit_tool(request: Request,
         with open(os.path.join(d, "meta.json"), "w", encoding="utf-8") as f:
             json.dump({k: getattr(sub, k) for k in
                        ("kind", "target", "name", "version", "developer", "desc",
-                        "selfcheck", "filename", "size", "created_at")}, f, ensure_ascii=False, indent=2)
+                        "selfcheck", "storage", "filename", "size", "created_at")}, f, ensure_ascii=False, indent=2)
     except Exception:
         pass
     db.add(sub)
@@ -876,7 +878,7 @@ async def submit_tool(request: Request,
             html = ("<p>工具平台收到一条<b>待审核</b>提交：</p><ul>"
                     f"<li>名称：{sub.name}</li><li>类型：{kind_txt}</li>"
                     f"<li>版本：{sub.version or '-'}</li><li>开发者/部门：{sub.developer or '-'}</li>"
-                    f"<li>自检：{'已确认' if sub.selfcheck else '未确认'}　大小：{round(sub.size/1024)}KB</li>"
+                    f"<li>自检：{'已确认' if sub.selfcheck else '未确认'}　存储：{ {'none':'不需保存','local':'本机暂存','cloud':'云端 Cstar.cloud'}.get(sub.storage, '未声明') }　大小：{round(sub.size/1024)}KB</li>"
                     f"<li>时间：{sub.created_at}</li></ul>"
                     f"<p>请到管理后台审核发布：<a href='{public_base()}/admin.html'>{public_base()}/admin.html</a></p>")
             send_email(notify, f"【工具平台】新提交待审核：{sub.name}", html)

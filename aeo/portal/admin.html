@@ -111,6 +111,7 @@ async function loadSubs() {
   $('subList').innerHTML = rows.map(s => {
     const kind = s.kind === 'update' ? ('更新现有工具 → ' + esc(s.target || '?')) : '新工具';
     const sc = s.selfcheck ? '✓ 已自检' : '✗ 未自检';
+    const st = { none: '存储：不需保存', local: '存储：本机暂存', cloud: '存储：云端 Cstar.cloud' }[s.storage] || '存储：未声明';
     const done = s.status !== '待审核';
     const actions = done ? `<span class="cs-badge cs-badge-info">${esc(s.status)}</span>` :
       `<button class="cs-btn cs-btn-soft" onclick="prescore(${s.id})">⊕ 先评分</button>
@@ -118,7 +119,7 @@ async function loadSubs() {
        <button class="cs-btn cs-btn-primary" onclick="approve(${s.id}, ${s.kind === 'update' ? 'true' : 'false'})">批准并发布</button>
        <button class="cs-btn cs-btn-ghost" onclick="reject(${s.id})">驳回</button>`;
     return `<div class="sub"><h3>${esc(s.name)} <span class="cs-badge ${s.kind === 'update' ? 'cs-badge-warn' : 'cs-badge-ok'}">${s.kind === 'update' ? '更新' : '新工具'}</span></h3>
-      <div class="meta">类型：${kind}　|　版本：<b>${esc(s.version || '-')}</b>　|　开发者：${esc(s.developer || '-')}　|　${sc}　|　${(s.size/1024).toFixed(0)}KB　|　${esc(s.created_at || '')}</div>
+      <div class="meta">类型：${kind}　|　版本：<b>${esc(s.version || '-')}</b>　|　开发者：${esc(s.developer || '-')}　|　${sc}　|　${st}　|　${(s.size/1024).toFixed(0)}KB　|　${esc(s.created_at || '')}</div>
       ${s.desc ? '<div class="meta">' + esc(s.desc) + '</div>' : ''}
       <div class="cs-actions">${actions}</div><div id="pre-${s.id}"></div></div>`;
   }).join('');

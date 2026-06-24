@@ -76,8 +76,18 @@
         </div>
         <input id="file" type="file" accept=".zip,application/zip" style="display:none" />
 
-        <div class="check" style="margin-top:16px">
-          <label><input type="checkbox" id="selfcheck" /> 我已按《前端统一标准》完成前端统一与功能自检（示例数据 / 校验 / 导出打印 / 响应式 + 本地保存）。</label>
+        <label class="cs-label" style="margin-top:16px">本工具的数据存储方式 *</label>
+        <div class="check storage-pick" style="display:grid;gap:8px;margin-top:4px">
+          <label><input type="radio" name="storage" value="none" checked />
+            <b>不需保存</b>——纯计算 / 查询，没有要存的数据（如 HS 速查、危化判定）。</label>
+          <label><input type="radio" name="storage" value="local" />
+            <b>本机暂存</b>——只要表单防丢 / 临时草稿，用 <code>Cstar.store</code>（localStorage，仅本机本浏览器）。</label>
+          <label><input type="radio" name="storage" value="cloud" />
+            <b>云端保存</b>——需要跨设备 / 多人 / 后台统计（台账、提交历史），必须用 <code>Cstar.cloud</code>（按账号隔离、需登录）。</label>
+        </div>
+
+        <div class="check" style="margin-top:12px">
+          <label><input type="checkbox" id="selfcheck" /> 我已按《前端统一标准》完成前端统一与功能自检（示例数据 / 校验 / 导出打印 / 响应式），且数据存储已按上面所选方式实现。</label>
         </div>
 
         <div id="err" class="cs-error-text" style="margin-top:12px"></div>
@@ -132,6 +142,7 @@ async function submitTool() {
   document.getElementById('name').classList.remove('cs-field-error');
   if (!chosen) { showErr('请选择要上传的 .zip 压缩包'); return; }
   if (!document.getElementById('selfcheck').checked) { showErr('请先确认已完成前端统一与功能自检'); return; }
+  const storage = (document.querySelector('input[name="storage"]:checked') || {}).value || 'none';
   showErr('');
 
   const btn = document.getElementById('submitBtn');
@@ -145,6 +156,7 @@ async function submitTool() {
   fd.append('developer', document.getElementById('developer').value.trim());
   fd.append('desc', document.getElementById('desc').value.trim());
   fd.append('selfcheck', '1');
+  fd.append('storage', storage);
   fd.append('file', chosen);
 
   try {

@@ -251,6 +251,7 @@ class Submission(Base):
     developer = Column(String, default="")             # 开发者/部门
     desc = Column(Text, default="")                    # 一句话说明
     selfcheck = Column(Integer, default=0)             # 是否已自检 1/0
+    storage = Column(String, default="")               # 声明的数据存储方式 none/local/cloud
     filename = Column(String, default="")              # 原始文件名
     size = Column(Integer, default=0)                  # 字节
     ip = Column(String, default="")

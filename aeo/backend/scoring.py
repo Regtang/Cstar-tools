@@ -61,8 +61,11 @@ def _audit(html, bundle):
         re.search(r"cs-field-error|cs-error-text|校验|required|invalid|错误提示|setMsg|必填", b, re.I))
     add("export", "导出 / 打印", 10,
         re.search(r"导出|打印|window\.print|exportCSV|\.csv|download\s*\(|toBlob|application/pdf|\.xlsx", b, re.I))
-    add("responsive", "响应式 + 本地暂存", 10,
-        bool(re.search(r"@media", b)) and bool(re.search(r"localStorage|bindForm|Cstar\.store", b)))
+    add("responsive", "响应式（@media 适配手机）", 5, re.search(r"@media", b))
+    # 数据持久化按需达标：本机暂存(localStorage/Cstar.store) 或 云端(Cstar.cloud) 任一即可，
+    # 不强制只用 localStorage —— 同事可按工具需求自选存储方式。
+    add("persist", "数据持久化（本机暂存或云端 Cstar.cloud，按需）", 5,
+        re.search(r"localStorage|sessionStorage|bindForm|Cstar\.store|Cstar\.cloud|/api/store/", b))
 
     # —— C. 质量与卫生（10）——
     big = sum(len(m) for m in re.findall(r"data:image/[^)\"';\s]+", h))

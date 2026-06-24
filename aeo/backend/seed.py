@@ -93,7 +93,8 @@ def _ensure_columns():
     # 表名 -> [(列名, 列定义)]
     wanted = {
         "users": [("email", "VARCHAR DEFAULT ''")],
-        "submissions": [("kind", "VARCHAR DEFAULT 'new'"), ("target", "VARCHAR DEFAULT ''")],
+        "submissions": [("kind", "VARCHAR DEFAULT 'new'"), ("target", "VARCHAR DEFAULT ''"),
+                        ("storage", "VARCHAR DEFAULT ''")],
         "tools": [("current_version_id", "INTEGER DEFAULT 0"),
                   ("score", "INTEGER DEFAULT -1"), ("score_detail", "TEXT DEFAULT ''"),
                   ("value_score", "INTEGER DEFAULT -1"), ("value_detail", "TEXT DEFAULT ''"),
